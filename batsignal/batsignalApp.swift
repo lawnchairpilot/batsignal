@@ -6,12 +6,25 @@
 //
 
 import SwiftUI
+import FirebaseCore
 
 @main
 struct batsignalApp: App {
+    @StateObject private var authService = AuthService.shared
+
+    init() {
+        FirebaseApp.configure()
+    }
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            if authService.isAuthenticated && authService.currentUser != nil {
+                MainTabView()
+                    .environmentObject(authService)
+            } else {
+                AuthFlowView()
+                    .environmentObject(authService)
+            }
         }
     }
 }

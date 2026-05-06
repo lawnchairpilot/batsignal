@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		EB9BF0F82FA1C6A20062C3B0 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = EB9BF0F72FA1C6A20062C3B0 /* FirebaseAuth */; };
+		EB9BF0FA2FA1C6A20062C3B0 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = EB9BF0F92FA1C6A20062C3B0 /* FirebaseFirestore */; };
+		EB9BF0FC2FA1C6A20062C3B0 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = EB9BF0FB2FA1C6A20062C3B0 /* FirebaseStorage */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		EB9BF0E82F8CBC4C0062C3B0 /* batsignal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = batsignal.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +29,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EB9BF0F82FA1C6A20062C3B0 /* FirebaseAuth in Frameworks */,
+				EB9BF0FA2FA1C6A20062C3B0 /* FirebaseFirestore in Frameworks */,
+				EB9BF0FC2FA1C6A20062C3B0 /* FirebaseStorage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +74,9 @@
 			);
 			name = batsignal;
 			packageProductDependencies = (
+				EB9BF0F72FA1C6A20062C3B0 /* FirebaseAuth */,
+				EB9BF0F92FA1C6A20062C3B0 /* FirebaseFirestore */,
+				EB9BF0FB2FA1C6A20062C3B0 /* FirebaseStorage */,
 			);
 			productName = batsignal;
 			productReference = EB9BF0E82F8CBC4C0062C3B0 /* batsignal.app */;
@@ -94,6 +106,9 @@
 			);
 			mainGroup = EB9BF0DF2F8CBC4C0062C3B0;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				EB9BF0F62FA1C6A20062C3B0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = EB9BF0E92F8CBC4C0062C3B0 /* Products */;
 			projectDirPath = "";
@@ -253,6 +268,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Batsignal uses your location in the background during live events.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Batsignal uses your location to share it with friends during events.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -284,6 +301,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Batsignal uses your location in the background during live events.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Batsignal uses your location to share it with friends during events.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -328,6 +347,35 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		EB9BF0F62FA1C6A20062C3B0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.12.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		EB9BF0F72FA1C6A20062C3B0 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EB9BF0F62FA1C6A20062C3B0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		EB9BF0F92FA1C6A20062C3B0 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EB9BF0F62FA1C6A20062C3B0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		EB9BF0FB2FA1C6A20062C3B0 /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EB9BF0F62FA1C6A20062C3B0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = EB9BF0E02F8CBC4C0062C3B0 /* Project object */;
 }

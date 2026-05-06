@@ -1,0 +1,57 @@
+# Xcode
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.xccheckout
+*.moved-to-trash
+*.xcuserstate
+*.xcscmblueprint
+*.xcscheme
+
+# Xcode Derived Data
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+Package.resolved
+
+# CocoaPods (if you ever use it)
+Pods/
+*.xcworkspace
+
+# Carthage (if you ever use it)
+Carthage/Build/
+
+# Firebase / Google Services
+# Do NOT ignore GoogleService-Info.plist if you want teammates to build —
+# but if solo and treating it as a secret, uncomment the next line:
+# GoogleService-Info.plist
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+
+# VS Code
+.vscode/
+
+# Environment / secrets
+*.env
+secrets.plist
