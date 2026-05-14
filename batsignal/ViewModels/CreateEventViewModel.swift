@@ -13,6 +13,7 @@ class CreateEventViewModel: ObservableObject {
     @Published var selectedVagueLabel: String? = nil
     @Published var locationType: LocationType = .text
     @Published var locationLabel = ""
+    @Published var fixedCoordinate: CLLocationCoordinate2D? = nil  // set by map picker
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var didCreate = false
@@ -37,7 +38,9 @@ class CreateEventViewModel: ObservableObject {
         }
 
         var coordinate: GeoPoint? = nil
-        if locationType == .live || locationType == .fixed {
+        if locationType == .fixed, let fixed = fixedCoordinate {
+            coordinate = GeoPoint(latitude: fixed.latitude, longitude: fixed.longitude)
+        } else if locationType == .live {
             locationService.requestCurrentLocation()
             if let loc = locationService.currentLocation {
                 coordinate = GeoPoint(latitude: loc.coordinate.latitude,

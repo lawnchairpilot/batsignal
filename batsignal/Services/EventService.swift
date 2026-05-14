@@ -27,6 +27,22 @@ class EventService: ObservableObject {
         return snapshot.documents.compactMap { try? $0.data(as: Event.self) }
     }
 
+    func listenToMyActiveEvent(onChange: @escaping (Event?) -> Void) -> ListenerRegistration? {
+        guard let uid = Auth.auth().currentUser?.uid else { return nil }
+        return db.collection("events")
+            .whereField("creatorId", isEqualTo: uid)
+            .whereField("isActive", isEqualTo: true)
+            .limit(to: 1)
+            .addSnapshotListener { snapshot, error in
+                if let error = error {
+                    print("listenToMyActiveEvent error: \(error.localizedDescription)")
+                    return
+                }
+                let event = snapshot?.documents.compactMap { try? $0.data(as: Event.self) }.first
+                onChange(event?.isExpired == false ? event : nil)
+            }
+    }
+
     // MARK: - Create
 
     func createEvent(_ event: Event) async throws {
@@ -37,6 +53,15 @@ class EventService: ObservableObject {
 
     func endEvent(id: String) async throws {
         try await db.collection("events").document(id).updateData(["isActive": false])
+    }
+
+    func extendEvent(id: String, currentEndTime: Date, currentDurationMinutes: Int) async throws {
+        let newDuration = currentDurationMinutes + 30
+        let newEndTime = currentEndTime.addingTimeInterval(30 * 60)
+        try await db.collection("events").document(id).updateData([
+            "durationMinutes": newDuration,
+            "endTime": Timestamp(date: newEndTime)
+        ])
     }
 
     func updateLiveLocation(eventId: String, coordinate: GeoPoint) async throws {

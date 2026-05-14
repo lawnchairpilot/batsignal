@@ -1,8 +1,10 @@
 import SwiftUI
+import MapKit
 
 struct CreateEventView: View {
     @StateObject private var viewModel = CreateEventViewModel()
     @Environment(\.dismiss) private var dismiss
+    @State private var showLocationPicker = false
 
     var body: some View {
         NavigationStack {
@@ -20,8 +22,32 @@ struct CreateEventView: View {
 
                 Section("Where?") {
                     locationTypePicker
-                    if viewModel.locationType == .text || viewModel.locationType == .fixed {
-                        TextField("Location description", text: $viewModel.locationLabel)
+
+                    if viewModel.locationType == .text {
+                        TextField("Describe the location", text: $viewModel.locationLabel)
+                    } else if viewModel.locationType == .fixed {
+                        Button(action: { showLocationPicker = true }) {
+                            HStack {
+                                Image(systemName: "mappin.circle")
+                                if viewModel.locationLabel.isEmpty {
+                                    Text("Pick a location on the map")
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    Text(viewModel.locationLabel)
+                                        .foregroundColor(.primary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .sheet(isPresented: $showLocationPicker) {
+                            LocationPickerView { picked in
+                                viewModel.locationLabel = picked.name
+                                viewModel.fixedCoordinate = picked.coordinate
+                            }
+                        }
                     }
                 }
 

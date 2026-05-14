@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct MainTabView: View {
+    @StateObject private var myEventViewModel = MyActiveEventViewModel()
+
     var body: some View {
         TabView {
             HomeView()
@@ -18,5 +20,7 @@ struct MainTabView: View {
                     Label("Profile", systemImage: "person.circle")
                 }
         }
+        .environmentObject(myEventViewModel)
+        .onAppear { myEventViewModel.startListening() }
     }
 }

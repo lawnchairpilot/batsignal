@@ -3,30 +3,43 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject var authService: AuthService
     @StateObject private var viewModel = HomeViewModel()
+    @EnvironmentObject private var myEventViewModel: MyActiveEventViewModel
     @State private var showCreateEvent = false
 
     var body: some View {
         NavigationStack {
-            Group {
-                if viewModel.isLoading {
-                    ProgressView()
-                } else if viewModel.events.isEmpty {
-                    ContentUnavailableView(
-                        "No signals yet",
-                        systemImage: "antenna.radiowaves.left.and.right",
-                        description: Text("When your friends post an event, it'll show up here.")
-                    )
-                } else {
-                    List(viewModel.events) { event in
-                        NavigationLink(destination: EventDetailView(event: event)) {
-                            EventCardView(event: event)
-                        }
-                        .listRowInsets(EdgeInsets())
-                        .listRowSeparator(.hidden)
-                        .padding(.horizontal)
-                        .padding(.vertical, 6)
+            ScrollView {
+                VStack(spacing: 16) {
+
+                    // My active event — shown at top if one exists
+                    if myEventViewModel.activeEvent != nil {
+                        MyActiveEventCard(viewModel: myEventViewModel)
+                            .padding(.horizontal)
+                            .padding(.top, 8)
                     }
-                    .listStyle(.plain)
+
+                    // Friends' events
+                    if viewModel.isLoading {
+                        ProgressView().padding(.top, 40)
+                    } else if viewModel.events.isEmpty {
+                        ContentUnavailableView(
+                            "No signals yet",
+                            systemImage: "antenna.radiowaves.left.and.right",
+                            description: Text("When your friends post an event, it'll show up here.")
+                        )
+                        .padding(.top, 40)
+                    } else {
+                        VStack(spacing: 12) {
+                            ForEach(viewModel.events) { event in
+                                NavigationLink(destination: EventDetailView(event: event)) {
+                                    EventCardView(event: event)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.horizontal)
+                            }
+                        }
+                        .padding(.bottom, 16)
+                    }
                 }
             }
             .navigationTitle("Batsignal")

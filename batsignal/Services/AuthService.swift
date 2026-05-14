@@ -11,7 +11,7 @@ class AuthService: ObservableObject {
     private let db = Firestore.firestore()
 
     private init() {
-        Auth.auth().addStateDidChangeListener { [weak self] _, firebaseUser in
+        _ = Auth.auth().addStateDidChangeListener { [weak self] _, firebaseUser in
             guard let self else { return }
             if let firebaseUser {
                 self.isAuthenticated = true
@@ -23,18 +23,14 @@ class AuthService: ObservableObject {
         }
     }
 
-    // MARK: - Phone Auth
+    // MARK: - Email Auth (temporary, replace with phone auth before shipping)
 
-    func sendVerificationCode(phoneNumber: String) async throws -> String {
-        let verificationID = try await PhoneAuthProvider.provider()
-            .verifyPhoneNumber(phoneNumber, uiDelegate: nil)
-        return verificationID
+    func signUp(email: String, password: String) async throws {
+        try await Auth.auth().createUser(withEmail: email, password: password)
     }
 
-    func verifyCode(_ code: String, verificationID: String) async throws {
-        let credential = PhoneAuthProvider.provider()
-            .credential(withVerificationID: verificationID, verificationCode: code)
-        try await Auth.auth().signIn(with: credential)
+    func signIn(email: String, password: String) async throws {
+        try await Auth.auth().signIn(withEmail: email, password: password)
     }
 
     func signOut() throws {
@@ -43,10 +39,10 @@ class AuthService: ObservableObject {
 
     // MARK: - User Document
 
-    func createUserDocument(displayName: String) async throws {
+    func createUserDocument(email: String, displayName: String) async throws {
         guard let firebaseUser = Auth.auth().currentUser else { return }
         let user = User(
-            phoneNumber: firebaseUser.phoneNumber ?? "",
+            phoneNumber: email,  // storing email in phoneNumber field temporarily
             displayName: displayName,
             friends: [],
             createdAt: .init()
