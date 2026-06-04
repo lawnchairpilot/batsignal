@@ -39,10 +39,10 @@ class AuthService: ObservableObject {
 
     // MARK: - User Document
 
-    func createUserDocument(email: String, displayName: String) async throws {
+    func createUserDocument(email: String, phoneNumber: String, displayName: String) async throws {
         guard let firebaseUser = Auth.auth().currentUser else { return }
         let user = User(
-            phoneNumber: email,  // storing email in phoneNumber field temporarily
+            phoneNumber: phoneNumber,
             displayName: displayName,
             friends: [],
             createdAt: .init()

@@ -4,6 +4,7 @@ import FirebaseCore
 
 struct EventDetailView: View {
     let event: Event
+    var creatorName: String?
 
     var body: some View {
         ScrollView {
@@ -11,6 +12,11 @@ struct EventDetailView: View {
 
                 // Activity + description
                 VStack(alignment: .leading, spacing: 6) {
+                    if let name = creatorName {
+                        Label(name, systemImage: "person.fill")
+                            .font(.subheadline)
+                            .foregroundColor(.accentColor)
+                    }
                     Text(event.activity).font(.title.bold())
                     if let desc = event.description {
                         Text(desc).foregroundColor(.secondary)

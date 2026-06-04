@@ -20,6 +20,15 @@ class FriendService: ObservableObject {
 
     func sendFriendRequest(toUserId: String) async throws {
         guard let fromUserId = Auth.auth().currentUser?.uid else { return }
+
+        // Check for an existing pending request in either direction
+        let existing = try await db.collection("friendRequests")
+            .whereField("fromUserId", isEqualTo: fromUserId)
+            .whereField("toUserId", isEqualTo: toUserId)
+            .whereField("status", isEqualTo: FriendRequestStatus.pending.rawValue)
+            .getDocuments()
+        guard existing.documents.isEmpty else { return }
+
         let request = FriendRequest(
             fromUserId: fromUserId,
             toUserId: toUserId,
@@ -27,6 +36,11 @@ class FriendService: ObservableObject {
             createdAt: .init()
         )
         _ = try db.collection("friendRequests").addDocument(from: request)
+    }
+
+    func fetchUser(id: String) async throws -> User? {
+        let doc = try await db.collection("users").document(id).getDocument()
+        return try? doc.data(as: User.self)
     }
 
     func respondToRequest(requestId: String, accept: Bool) async throws {
@@ -43,13 +57,36 @@ class FriendService: ObservableObject {
         }
     }
 
-    func fetchIncomingRequests() async throws -> [FriendRequest] {
-        guard let uid = Auth.auth().currentUser?.uid else { return [] }
-        let snapshot = try await db.collection("friendRequests")
+    func listenToIncomingRequests(onChange: @escaping ([FriendRequest]) -> Void) -> ListenerRegistration? {
+        guard let uid = Auth.auth().currentUser?.uid else { return nil }
+        return db.collection("friendRequests")
             .whereField("toUserId", isEqualTo: uid)
-            .whereField("status", isEqualTo: FriendRequestStatus.pending.rawValue)
-            .getDocuments()
-        return snapshot.documents.compactMap { try? $0.data(as: FriendRequest.self) }
+            .addSnapshotListener { snapshot, error in
+                if let error = error {
+                    print("listenToIncomingRequests error: \(error.localizedDescription)")
+                    return
+                }
+                let pending = snapshot?.documents
+                    .compactMap { try? $0.data(as: FriendRequest.self) }
+                    .filter { $0.status == .pending } ?? []
+                onChange(pending)
+            }
+    }
+
+    func listenToOutgoingRequests(onChange: @escaping ([FriendRequest]) -> Void) -> ListenerRegistration? {
+        guard let uid = Auth.auth().currentUser?.uid else { return nil }
+        return db.collection("friendRequests")
+            .whereField("fromUserId", isEqualTo: uid)
+            .addSnapshotListener { snapshot, error in
+                if let error = error {
+                    print("listenToOutgoingRequests error: \(error.localizedDescription)")
+                    return
+                }
+                let pending = snapshot?.documents
+                    .compactMap { try? $0.data(as: FriendRequest.self) }
+                    .filter { $0.status == .pending } ?? []
+                onChange(pending)
+            }
     }
 
     // MARK: - Friends list

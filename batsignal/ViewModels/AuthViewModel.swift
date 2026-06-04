@@ -6,6 +6,7 @@ class AuthViewModel: ObservableObject {
     @Published var email = ""
     @Published var password = ""
     @Published var displayName = ""
+    @Published var phoneNumber = ""
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var isNewUser = false  // toggle between sign up / sign in
@@ -17,7 +18,7 @@ class AuthViewModel: ObservableObject {
         errorMessage = nil
         do {
             try await authService.signUp(email: email, password: password)
-            try await authService.createUserDocument(email: email, displayName: displayName)
+            try await authService.createUserDocument(email: email, phoneNumber: phoneNumber, displayName: displayName)
         } catch {
             errorMessage = error.localizedDescription
         }

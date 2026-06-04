@@ -2,9 +2,11 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject var authService: AuthService
-    @StateObject private var viewModel = HomeViewModel()
+    @EnvironmentObject private var viewModel: HomeViewModel
     @EnvironmentObject private var myEventViewModel: MyActiveEventViewModel
+    @EnvironmentObject private var friendsViewModel: FriendsViewModel
     @State private var showCreateEvent = false
+    @State private var showActiveEventAlert = false
 
     var body: some View {
         NavigationStack {
@@ -29,10 +31,15 @@ struct HomeView: View {
                         )
                         .padding(.top, 40)
                     } else {
-                        VStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("What's happening")
+                                .font(.title3).bold()
+                                .padding(.horizontal)
+                                .padding(.top, 4)
                             ForEach(viewModel.events) { event in
-                                NavigationLink(destination: EventDetailView(event: event)) {
-                                    EventCardView(event: event)
+                                let creatorName = friendsViewModel.friends.first { $0.id == event.creatorId }?.displayName
+                                NavigationLink(destination: EventDetailView(event: event, creatorName: creatorName)) {
+                                    EventCardView(event: event, creatorName: creatorName)
                                 }
                                 .buttonStyle(.plain)
                                 .padding(.horizontal)
@@ -45,7 +52,13 @@ struct HomeView: View {
             .navigationTitle("Batsignal")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showCreateEvent = true }) {
+                    Button(action: {
+                        if authService.currentUser?.activeEventId != nil {
+                            showActiveEventAlert = true
+                        } else {
+                            showCreateEvent = true
+                        }
+                    }) {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
                     }
@@ -54,10 +67,10 @@ struct HomeView: View {
             .sheet(isPresented: $showCreateEvent) {
                 CreateEventView()
             }
-            .task {
-                let friendIds = authService.currentUser?.friends ?? []
-                let radius = authService.currentUser?.maxEventRadius
-                await viewModel.loadEvents(friendIds: friendIds, maxRadius: radius)
+            .alert("Signal already active", isPresented: $showActiveEventAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("End your current signal before starting a new one.")
             }
         }
     }

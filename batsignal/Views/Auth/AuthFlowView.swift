@@ -15,6 +15,13 @@ struct AuthFlowView: View {
                         .padding()
                         .background(Color(.secondarySystemBackground))
                         .cornerRadius(12)
+
+                    TextField("Phone number (e.g. +16505551234)", text: $viewModel.phoneNumber)
+                        .keyboardType(.phonePad)
+                        .textContentType(.telephoneNumber)
+                        .padding()
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(12)
                 }
 
                 TextField("Email", text: $viewModel.email)

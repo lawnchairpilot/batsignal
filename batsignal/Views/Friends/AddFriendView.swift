@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AddFriendView: View {
     @ObservedObject var viewModel: FriendsViewModel
+    @EnvironmentObject var authService: AuthService
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -14,7 +15,7 @@ struct AddFriendView: View {
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(12)
 
-                Button(action: { Task { await viewModel.searchByPhone() } }) {
+                Button(action: { Task { await viewModel.searchByPhone(currentUserId: authService.currentUser?.id) } }) {
                     Text("Search")
                         .frame(maxWidth: .infinity)
                         .padding()
@@ -29,20 +30,31 @@ struct AddFriendView: View {
                 }
 
                 if let user = viewModel.searchResult {
+                    let alreadyFriend = viewModel.friends.contains { $0.id == user.id }
+                    let pendingRequest = user.id.map { viewModel.hasPendingOutgoingRequest(toUserId: $0) } ?? false
                     HStack {
                         VStack(alignment: .leading) {
                             Text(user.displayName).font(.headline)
                             Text(user.phoneNumber).font(.caption).foregroundColor(.secondary)
                         }
                         Spacer()
-                        Button("Add") {
-                            Task {
-                                guard let id = user.id else { return }
-                                await viewModel.sendRequest(toUserId: id)
-                                dismiss()
+                        if alreadyFriend {
+                            Text("Friends")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        } else if pendingRequest {
+                            Text("Requested")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        } else {
+                            Button("Add") {
+                                Task {
+                                    guard let id = user.id else { return }
+                                    await viewModel.sendRequest(toUserId: id)
+                                }
                             }
+                            .buttonStyle(.borderedProminent)
                         }
-                        .buttonStyle(.borderedProminent)
                     }
                     .padding()
                     .background(Color(.secondarySystemBackground))

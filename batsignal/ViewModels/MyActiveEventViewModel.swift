@@ -9,22 +9,28 @@ class MyActiveEventViewModel: ObservableObject {
     private let eventService = EventService()
     private var listener: ListenerRegistration?
 
-    func startListening() {
-        listener = eventService.listenToMyActiveEvent { [weak self] event in
+    /// Called whenever authService.currentUser changes — looks up the specific event document.
+    func startListening(activeEventId: String?) {
+        listener?.remove()
+        listener = nil
+        activeEvent = nil
+
+        guard let eventId = activeEventId else { return }
+
+        listener = eventService.listenToEvent(id: eventId) { [weak self] event in
             Task { @MainActor in
-                self?.activeEvent = event
+                // Treat expired or inactive events as nil
+                if let event, event.isActive, !event.isExpired {
+                    self?.activeEvent = event
+                } else {
+                    self?.activeEvent = nil
+                }
             }
         }
     }
 
-    func stopListening() {
-        listener?.remove()
-        listener = nil
-    }
-
     // MARK: - Progress
 
-    /// 0.0 (just started) to 1.0 (expired). nil if duration is vague.
     var progress: Double? {
         guard let event = activeEvent,
               let durationMinutes = event.durationMinutes,

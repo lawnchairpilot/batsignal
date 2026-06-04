@@ -1,35 +1,37 @@
 import Foundation
 import Combine
 import CoreLocation
+import FirebaseFirestore
 
 @MainActor
 class HomeViewModel: ObservableObject {
     @Published var events: [Event] = []
     @Published var isLoading = false
-    @Published var errorMessage: String?
 
     private let eventService = EventService()
     private let locationService = LocationService()
+    private var listener: ListenerRegistration?
 
-    func loadEvents(friendIds: [String], maxRadius: Double?) async {
+    func startListening(friendIds: [String], maxRadius: Double?) {
+        listener?.remove()
         isLoading = true
-        errorMessage = nil
-        do {
-            var fetched = try await eventService.fetchFriendEvents(friendIds: friendIds)
-            fetched = fetched.filter { $0.isVisible }
-
-            if let maxRadius, locationService.currentLocation != nil {
-                fetched = fetched.filter { event in
+        listener = eventService.listenToFriendEvents(friendIds: friendIds) { [weak self] fetched in
+            guard let self else { return }
+            if let maxRadius, self.locationService.currentLocation != nil {
+                self.events = fetched.filter { event in
                     guard let coord = event.locationCoordinate else { return true }
-                    guard let dist = locationService.distance(from: coord) else { return true }
+                    guard let dist = self.locationService.distance(from: coord) else { return true }
                     return dist <= maxRadius
                 }
+            } else {
+                self.events = fetched
             }
-
-            events = fetched
-        } catch {
-            errorMessage = error.localizedDescription
+            self.isLoading = false
         }
-        isLoading = false
+    }
+
+    func stopListening() {
+        listener?.remove()
+        listener = nil
     }
 }

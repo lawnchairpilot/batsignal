@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject var authService: AuthService
+    @State private var showEditProfile = false
 
     var body: some View {
         NavigationStack {
@@ -35,6 +36,14 @@ struct ProfileView: View {
                 }
             }
             .navigationTitle("Profile")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Edit") { showEditProfile = true }
+                }
+            }
+            .sheet(isPresented: $showEditProfile) {
+                EditProfileView()
+            }
         }
     }
 }

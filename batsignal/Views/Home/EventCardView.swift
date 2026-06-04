@@ -3,9 +3,16 @@ import FirebaseCore
 
 struct EventCardView: View {
     let event: Event
+    var creatorName: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            if let name = creatorName {
+                Text(name)
+                    .font(.subheadline)
+                    .foregroundColor(.accentColor)
+                    .bold()
+            }
             Text(event.activity)
                 .font(.headline)
 

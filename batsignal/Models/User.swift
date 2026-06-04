@@ -8,6 +8,7 @@ struct User: Identifiable, Codable {
     var profilePhotoURL: String?
     var friends: [String]
     var maxEventRadius: Double?  // miles, nil = no filter
+    var activeEventId: String?   // set when user has an active event
     var createdAt: Timestamp
 
     enum CodingKeys: String, CodingKey {
@@ -17,6 +18,7 @@ struct User: Identifiable, Codable {
         case profilePhotoURL
         case friends
         case maxEventRadius
+        case activeEventId
         case createdAt
     }
 }

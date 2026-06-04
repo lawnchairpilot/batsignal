@@ -18,7 +18,7 @@ struct batsignalApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if authService.isAuthenticated && authService.currentUser != nil {
+            if authService.isAuthenticated {
                 MainTabView()
                     .environmentObject(authService)
             } else {
