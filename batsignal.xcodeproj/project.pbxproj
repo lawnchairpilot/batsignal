@@ -16,9 +16,22 @@
 		EB9BF0E82F8CBC4C0062C3B0 /* batsignal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = batsignal.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		EB447C0B2FECEDDC00DA05D7 /* Exceptions for "batsignal" folder in "batsignal" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = EB9BF0E72F8CBC4C0062C3B0 /* batsignal */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		EB9BF0EA2F8CBC4C0062C3B0 /* batsignal */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				EB447C0B2FECEDDC00DA05D7 /* Exceptions for "batsignal" folder in "batsignal" target */,
+			);
 			path = batsignal;
 			sourceTree = "<group>";
 		};
@@ -269,6 +282,7 @@
 				DEVELOPMENT_TEAM = QGY38FJH7M;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = batsignal/Info.plist;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Batsignal uses your location in the background during live events.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Batsignal uses your location to share it with friends during events.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -303,6 +317,7 @@
 				DEVELOPMENT_TEAM = QGY38FJH7M;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = batsignal/Info.plist;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Batsignal uses your location in the background during live events.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Batsignal uses your location to share it with friends during events.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

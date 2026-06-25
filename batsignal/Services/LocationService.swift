@@ -33,13 +33,25 @@ class LocationService: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     func startLiveSharing(for eventId: String) {
         liveEventId = eventId
-        manager.requestAlwaysAuthorization()
-        manager.startUpdatingLocation()
+        switch manager.authorizationStatus {
+        case .authorizedAlways:
+            manager.startMonitoringSignificantLocationChanges()
+            manager.requestLocation() // one-shot GPS fix for immediate initial coordinate
+        case .authorizedWhenInUse:
+            manager.requestAlwaysAuthorization()
+            manager.startMonitoringSignificantLocationChanges()
+            manager.requestLocation()
+        case .notDetermined:
+            manager.requestAlwaysAuthorization()
+            // both called in delegate once granted
+        default:
+            break
+        }
     }
 
     func stopLiveSharing() {
         liveEventId = nil
-        manager.stopUpdatingLocation()
+        manager.stopMonitoringSignificantLocationChanges()
     }
 
     // MARK: - CLLocationManagerDelegate
@@ -63,6 +75,14 @@ class LocationService: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         authorizationStatus = manager.authorizationStatus
+        guard liveEventId != nil else { return }
+        switch manager.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse:
+            manager.startMonitoringSignificantLocationChanges()
+            manager.requestLocation()
+        default:
+            break
+        }
     }
 
     // MARK: - Distance filtering

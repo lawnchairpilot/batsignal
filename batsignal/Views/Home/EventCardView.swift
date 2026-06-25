@@ -18,7 +18,7 @@ struct EventCardView: View {
 
             HStack(spacing: 4) {
                 Image(systemName: "clock")
-                Text(event.startTime.dateValue(), style: .time)
+                Text(startTimeLabel)
                 if !event.durationLabel.isEmpty {
                     Text("· \(event.durationLabel)")
                 }
@@ -39,6 +39,16 @@ struct EventCardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemBackground))
         .cornerRadius(16)
+    }
+
+    private var startTimeLabel: String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        let time = formatter.string(from: event.startTime.dateValue())
+        if Calendar.current.isDateInTomorrow(event.startTime.dateValue()) {
+            return "Tomorrow · \(time)"
+        }
+        return time
     }
 
     private var locationIcon: String {

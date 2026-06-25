@@ -16,7 +16,13 @@ struct CreateEventView: View {
                 }
 
                 Section("When?") {
-                    DatePicker("Start time", selection: $viewModel.startTime, displayedComponents: [.date, .hourAndMinute])
+                    Picker("Day", selection: $viewModel.selectedDay) {
+                        ForEach(DayOption.allCases, id: \.self) { day in
+                            Text(day.rawValue).tag(day)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    DatePicker("Time", selection: $viewModel.selectedTime, displayedComponents: [.hourAndMinute])
                     durationPicker
                 }
 

@@ -13,17 +13,17 @@ struct HomeView: View {
             ScrollView {
                 VStack(spacing: 16) {
 
-                    // My active event — shown at top if one exists
-                    if myEventViewModel.activeEvent != nil {
+                    // My event (active or upcoming)
+                    if myEventViewModel.activeEvent != nil || myEventViewModel.upcomingEvent != nil {
                         MyActiveEventCard(viewModel: myEventViewModel)
                             .padding(.horizontal)
                             .padding(.top, 8)
                     }
 
-                    // Friends' events
+                    // Friends' active events
                     if viewModel.isLoading {
                         ProgressView().padding(.top, 40)
-                    } else if viewModel.events.isEmpty {
+                    } else if viewModel.events.isEmpty && viewModel.upcomingEvents.isEmpty {
                         ContentUnavailableView(
                             "No signals yet",
                             systemImage: "antenna.radiowaves.left.and.right",
@@ -32,17 +32,35 @@ struct HomeView: View {
                         .padding(.top, 40)
                     } else {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("What's happening")
-                                .font(.title3).bold()
-                                .padding(.horizontal)
-                                .padding(.top, 4)
-                            ForEach(viewModel.events) { event in
-                                let creatorName = friendsViewModel.friends.first { $0.id == event.creatorId }?.displayName
-                                NavigationLink(destination: EventDetailView(event: event, creatorName: creatorName)) {
-                                    EventCardView(event: event, creatorName: creatorName)
+                            if !viewModel.events.isEmpty {
+                                Text("What's happening")
+                                    .font(.title3).bold()
+                                    .padding(.horizontal)
+                                    .padding(.top, 4)
+                                ForEach(viewModel.events) { event in
+                                    let creatorName = friendsViewModel.friends.first { $0.id == event.creatorId }?.displayName
+                                    NavigationLink(destination: EventDetailView(event: event, creatorName: creatorName)) {
+                                        EventCardView(event: event, creatorName: creatorName)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .padding(.horizontal)
                                 }
-                                .buttonStyle(.plain)
-                                .padding(.horizontal)
+                            }
+
+                            if !viewModel.upcomingEvents.isEmpty {
+                                Text("Coming up")
+                                    .font(.title3).bold()
+                                    .padding(.horizontal)
+                                    .padding(.top, viewModel.events.isEmpty ? 4 : 8)
+                                ForEach(viewModel.upcomingEvents) { event in
+                                    let creatorName = friendsViewModel.friends.first { $0.id == event.creatorId }?.displayName
+                                    NavigationLink(destination: EventDetailView(event: event, creatorName: creatorName)) {
+                                        EventCardView(event: event, creatorName: creatorName)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .padding(.horizontal)
+                                    .opacity(0.6)
+                                }
                             }
                         }
                         .padding(.bottom, 16)
@@ -53,7 +71,7 @@ struct HomeView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: {
-                        if authService.currentUser?.activeEventId != nil {
+                        if authService.currentUser?.activeEventId != nil || myEventViewModel.upcomingEvent != nil {
                             showActiveEventAlert = true
                         } else {
                             showCreateEvent = true
