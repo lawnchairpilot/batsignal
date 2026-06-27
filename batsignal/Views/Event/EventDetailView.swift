@@ -136,16 +136,14 @@ struct EventDetailView: View {
 // MARK: - Live badge
 
 struct LiveBadge: View {
-    @State private var pulsing = false
+    @State private var opacity: Double = 1.0
 
     var body: some View {
         HStack(spacing: 4) {
             Circle()
-                .fill(.red)
+                .fill(.white)
                 .frame(width: 7, height: 7)
-                .scaleEffect(pulsing ? 1.35 : 0.85)
-                .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulsing)
-                .onAppear { pulsing = true }
+                .opacity(opacity)
             Text("LIVE")
                 .font(.caption2.bold())
                 .foregroundStyle(.white)
@@ -154,6 +152,14 @@ struct LiveBadge: View {
         .padding(.vertical, 4)
         .background(.red)
         .clipShape(Capsule())
+        .task {
+            while !Task.isCancelled {
+                withAnimation(.easeInOut(duration: 0.75)) { opacity = 0.2 }
+                try? await Task.sleep(for: .milliseconds(750))
+                withAnimation(.easeInOut(duration: 0.75)) { opacity = 1.0 }
+                try? await Task.sleep(for: .milliseconds(750))
+            }
+        }
     }
 }
 
@@ -233,23 +239,22 @@ struct FullMapView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .bottom) {
+            ZStack {
                 Map(position: $position) {
                     Marker("", coordinate: markerCoord)
                 }
                 .ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    if isLive {
-                        HStack {
-                            Spacer()
+                VStack {
+                    HStack {
+                        Spacer()
+                        if isLive {
                             LiveBadge()
-                            Spacer()
+                                .padding(.trailing, 16)
+                                .padding(.top, 8)
                         }
-                        .padding(.vertical, 10)
-                        .background(.ultraThinMaterial)
                     }
-
+                    Spacer()
                     Button(action: openInMaps) {
                         Label("Open in Maps", systemImage: "map.fill")
                             .font(.body.bold())
