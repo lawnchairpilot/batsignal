@@ -6,39 +6,52 @@ struct EventCardView: View {
     var creatorName: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let name = creatorName {
-                Text(name)
-                    .font(.subheadline)
-                    .foregroundColor(.accentColor)
-                    .bold()
+        HStack(alignment: .top, spacing: 12) {
+            if let label = iconLabel {
+                EventIconView(label: label)
             }
-            Text(event.activity)
-                .font(.headline)
 
-            HStack(spacing: 4) {
-                Image(systemName: "clock")
-                Text(startTimeLabel)
-                if !event.durationLabel.isEmpty {
-                    Text("· \(event.durationLabel)")
+            VStack(alignment: .leading, spacing: 8) {
+                if let name = creatorName {
+                    Text(name)
+                        .font(.subheadline)
+                        .foregroundColor(.accentColor)
+                        .bold()
                 }
-            }
-            .font(.subheadline)
-            .foregroundColor(.secondary)
+                Text(event.activity)
+                    .font(.headline)
 
-            if let label = event.locationLabel {
                 HStack(spacing: 4) {
-                    Image(systemName: locationIcon)
-                    Text(label)
+                    Image(systemName: "clock")
+                    Text(startTimeLabel)
+                    if !event.durationLabel.isEmpty {
+                        Text("· \(event.durationLabel)")
+                    }
                 }
                 .font(.subheadline)
                 .foregroundColor(.secondary)
+
+                if let label = event.locationLabel {
+                    HStack(spacing: 4) {
+                        Image(systemName: locationIcon)
+                        Text(label)
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                }
             }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemBackground))
         .cornerRadius(16)
+    }
+
+    private var iconLabel: String? {
+        if let emoji = event.emoji { return emoji }
+        guard let name = creatorName, !name.isEmpty else { return nil }
+        let initials = name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
+        return initials.isEmpty ? nil : initials.uppercased()
     }
 
     private var startTimeLabel: String {
@@ -56,6 +69,26 @@ struct EventCardView: View {
         case .text:   return "mappin"
         case .fixed:  return "mappin.circle"
         case .live:   return "location.fill"
+        }
+    }
+}
+
+// Reusable circle icon — emoji large, initials smaller bold, white on accentColor
+struct EventIconView: View {
+    let label: String
+
+    private var isEmoji: Bool {
+        label.unicodeScalars.contains { $0.properties.isEmojiPresentation }
+    }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color.accentColor)
+                .frame(width: 44, height: 44)
+            Text(label)
+                .font(isEmoji ? .title3 : .caption.bold())
+                .foregroundStyle(.white)
         }
     }
 }

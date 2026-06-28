@@ -171,26 +171,15 @@ struct LiveBadge: View {
     }
 }
 
-// MARK: - Custom map annotation
+// MARK: - Custom map annotation (EventIconView circle + pin tail)
 
 struct EventAnnotationView: View {
     let label: String
 
-    private var isEmoji: Bool {
-        label.unicodeScalars.contains { $0.properties.isEmojiPresentation }
-    }
-
     var body: some View {
         VStack(spacing: 0) {
-            ZStack {
-                Circle()
-                    .fill(Color.accentColor)
-                    .frame(width: 40, height: 40)
-                    .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 2)
-                Text(label)
-                    .font(isEmoji ? .title3 : .caption.bold())
-                    .foregroundStyle(.white)
-            }
+            EventIconView(label: label)
+                .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 2)
             Image(systemName: "triangle.fill")
                 .font(.system(size: 9))
                 .foregroundColor(.accentColor)
