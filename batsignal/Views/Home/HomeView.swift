@@ -38,9 +38,9 @@ struct HomeView: View {
                                     .padding(.horizontal)
                                     .padding(.top, 4)
                                 ForEach(viewModel.events) { event in
-                                    let creatorName = friendsViewModel.friends.first { $0.id == event.creatorId }?.displayName
-                                    NavigationLink(destination: EventDetailView(event: event, creatorName: creatorName)) {
-                                        EventCardView(event: event, creatorName: creatorName)
+                                    let creator = friendsViewModel.friends.first { $0.id == event.creatorId }
+                                    NavigationLink(destination: EventDetailView(event: event, creatorName: creator?.displayName, creatorPhotoURL: creator?.profilePhotoURL)) {
+                                        EventCardView(event: event, creatorName: creator?.displayName, creatorPhotoURL: creator?.profilePhotoURL)
                                     }
                                     .buttonStyle(.plain)
                                     .padding(.horizontal)
@@ -53,9 +53,9 @@ struct HomeView: View {
                                     .padding(.horizontal)
                                     .padding(.top, viewModel.events.isEmpty ? 4 : 8)
                                 ForEach(viewModel.upcomingEvents) { event in
-                                    let creatorName = friendsViewModel.friends.first { $0.id == event.creatorId }?.displayName
-                                    NavigationLink(destination: EventDetailView(event: event, creatorName: creatorName)) {
-                                        EventCardView(event: event, creatorName: creatorName)
+                                    let creator = friendsViewModel.friends.first { $0.id == event.creatorId }
+                                    NavigationLink(destination: EventDetailView(event: event, creatorName: creator?.displayName, creatorPhotoURL: creator?.profilePhotoURL)) {
+                                        EventCardView(event: event, creatorName: creator?.displayName, creatorPhotoURL: creator?.profilePhotoURL)
                                     }
                                     .buttonStyle(.plain)
                                     .padding(.horizontal)

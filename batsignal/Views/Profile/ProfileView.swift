@@ -9,9 +9,11 @@ struct ProfileView: View {
             List {
                 Section {
                     HStack(spacing: 16) {
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 56))
-                            .foregroundColor(.secondary)
+                        EventIconView(
+                            photoURL: authService.currentUser?.profilePhotoURL,
+                            label: initials,
+                            size: 60
+                        )
                         VStack(alignment: .leading, spacing: 4) {
                             Text(authService.currentUser?.displayName ?? "")
                                 .font(.headline)
@@ -45,5 +47,11 @@ struct ProfileView: View {
                 EditProfileView()
             }
         }
+    }
+
+    private var initials: String? {
+        guard let name = authService.currentUser?.displayName, !name.isEmpty else { return nil }
+        let parts = name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
+        return parts.isEmpty ? nil : parts.uppercased()
     }
 }

@@ -14,6 +14,7 @@ extension CLLocationCoordinate2D: @retroactive Equatable {
 struct EventDetailView: View {
     let event: Event
     var creatorName: String?
+    var creatorPhotoURL: String?
 
     @State private var liveCoordinate: CLLocationCoordinate2D?
     @State private var liveListener: ListenerRegistration?
@@ -77,6 +78,7 @@ struct EventDetailView: View {
                         MapThumbnailView(
                             coordinate: coordinate,
                             annotationLabel: annotationLabel,
+                            annotationPhotoURL: creatorPhotoURL,
                             isLive: event.locationType == .live,
                             eventId: event.id
                         )
@@ -174,11 +176,12 @@ struct LiveBadge: View {
 // MARK: - Custom map annotation (EventIconView circle + pin tail)
 
 struct EventAnnotationView: View {
-    let label: String
+    var label: String? = nil
+    var photoURL: String? = nil
 
     var body: some View {
         VStack(spacing: 0) {
-            EventIconView(label: label)
+            EventIconView(photoURL: photoURL, label: label)
                 .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 2)
             Image(systemName: "triangle.fill")
                 .font(.system(size: 9))
@@ -194,15 +197,17 @@ struct EventAnnotationView: View {
 struct MapThumbnailView: View {
     let coordinate: CLLocationCoordinate2D
     var annotationLabel: String? = nil
+    var annotationPhotoURL: String? = nil
     var isLive: Bool = false
     var eventId: String? = nil
 
     @State private var markerCoord: CLLocationCoordinate2D
     @State private var showFullMap = false
 
-    init(coordinate: CLLocationCoordinate2D, annotationLabel: String? = nil, isLive: Bool = false, eventId: String? = nil) {
+    init(coordinate: CLLocationCoordinate2D, annotationLabel: String? = nil, annotationPhotoURL: String? = nil, isLive: Bool = false, eventId: String? = nil) {
         self.coordinate = coordinate
         self.annotationLabel = annotationLabel
+        self.annotationPhotoURL = annotationPhotoURL
         self.isLive = isLive
         self.eventId = eventId
         self._markerCoord = State(initialValue: coordinate)
@@ -214,9 +219,9 @@ struct MapThumbnailView: View {
                 center: coordinate,
                 span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
             ))) {
-                if let label = annotationLabel {
+                if annotationLabel != nil || annotationPhotoURL != nil {
                     Annotation("", coordinate: markerCoord) {
-                        EventAnnotationView(label: label)
+                        EventAnnotationView(label: annotationLabel, photoURL: annotationPhotoURL)
                     }
                 } else {
                     Marker("", coordinate: markerCoord)
@@ -243,7 +248,7 @@ struct MapThumbnailView: View {
             markerCoord = newCoord
         }
         .sheet(isPresented: $showFullMap) {
-            FullMapView(coordinate: markerCoord, annotationLabel: annotationLabel, isLive: isLive, eventId: eventId)
+            FullMapView(coordinate: markerCoord, annotationLabel: annotationLabel, annotationPhotoURL: annotationPhotoURL, isLive: isLive, eventId: eventId)
         }
     }
 }
@@ -253,6 +258,7 @@ struct MapThumbnailView: View {
 struct FullMapView: View {
     let coordinate: CLLocationCoordinate2D
     var annotationLabel: String? = nil
+    var annotationPhotoURL: String? = nil
     var isLive: Bool = false
     var eventId: String? = nil
 
@@ -261,9 +267,10 @@ struct FullMapView: View {
     @State private var liveListener: ListenerRegistration?
     @Environment(\.dismiss) private var dismiss
 
-    init(coordinate: CLLocationCoordinate2D, annotationLabel: String? = nil, isLive: Bool = false, eventId: String? = nil) {
+    init(coordinate: CLLocationCoordinate2D, annotationLabel: String? = nil, annotationPhotoURL: String? = nil, isLive: Bool = false, eventId: String? = nil) {
         self.coordinate = coordinate
         self.annotationLabel = annotationLabel
+        self.annotationPhotoURL = annotationPhotoURL
         self.isLive = isLive
         self.eventId = eventId
         self._position = State(initialValue: .region(MKCoordinateRegion(
@@ -277,9 +284,9 @@ struct FullMapView: View {
         NavigationStack {
             ZStack {
                 Map(position: $position) {
-                    if let label = annotationLabel {
+                    if annotationLabel != nil || annotationPhotoURL != nil {
                         Annotation("", coordinate: markerCoord) {
-                            EventAnnotationView(label: label)
+                            EventAnnotationView(label: annotationLabel, photoURL: annotationPhotoURL)
                         }
                     } else {
                         Marker("", coordinate: markerCoord)

@@ -4,11 +4,14 @@ import FirebaseCore
 struct EventCardView: View {
     let event: Event
     var creatorName: String?
+    var creatorPhotoURL: String?
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             if let label = iconLabel {
-                EventIconView(label: label)
+                EventIconView(photoURL: creatorPhotoURL, label: label)
+            } else if creatorPhotoURL != nil {
+                EventIconView(photoURL: creatorPhotoURL, label: nil)
             }
 
             VStack(alignment: .leading, spacing: 8) {
@@ -73,22 +76,48 @@ struct EventCardView: View {
     }
 }
 
-// Reusable circle icon — emoji large, initials smaller bold, white on accentColor
+// Reusable circle icon: profile photo → emoji/initials label → person placeholder
 struct EventIconView: View {
-    let label: String
+    var photoURL: String? = nil
+    var label: String? = nil
+    var size: CGFloat = 44
 
     private var isEmoji: Bool {
-        label.unicodeScalars.contains { $0.properties.isEmojiPresentation }
+        label?.unicodeScalars.contains { $0.properties.isEmojiPresentation } ?? false
     }
 
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(Color.accentColor)
-                .frame(width: 44, height: 44)
+        Group {
+            if let photoURL, let url = URL(string: photoURL) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().scaledToFill()
+                    default:
+                        fallbackContent
+                    }
+                }
+            } else {
+                fallbackContent
+            }
+        }
+        .frame(width: size, height: size)
+        .background(Color.accentColor)
+        .clipShape(Circle())
+    }
+
+    @ViewBuilder
+    private var fallbackContent: some View {
+        if let label {
             Text(label)
-                .font(isEmoji ? .title3 : .caption.bold())
+                .font(isEmoji
+                    ? .system(size: size * 0.45)
+                    : .system(size: size * 0.3, weight: .bold))
                 .foregroundStyle(.white)
+        } else {
+            Image(systemName: "person.fill")
+                .font(.system(size: size * 0.4))
+                .foregroundStyle(.white.opacity(0.8))
         }
     }
 }
