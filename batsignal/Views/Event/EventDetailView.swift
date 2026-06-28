@@ -24,6 +24,13 @@ struct EventDetailView: View {
         return CLLocationCoordinate2D(latitude: geoPoint.latitude, longitude: geoPoint.longitude)
     }
 
+    private var annotationLabel: String? {
+        if let emoji = event.emoji { return emoji }
+        guard let name = creatorName, !name.isEmpty else { return nil }
+        let initials = name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
+        return initials.isEmpty ? nil : initials.uppercased()
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -69,6 +76,7 @@ struct EventDetailView: View {
                     if let coordinate = displayCoordinate {
                         MapThumbnailView(
                             coordinate: coordinate,
+                            annotationLabel: annotationLabel,
                             isLive: event.locationType == .live,
                             eventId: event.id
                         )
@@ -163,18 +171,49 @@ struct LiveBadge: View {
     }
 }
 
+// MARK: - Custom map annotation
+
+struct EventAnnotationView: View {
+    let label: String
+
+    private var isEmoji: Bool {
+        label.unicodeScalars.contains { $0.properties.isEmojiPresentation }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                Circle()
+                    .fill(Color.accentColor)
+                    .frame(width: 40, height: 40)
+                    .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 2)
+                Text(label)
+                    .font(isEmoji ? .title3 : .caption.bold())
+                    .foregroundStyle(.white)
+            }
+            Image(systemName: "triangle.fill")
+                .font(.system(size: 9))
+                .foregroundColor(.accentColor)
+                .rotationEffect(.degrees(180))
+                .offset(y: -3)
+        }
+    }
+}
+
 // MARK: - Map thumbnail (non-interactive, tappable to expand)
 
 struct MapThumbnailView: View {
     let coordinate: CLLocationCoordinate2D
+    var annotationLabel: String? = nil
     var isLive: Bool = false
     var eventId: String? = nil
 
     @State private var markerCoord: CLLocationCoordinate2D
     @State private var showFullMap = false
 
-    init(coordinate: CLLocationCoordinate2D, isLive: Bool = false, eventId: String? = nil) {
+    init(coordinate: CLLocationCoordinate2D, annotationLabel: String? = nil, isLive: Bool = false, eventId: String? = nil) {
         self.coordinate = coordinate
+        self.annotationLabel = annotationLabel
         self.isLive = isLive
         self.eventId = eventId
         self._markerCoord = State(initialValue: coordinate)
@@ -186,7 +225,13 @@ struct MapThumbnailView: View {
                 center: coordinate,
                 span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
             ))) {
-                Marker("", coordinate: markerCoord)
+                if let label = annotationLabel {
+                    Annotation("", coordinate: markerCoord) {
+                        EventAnnotationView(label: label)
+                    }
+                } else {
+                    Marker("", coordinate: markerCoord)
+                }
             }
             .disabled(true)
 
@@ -209,7 +254,7 @@ struct MapThumbnailView: View {
             markerCoord = newCoord
         }
         .sheet(isPresented: $showFullMap) {
-            FullMapView(coordinate: markerCoord, isLive: isLive, eventId: eventId)
+            FullMapView(coordinate: markerCoord, annotationLabel: annotationLabel, isLive: isLive, eventId: eventId)
         }
     }
 }
@@ -218,6 +263,7 @@ struct MapThumbnailView: View {
 
 struct FullMapView: View {
     let coordinate: CLLocationCoordinate2D
+    var annotationLabel: String? = nil
     var isLive: Bool = false
     var eventId: String? = nil
 
@@ -226,8 +272,9 @@ struct FullMapView: View {
     @State private var liveListener: ListenerRegistration?
     @Environment(\.dismiss) private var dismiss
 
-    init(coordinate: CLLocationCoordinate2D, isLive: Bool = false, eventId: String? = nil) {
+    init(coordinate: CLLocationCoordinate2D, annotationLabel: String? = nil, isLive: Bool = false, eventId: String? = nil) {
         self.coordinate = coordinate
+        self.annotationLabel = annotationLabel
         self.isLive = isLive
         self.eventId = eventId
         self._position = State(initialValue: .region(MKCoordinateRegion(
@@ -241,7 +288,13 @@ struct FullMapView: View {
         NavigationStack {
             ZStack {
                 Map(position: $position) {
-                    Marker("", coordinate: markerCoord)
+                    if let label = annotationLabel {
+                        Annotation("", coordinate: markerCoord) {
+                            EventAnnotationView(label: label)
+                        }
+                    } else {
+                        Marker("", coordinate: markerCoord)
+                    }
                 }
                 .ignoresSafeArea()
 

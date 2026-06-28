@@ -12,6 +12,7 @@ struct Event: Identifiable, Codable {
     @DocumentID var id: String?
     var creatorId: String
     var activity: String
+    var emoji: String?
     var description: String?
     var startTime: Timestamp
     var durationMinutes: Int?           // nil if vague (e.g. "til dark")

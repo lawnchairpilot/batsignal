@@ -12,6 +12,7 @@ enum DayOption: String, CaseIterable {
 @MainActor
 class CreateEventViewModel: ObservableObject {
     @Published var activity = ""
+    @Published var emoji: String? = nil
     @Published var description = ""
     @Published var selectedDay: DayOption = .today
     @Published var selectedTime: Date = Date()
@@ -73,6 +74,7 @@ class CreateEventViewModel: ObservableObject {
         let event = Event(
             creatorId: uid,
             activity: activity,
+            emoji: emoji,
             description: description.isEmpty ? nil : description,
             startTime: Timestamp(date: startTime),
             durationMinutes: selectedDurationMinutes,

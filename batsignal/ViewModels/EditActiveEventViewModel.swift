@@ -9,6 +9,7 @@ class EditActiveEventViewModel: ObservableObject {
     private let originalStartTime: Timestamp
 
     @Published var activity: String
+    @Published var emoji: String?
     @Published var description: String
     @Published var selectedDurationMinutes: Int?
     @Published var selectedVagueLabel: String?
@@ -25,6 +26,7 @@ class EditActiveEventViewModel: ObservableObject {
         self.eventId = event.id ?? ""
         self.originalStartTime = event.startTime
         self.activity = event.activity
+        self.emoji = event.emoji
         self.description = event.description ?? ""
         self.locationType = event.locationType
         self.locationLabel = event.locationLabel ?? ""
@@ -67,6 +69,7 @@ class EditActiveEventViewModel: ObservableObject {
             try await eventService.updateEvent(
                 id: eventId,
                 activity: activity,
+                emoji: emoji,
                 description: description.isEmpty ? nil : description,
                 startTime: originalStartTime,
                 durationMinutes: selectedDurationMinutes,

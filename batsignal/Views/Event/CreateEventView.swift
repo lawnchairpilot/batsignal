@@ -5,6 +5,7 @@ struct CreateEventView: View {
     @StateObject private var viewModel = CreateEventViewModel()
     @Environment(\.dismiss) private var dismiss
     @State private var showLocationPicker = false
+    @State private var showEmojiPicker = false
 
     var body: some View {
         NavigationStack {
@@ -13,6 +14,25 @@ struct CreateEventView: View {
                     TextField("e.g. Surfing, Hiking, Coffee", text: $viewModel.activity)
                     TextField("Description (optional)", text: $viewModel.description, axis: .vertical)
                         .lineLimit(3...)
+                    Button(action: { showEmojiPicker = true }) {
+                        HStack {
+                            Text("Emoji")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            if let emoji = viewModel.emoji {
+                                Text(emoji).font(.title2)
+                            } else {
+                                Text("None")
+                                    .foregroundColor(.secondary)
+                            }
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .sheet(isPresented: $showEmojiPicker) {
+                        EmojiPickerView(selectedEmoji: $viewModel.emoji)
+                    }
                 }
 
                 Section("When?") {

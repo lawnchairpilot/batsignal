@@ -101,6 +101,7 @@ class EventService: ObservableObject {
     func updateEvent(
         id: String,
         activity: String,
+        emoji: String?,
         description: String?,
         startTime: Timestamp,
         durationMinutes: Int?,
@@ -117,6 +118,7 @@ class EventService: ObservableObject {
             "locationType": locationType.rawValue,
             "isActive": isActive
         ]
+        data["emoji"]              = emoji              != nil ? emoji!              : FieldValue.delete()
         data["description"]        = description        != nil ? description!        : FieldValue.delete()
         data["durationMinutes"]    = durationMinutes    != nil ? durationMinutes!    : FieldValue.delete()
         data["durationVagueLabel"] = durationVagueLabel != nil ? durationVagueLabel! : FieldValue.delete()

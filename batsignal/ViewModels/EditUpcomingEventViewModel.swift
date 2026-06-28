@@ -8,6 +8,7 @@ class EditUpcomingEventViewModel: ObservableObject {
     let eventId: String
 
     @Published var activity: String
+    @Published var emoji: String?
     @Published var description: String
     @Published var selectedDay: DayOption
     @Published var selectedTime: Date
@@ -25,6 +26,7 @@ class EditUpcomingEventViewModel: ObservableObject {
     init(event: Event) {
         self.eventId = event.id ?? ""
         self.activity = event.activity
+        self.emoji = event.emoji
         self.description = event.description ?? ""
         self.locationType = event.locationType
         self.locationLabel = event.locationLabel ?? ""
@@ -89,6 +91,7 @@ class EditUpcomingEventViewModel: ObservableObject {
             try await eventService.updateEvent(
                 id: eventId,
                 activity: activity,
+                emoji: emoji,
                 description: description.isEmpty ? nil : description,
                 startTime: Timestamp(date: startTime),
                 durationMinutes: selectedDurationMinutes,

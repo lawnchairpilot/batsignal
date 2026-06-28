@@ -176,6 +176,7 @@ struct UpcomingEventDetailView: View {
     @ObservedObject var myEventViewModel: MyActiveEventViewModel
     @StateObject private var editViewModel: EditUpcomingEventViewModel
     @State private var showLocationPicker = false
+    @State private var showEmojiPicker = false
     @Environment(\.dismiss) private var dismiss
 
     init(event: Event, viewModel: MyActiveEventViewModel) {
@@ -191,6 +192,25 @@ struct UpcomingEventDetailView: View {
                     TextField("Activity", text: $editViewModel.activity)
                     TextField("Description (optional)", text: $editViewModel.description, axis: .vertical)
                         .lineLimit(3...)
+                    Button(action: { showEmojiPicker = true }) {
+                        HStack {
+                            Text("Emoji")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            if let emoji = editViewModel.emoji {
+                                Text(emoji).font(.title2)
+                            } else {
+                                Text("None")
+                                    .foregroundColor(.secondary)
+                            }
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .sheet(isPresented: $showEmojiPicker) {
+                        EmojiPickerView(selectedEmoji: $editViewModel.emoji)
+                    }
                 }
 
                 Section("When?") {
@@ -306,6 +326,7 @@ struct ActiveEventDetailView: View {
     @ObservedObject var myEventViewModel: MyActiveEventViewModel
     @StateObject private var editViewModel: EditActiveEventViewModel
     @State private var showLocationPicker = false
+    @State private var showEmojiPicker = false
     @Environment(\.dismiss) private var dismiss
 
     init(event: Event, viewModel: MyActiveEventViewModel) {
@@ -321,6 +342,25 @@ struct ActiveEventDetailView: View {
                     TextField("Activity", text: $editViewModel.activity)
                     TextField("Description (optional)", text: $editViewModel.description, axis: .vertical)
                         .lineLimit(3...)
+                    Button(action: { showEmojiPicker = true }) {
+                        HStack {
+                            Text("Emoji")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            if let emoji = editViewModel.emoji {
+                                Text(emoji).font(.title2)
+                            } else {
+                                Text("None")
+                                    .foregroundColor(.secondary)
+                            }
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .sheet(isPresented: $showEmojiPicker) {
+                        EmojiPickerView(selectedEmoji: $editViewModel.emoji)
+                    }
                 }
 
                 Section("Time") {
