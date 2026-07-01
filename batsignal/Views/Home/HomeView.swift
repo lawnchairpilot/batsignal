@@ -1,4 +1,6 @@
 import SwiftUI
+import CoreLocation
+internal import FirebaseFirestoreInternal
 
 struct HomeView: View {
     @EnvironmentObject var authService: AuthService
@@ -19,6 +21,11 @@ struct HomeView: View {
                             .padding(.horizontal)
                             .padding(.top, 8)
                     }
+
+                    // Friends' event map
+                    HomeMapView(annotations: allAnnotations)
+                        .padding(.horizontal)
+                        .padding(.top, 8)
 
                     // Friends' active events
                     if viewModel.isLoading {
@@ -90,6 +97,35 @@ struct HomeView: View {
             } message: {
                 Text("End your current signal before starting a new one.")
             }
+        }
+    }
+
+    private var allAnnotations: [EventAnnotationItem] {
+        makeAnnotationItems(from: viewModel.events, isActive: true) +
+        makeAnnotationItems(from: viewModel.upcomingEvents, isActive: false)
+    }
+
+    private func makeAnnotationItems(from events: [Event], isActive: Bool) -> [EventAnnotationItem] {
+        events.compactMap { event in
+            guard let id = event.id, let geoPoint = event.locationCoordinate else { return nil }
+            let coordinate = CLLocationCoordinate2D(latitude: geoPoint.latitude, longitude: geoPoint.longitude)
+            let creator = friendsViewModel.friends.first { $0.id == event.creatorId }
+            let label: String? = {
+                if let emoji = event.emoji { return emoji }
+                guard let name = creator?.displayName, !name.isEmpty else { return nil }
+                let parts = name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
+                return parts.isEmpty ? nil : parts.uppercased()
+            }()
+            return EventAnnotationItem(
+                id: id,
+                coordinate: coordinate,
+                label: label,
+                creatorPhotoURL: creator?.profilePhotoURL,
+                isLive: event.locationType == .live,
+                isActive: isActive,
+                event: event,
+                creatorName: creator?.displayName
+            )
         }
     }
 }
