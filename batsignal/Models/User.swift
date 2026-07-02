@@ -9,6 +9,7 @@ struct User: Identifiable, Codable {
     var friends: [String]
     var maxEventRadius: Double?  // miles, nil = no filter
     var activeEventId: String?   // set when user has an active event
+    var fcmToken: String?
     var createdAt: Timestamp
 
     enum CodingKeys: String, CodingKey {
@@ -19,6 +20,7 @@ struct User: Identifiable, Codable {
         case friends
         case maxEventRadius
         case activeEventId
+        case fcmToken
         case createdAt
     }
 }

@@ -10,6 +10,7 @@ import FirebaseCore
 
 @main
 struct batsignalApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var authService = AuthService.shared
 
     init() {
@@ -18,12 +19,19 @@ struct batsignalApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if authService.isAuthenticated {
-                MainTabView()
-                    .environmentObject(authService)
-            } else {
-                AuthFlowView()
-                    .environmentObject(authService)
+            Group {
+                if authService.isAuthenticated {
+                    MainTabView()
+                        .environmentObject(authService)
+                } else {
+                    AuthFlowView()
+                        .environmentObject(authService)
+                }
+            }
+            .onChange(of: authService.isAuthenticated) { _, isAuth in
+                if isAuth {
+                    NotificationService.shared.requestPermissionAndRefresh()
+                }
             }
         }
     }

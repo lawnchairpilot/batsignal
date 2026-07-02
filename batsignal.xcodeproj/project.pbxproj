@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		EB6548302FF638C500A7ECBA /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = EB65482F2FF638C500A7ECBA /* FirebaseMessaging */; };
 		EB9BF0F82FA1C6A20062C3B0 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = EB9BF0F72FA1C6A20062C3B0 /* FirebaseAuth */; };
 		EB9BF0FA2FA1C6A20062C3B0 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = EB9BF0F92FA1C6A20062C3B0 /* FirebaseFirestore */; };
 		EB9BF0FC2FA1C6A20062C3B0 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = EB9BF0FB2FA1C6A20062C3B0 /* FirebaseStorage */; };
@@ -42,6 +43,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EB6548302FF638C500A7ECBA /* FirebaseMessaging in Frameworks */,
 				EB9BF0F82FA1C6A20062C3B0 /* FirebaseAuth in Frameworks */,
 				EB9BF0FA2FA1C6A20062C3B0 /* FirebaseFirestore in Frameworks */,
 				EB9BF0FC2FA1C6A20062C3B0 /* FirebaseStorage in Frameworks */,
@@ -51,10 +53,18 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		EB65482E2FF638C500A7ECBA /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		EB9BF0DF2F8CBC4C0062C3B0 = {
 			isa = PBXGroup;
 			children = (
 				EB9BF0EA2F8CBC4C0062C3B0 /* batsignal */,
+				EB65482E2FF638C500A7ECBA /* Frameworks */,
 				EB9BF0E92F8CBC4C0062C3B0 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -90,6 +100,7 @@
 				EB9BF0F72FA1C6A20062C3B0 /* FirebaseAuth */,
 				EB9BF0F92FA1C6A20062C3B0 /* FirebaseFirestore */,
 				EB9BF0FB2FA1C6A20062C3B0 /* FirebaseStorage */,
+				EB65482F2FF638C500A7ECBA /* FirebaseMessaging */,
 			);
 			productName = batsignal;
 			productReference = EB9BF0E82F8CBC4C0062C3B0 /* batsignal.app */;
@@ -277,6 +288,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = batsignal/batsignal.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = QGY38FJH7M;
@@ -312,6 +324,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = batsignal/batsignal.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = QGY38FJH7M;
@@ -377,6 +390,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		EB65482F2FF638C500A7ECBA /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EB9BF0F62FA1C6A20062C3B0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
 		EB9BF0F72FA1C6A20062C3B0 /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = EB9BF0F62FA1C6A20062C3B0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
