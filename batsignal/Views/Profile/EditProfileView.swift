@@ -8,7 +8,6 @@ struct EditProfileView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var displayName = ""
-    @State private var phoneNumber = ""
     @State private var selectedItem: PhotosPickerItem?
     @State private var previewImage: UIImage?
     @State private var isLoading = false
@@ -56,12 +55,6 @@ struct EditProfileView: View {
                         .textContentType(.name)
                 }
 
-                Section("Phone Number") {
-                    TextField("e.g. +16505551234", text: $phoneNumber)
-                        .keyboardType(.phonePad)
-                        .textContentType(.telephoneNumber)
-                }
-
                 if let error = errorMessage {
                     Section {
                         Text(error).foregroundColor(.red).font(.caption)
@@ -83,7 +76,6 @@ struct EditProfileView: View {
             }
             .onAppear {
                 displayName = authService.currentUser?.displayName ?? ""
-                phoneNumber = authService.currentUser?.phoneNumber ?? ""
             }
             .onChange(of: selectedItem) { _, item in
                 Task {
@@ -119,8 +111,7 @@ struct EditProfileView: View {
             }
 
             var updates: [String: Any] = [
-                "displayName": displayName,
-                "phoneNumber": phoneNumber
+                "displayName": displayName
             ]
             if let url = photoURL {
                 updates["profilePhotoURL"] = url

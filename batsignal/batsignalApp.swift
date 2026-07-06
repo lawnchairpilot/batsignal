@@ -6,25 +6,26 @@
 //
 
 import SwiftUI
-import FirebaseCore
 
 @main
 struct batsignalApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var authService = AuthService.shared
 
-    init() {
-        FirebaseApp.configure()
-    }
-
     var body: some Scene {
         WindowGroup {
             Group {
-                if authService.isAuthenticated {
-                    MainTabView()
+                if authService.isLoadingUser {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if !authService.isAuthenticated {
+                    AuthFlowView()
+                        .environmentObject(authService)
+                } else if authService.needsProfileSetup {
+                    ProfileSetupView()
                         .environmentObject(authService)
                 } else {
-                    AuthFlowView()
+                    MainTabView()
                         .environmentObject(authService)
                 }
             }
