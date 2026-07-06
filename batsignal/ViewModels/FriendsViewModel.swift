@@ -7,7 +7,8 @@ class FriendsViewModel: ObservableObject {
     @Published var friends: [User] = []
     @Published var incomingRequests: [FriendRequest] = []
     @Published var outgoingRequests: [FriendRequest] = []
-    @Published var senderNames: [String: String] = [:]  // fromUserId → displayName
+    @Published var senderNames: [String: String] = [:]    // fromUserId → displayName
+    @Published var recipientNames: [String: String] = [:] // toUserId → displayName or phoneNumber
     @Published var searchResult: User? = nil
     @Published var searchPhone = ""
     @Published var isLoading = false
@@ -27,7 +28,10 @@ class FriendsViewModel: ObservableObject {
         }) { listeners.append(r) }
 
         if let r = friendService.listenToOutgoingRequests(onChange: { [weak self] requests in
-            Task { @MainActor in self?.outgoingRequests = requests }
+            Task { @MainActor in
+                self?.outgoingRequests = requests
+                self?.resolveRecipientNames(for: requests)
+            }
         }) { listeners.append(r) }
     }
 
@@ -102,6 +106,20 @@ class FriendsViewModel: ObservableObject {
             Task {
                 if let user = try? await friendService.fetchUser(id: userId) {
                     await MainActor.run { self.senderNames[userId] = user.displayName }
+                }
+            }
+        }
+    }
+
+    private func resolveRecipientNames(for requests: [FriendRequest]) {
+        let unresolvedIds = requests
+            .map { $0.toUserId }
+            .filter { recipientNames[$0] == nil }
+        for userId in unresolvedIds {
+            Task {
+                if let user = try? await friendService.fetchUser(id: userId) {
+                    let name = user.displayName.isEmpty ? user.phoneNumber : user.displayName
+                    await MainActor.run { self.recipientNames[userId] = name }
                 }
             }
         }

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import FirebaseAuth
 
 @main
 struct batsignalApp: App {
@@ -33,6 +34,9 @@ struct batsignalApp: App {
                 if isAuth {
                     NotificationService.shared.requestPermissionAndRefresh()
                 }
+            }
+            .onOpenURL { url in
+                _ = Auth.auth().canHandle(url)
             }
         }
     }

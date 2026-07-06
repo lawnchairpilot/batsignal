@@ -43,14 +43,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         completionHandler(.newData)
     }
 
-    // Firebase Phone Auth reCAPTCHA fallback redirects back via a custom URL scheme.
-    func application(
-        _ app: UIApplication,
-        open url: URL,
-        options: [UIApplication.OpenURLOptionsKey: Any] = [:]
-    ) -> Bool {
-        return Auth.auth().canHandle(url)
-    }
 }
 
 // MARK: - UNUserNotificationCenterDelegate

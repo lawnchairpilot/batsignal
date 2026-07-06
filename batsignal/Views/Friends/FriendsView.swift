@@ -29,10 +29,10 @@ struct FriendsView: View {
                             HStack {
                                 Image(systemName: "clock")
                                     .foregroundColor(.secondary)
-                                Text("Request sent")
+                                Text(viewModel.recipientNames[request.toUserId] ?? "Pending...")
                                     .foregroundColor(.secondary)
                                 Spacer()
-                                Text(request.toUserId)
+                                Text("Request sent")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
