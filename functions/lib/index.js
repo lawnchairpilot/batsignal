@@ -56,7 +56,16 @@ exports.activateScheduledEvents = functions.scheduler.onSchedule({ schedule: "ev
         .get();
     if (snapshot.empty)
         return;
-    const toActivate = snapshot.docs.filter((doc) => { var _a; return ((_a = doc.data().startTime) === null || _a === void 0 ? void 0 : _a.toMillis()) <= now.toMillis(); });
+    const toActivate = snapshot.docs.filter((doc) => {
+        var _a, _b, _c;
+        const data = doc.data();
+        if (((_a = data.startTime) === null || _a === void 0 ? void 0 : _a.toMillis()) > now.toMillis())
+            return false; // hasn't started yet
+        const endTime = (_c = (_b = data.endTime) === null || _b === void 0 ? void 0 : _b.toMillis) === null || _c === void 0 ? void 0 : _c.call(_b);
+        if (endTime && endTime < now.toMillis())
+            return false; // already ended manually
+        return true;
+    });
     if (toActivate.length === 0)
         return;
     const batch = db.batch();
@@ -82,17 +91,36 @@ exports.notifyFriendsOnEventCreate = (0, firestore_1.onDocumentCreated)("events/
         data: { eventId: event.params.eventId, type: "event_created" },
     }, "event_created");
 });
+const DEBOUNCE_COLLECTION = "eventNotifyDebounce";
+const DEBOUNCE_MS = 10000;
 // Handles two cases on event update:
-// 1. isActive flips false→true (scheduled event starting) → "starting now" notification
-// 2. Content fields change (edit) → "updated" notification
+// 1. isActive flips false→true (scheduled event starting) → "starting now" notification, sent immediately
+// 2. Content fields change (edit) → "updated" notification, debounced 10 s to coalesce rapid taps
 // Live location updates (locationCoordinate) are intentionally excluded.
-exports.notifyFriendsOnEventUpdate = (0, firestore_1.onDocumentUpdated)("events/{eventId}", async (event) => {
-    var _a, _b, _c, _d;
+exports.notifyFriendsOnEventUpdate = (0, firestore_1.onDocumentUpdated)({ document: "events/{eventId}", timeoutSeconds: 30 }, async (event) => {
+    var _a, _b, _c, _d, _e;
     const before = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before.data();
     const after = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after.data();
     if (!before || !after)
         return;
+    const eventId = event.params.eventId;
     const justActivated = before.isActive === false && after.isActive === true;
+    // Event ended (manually or by expiry) — clear debounce and notify friends
+    if (before.isActive === true && after.isActive === false) {
+        await db.collection(DEBOUNCE_COLLECTION).doc(eventId).delete().catch(() => { });
+        const { creatorName, targets } = await getFriendsTargets(after.creatorId);
+        if (targets.length > 0) {
+            const activity = after.activity;
+            const emoji = after.emoji;
+            const eventLabel = emoji ? `${emoji} ${activity}` : activity;
+            await sendMulticast(targets, {
+                notification: { title: `${creatorName} ended their signal`, body: eventLabel },
+                apns: { payload: { aps: { sound: "default" } } },
+                data: { eventId, type: "event_ended" },
+            }, "event_ended");
+        }
+        return;
+    }
     const contentFields = [
         "activity", "description", "emoji",
         "locationLabel", "locationType",
@@ -102,24 +130,39 @@ exports.notifyFriendsOnEventUpdate = (0, firestore_1.onDocumentUpdated)("events/
         ((_c = before.startTime) === null || _c === void 0 ? void 0 : _c.toMillis()) !== ((_d = after.startTime) === null || _d === void 0 ? void 0 : _d.toMillis());
     if (!justActivated && !contentChanged)
         return;
-    const { creatorName, targets } = await getFriendsTargets(after.creatorId);
-    if (targets.length === 0)
-        return;
     const activity = after.activity;
     const emoji = after.emoji;
     const eventLabel = emoji ? `${emoji} ${activity}` : activity;
+    // Activation fires immediately — there's only ever one false→true transition
     if (justActivated) {
+        const { creatorName, targets } = await getFriendsTargets(after.creatorId);
         await sendMulticast(targets, {
             notification: { title: `${creatorName} is starting now`, body: eventLabel },
             apns: { payload: { aps: { sound: "default" } } },
-            data: { eventId: event.params.eventId, type: "event_started" },
+            data: { eventId, type: "event_started" },
         }, "event_started");
     }
+    // Edit notifications are debounced: write a token, sleep, then only send if
+    // we are still the latest writer (rapid taps overwrite each other's token).
     if (contentChanged) {
+        const token = `${Date.now()}-${Math.random()}`;
+        const debounceRef = db.collection(DEBOUNCE_COLLECTION).doc(eventId);
+        await debounceRef.set({ token, creatorId: after.creatorId, activity, emoji: emoji !== null && emoji !== void 0 ? emoji : null });
+        await new Promise((resolve) => setTimeout(resolve, DEBOUNCE_MS));
+        const [debounceSnap, eventSnap] = await Promise.all([
+            debounceRef.get(),
+            db.collection("events").doc(eventId).get(),
+        ]);
+        if (!debounceSnap.exists || ((_e = debounceSnap.data()) === null || _e === void 0 ? void 0 : _e.token) !== token)
+            return; // a later edit won
+        if (!eventSnap.exists)
+            return; // event was deleted while debounce was sleeping
+        await debounceRef.delete();
+        const { creatorName, targets } = await getFriendsTargets(after.creatorId);
         await sendMulticast(targets, {
             notification: { title: `${creatorName} updated their signal`, body: eventLabel },
             apns: { payload: { aps: { sound: "default" } } },
-            data: { eventId: event.params.eventId, type: "event_updated" },
+            data: { eventId, type: "event_updated" },
         }, "event_updated");
     }
 });

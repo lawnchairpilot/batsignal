@@ -55,3 +55,6 @@ Icon
 # Environment / secrets
 *.env
 secrets.plist
+
+functions.node_modules
+node_modules
