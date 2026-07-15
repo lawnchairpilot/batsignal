@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import Contacts
 import FirebaseFirestore
 
 @MainActor
@@ -14,7 +15,13 @@ class FriendsViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
+    // Contacts
+    @Published var contactMatches: [ContactMatch] = []
+    @Published var isLoadingContacts = false
+    @Published var contactsPermissionDenied = false
+
     private let friendService = FriendService()
+    private let contactsService = ContactsService()
     private var listeners: [ListenerRegistration] = []
 
     func startListening(friendIds: [String]) {
@@ -123,6 +130,30 @@ class FriendsViewModel: ObservableObject {
                 }
             }
         }
+    }
+
+    // MARK: - Contacts
+
+    func loadContactMatches(currentUserId: String?) async {
+        let status = contactsService.authorizationStatus
+        if status == .denied || status == .restricted {
+            contactsPermissionDenied = true
+            return
+        }
+        if status == .notDetermined {
+            let granted = await contactsService.requestAccess()
+            if !granted {
+                contactsPermissionDenied = true
+                return
+            }
+        }
+        isLoadingContacts = true
+        do {
+            contactMatches = try await contactsService.fetchMatchedUsers(excludingId: currentUserId)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoadingContacts = false
     }
 }
 
