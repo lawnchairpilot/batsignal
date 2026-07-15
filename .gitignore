@@ -26,11 +26,11 @@ DerivedData/
 .build/
 .swiftpm/
 Packages/
-Package.resolved
 
 # CocoaPods (if you ever use it)
 Pods/
 *.xcworkspace
+!*.xcodeproj/project.xcworkspace/
 
 # Carthage (if you ever use it)
 Carthage/Build/
