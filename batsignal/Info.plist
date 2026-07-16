@@ -17,6 +17,8 @@
 	<string>batsignal uses your contacts to show which friends are already on the app.</string>
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
+	<key>CFBundleDisplayName</key>
+	<string>Bool Signal</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Batsignal uses your location to show nearby events on the map.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>

@@ -228,3 +228,33 @@ export const notifyFriendsOnEventUpdate = onDocumentUpdated(
     }
   }
 );
+
+// Notifies a user when they receive a new friend request
+export const notifyOnFriendRequestCreate = onDocumentCreated(
+  "friendRequests/{requestId}",
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+
+    const data = snap.data();
+    const [fromDoc, toDoc] = await Promise.all([
+      db.collection("users").doc(data.fromUserId).get(),
+      db.collection("users").doc(data.toUserId).get(),
+    ]);
+
+    const token = toDoc.data()?.fcmToken as string | undefined;
+    if (!token) return;
+
+    const fromName: string = fromDoc.data()?.displayName || "Someone";
+
+    await sendMulticast(
+      [{ ref: toDoc.ref, token }],
+      {
+        notification: { title: "New friend request", body: `${fromName} wants to bool` },
+        apns: { payload: { aps: { sound: "default" } } },
+        data: { requestId: event.params.requestId, type: "friend_request" },
+      },
+      "friend_request"
+    );
+  }
+);
