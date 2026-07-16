@@ -9,16 +9,22 @@ enum DayOption: String, CaseIterable {
     case tomorrow = "Tomorrow"
 }
 
+enum TimingOption: String, CaseIterable {
+    case now = "Now"
+    case later = "Later"
+}
+
 @MainActor
 class CreateEventViewModel: ObservableObject {
     @Published var activity = ""
     @Published var emoji: String? = nil
     @Published var description = ""
+    @Published var timing: TimingOption = .now
     @Published var selectedDay: DayOption = .today
     @Published var selectedTime: Date = Date()
-    @Published var selectedDurationMinutes: Int? = 60
+    @Published var selectedDurationMinutes: Int? = 180
     @Published var selectedVagueLabel: String? = nil
-    @Published var locationType: LocationType = .text
+    @Published var locationType: LocationType = .live
     @Published var locationLabel = ""
     @Published var fixedCoordinate: CLLocationCoordinate2D? = nil  // set by map picker
     @Published var isLoading = false
@@ -29,6 +35,7 @@ class CreateEventViewModel: ObservableObject {
     private let locationService = LocationService()
 
     var startTime: Date {
+        guard timing == .later else { return Date() }
         let calendar = Calendar.current
         let base = selectedDay == .today ? Date() : calendar.date(byAdding: .day, value: 1, to: Date())!
         let components = calendar.dateComponents([.hour, .minute], from: selectedTime)

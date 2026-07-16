@@ -74,7 +74,7 @@ struct HomeView: View {
                     }
                 }
             }
-            .navigationTitle("Batsignal")
+            .navigationTitle("Bool Signal")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: {

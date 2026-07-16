@@ -12,37 +12,46 @@ struct CreateEventView: View {
             Form {
                 Section("What are you doing?") {
                     TextField("e.g. Surfing, Hiking, Coffee", text: $viewModel.activity)
-                    TextField("Description (optional)", text: $viewModel.description, axis: .vertical)
-                        .lineLimit(3...)
-                    Button(action: { showEmojiPicker = true }) {
-                        HStack {
-                            Text("Emoji")
-                                .foregroundColor(.primary)
-                            Spacer()
-                            if let emoji = viewModel.emoji {
-                                Text(emoji).font(.title2)
-                            } else {
-                                Text("None")
-                                    .foregroundColor(.secondary)
-                            }
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .sheet(isPresented: $showEmojiPicker) {
-                        EmojiPickerView(selectedEmoji: $viewModel.emoji)
-                    }
+                    // TextField("Description (optional)", text: $viewModel.description, axis: .vertical)
+                    //     .lineLimit(3...)
+                    // Button(action: { showEmojiPicker = true }) {
+                    //     HStack {
+                    //         Text("Symbol")
+                    //             .foregroundColor(.primary)
+                    //         Spacer()
+                    //         if let emoji = viewModel.emoji {
+                    //             Text(emoji).font(.title2)
+                    //         } else {
+                    //             Text("None")
+                    //                 .foregroundColor(.secondary)
+                    //         }
+                    //         Image(systemName: "chevron.right")
+                    //             .font(.caption)
+                    //             .foregroundColor(.secondary)
+                    //     }
+                    // }
+                    // .sheet(isPresented: $showEmojiPicker) {
+                    //     EmojiPickerView(selectedEmoji: $viewModel.emoji)
+                    // }
                 }
 
                 Section("When?") {
-                    Picker("Day", selection: $viewModel.selectedDay) {
-                        ForEach(DayOption.allCases, id: \.self) { day in
-                            Text(day.rawValue).tag(day)
+                    Picker("When", selection: $viewModel.timing) {
+                        ForEach(TimingOption.allCases, id: \.self) { option in
+                            Text(option.rawValue).tag(option)
                         }
                     }
                     .pickerStyle(.segmented)
-                    DatePicker("Time", selection: $viewModel.selectedTime, displayedComponents: [.hourAndMinute])
+
+                    if viewModel.timing == .later {
+                        Picker("Day", selection: $viewModel.selectedDay) {
+                            ForEach(DayOption.allCases, id: \.self) { day in
+                                Text(day.rawValue).tag(day)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        DatePicker("Time", selection: $viewModel.selectedTime, displayedComponents: [.hourAndMinute])
+                    }
                     durationPicker
                 }
 
@@ -137,9 +146,9 @@ struct CreateEventView: View {
 
     private var locationTypePicker: some View {
         Picker("Location type", selection: $viewModel.locationType) {
-            Text("Describe it").tag(LocationType.text)
-            Text("Fixed place").tag(LocationType.fixed)
             Text("Live location").tag(LocationType.live)
+            Text("Fixed place").tag(LocationType.fixed)
+            // Text("Describe it").tag(LocationType.text)
         }
         .pickerStyle(.segmented)
     }
