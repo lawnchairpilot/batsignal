@@ -12,7 +12,7 @@ struct ProfileSetupView: View {
                 Image(systemName: "bolt.circle.fill")
                     .font(.system(size: 64))
                     .foregroundColor(.accentColor)
-                Text("batsignal")
+                Text("Bool Signal")
                     .font(.largeTitle).bold()
             }
             .padding(.top, 60)

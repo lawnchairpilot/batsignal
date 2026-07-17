@@ -96,14 +96,14 @@ struct AddFriendView: View {
             ContentUnavailableView(
                 "Contacts Access Denied",
                 systemImage: "person.crop.circle.badge.xmark",
-                description: Text("Enable Contacts access in Settings to find friends on batsignal.")
+                description: Text("Enable Contacts access in Settings to find friends on Bool Signal.")
             )
         } else if viewModel.isLoadingContacts {
             ProgressView("Finding friends…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if viewModel.contactMatches.isEmpty {
             ContentUnavailableView(
-                "No Contacts on batsignal",
+                "No Contacts on Bool Signal",
                 systemImage: "person.2.slash",
                 description: Text("None of your contacts have joined yet.")
             )

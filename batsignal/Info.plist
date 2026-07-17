@@ -14,15 +14,15 @@
 		</dict>
 	</array>
 	<key>NSContactsUsageDescription</key>
-	<string>batsignal uses your contacts to show which friends are already on the app.</string>
+	<string>Bool Signal uses your contacts to show which friends are already on the app.</string>
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
 	<key>CFBundleDisplayName</key>
 	<string>Bool Signal</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Batsignal uses your location to show nearby events on the map.</string>
+	<string>Bool Signal uses your location to show nearby events on the map.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Batsignal uses your location in the background to share your position during live events.</string>
+	<string>Bool Signal uses your location in the background to share your position during live events.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
