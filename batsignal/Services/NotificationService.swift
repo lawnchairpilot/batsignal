@@ -31,6 +31,6 @@ final class NotificationService: NSObject, MessagingDelegate {
 
     private func saveToken(_ token: String) {
         guard let uid = Auth.auth().currentUser?.uid else { return }
-        Firestore.firestore().collection("users").document(uid).updateData(["fcmToken": token])
+        Firestore.firestore().collection("users").document(uid).setData(["fcmToken": token], merge: true)
     }
 }
