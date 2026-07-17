@@ -10,7 +10,7 @@ struct AuthFlowView: View {
                 Image(systemName: "bolt.circle.fill")
                     .font(.system(size: 64))
                     .foregroundColor(.accentColor)
-                Text("batsignal")
+                Text("Bool Signal")
                     .font(.largeTitle).bold()
             }
             .padding(.top, 60)
@@ -49,9 +49,8 @@ struct AuthFlowView: View {
                     .foregroundColor(.primary)
 
                 Rectangle()
-                    .frame(width: 1)
+                    .frame(width: 1, height: 24)
                     .foregroundColor(Color(.separator))
-                    .padding(.vertical, 8)
 
                 TextField("(555) 555-5555", text: $viewModel.phoneNumber)
                     .keyboardType(.phonePad)
