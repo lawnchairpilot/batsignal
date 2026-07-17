@@ -290,11 +290,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = batsignal/batsignal.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = QGY38FJH7M;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = batsignal/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Bool Signal";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Batsignal uses your location in the background during live events.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Batsignal uses your location to share it with friends during events.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -326,11 +327,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = batsignal/batsignal.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = QGY38FJH7M;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = batsignal/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Bool Signal";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Batsignal uses your location in the background during live events.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Batsignal uses your location to share it with friends during events.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

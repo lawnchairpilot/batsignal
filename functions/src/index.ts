@@ -62,8 +62,10 @@ async function sendMulticast(
   const staleCleanups = response.responses
     .map((res, i) => ({ res, target: targets[i] }))
     .filter(({ res }) =>
-      !res.success &&
-      res.error?.code === "messaging/registration-token-not-registered"
+      !res.success && (
+        res.error?.code === "messaging/registration-token-not-registered" ||
+        res.error?.code === "messaging/third-party-auth-error"
+      )
     )
     .map(({ target }) =>
       target.ref.update({ fcmToken: admin.firestore.FieldValue.delete() })

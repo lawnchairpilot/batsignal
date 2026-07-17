@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.notifyFriendsOnEventUpdate = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
+exports.notifyOnFriendRequestCreate = exports.notifyFriendsOnEventUpdate = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
 const admin = require("firebase-admin");
 const functions = require("firebase-functions/v2");
 const firestore_1 = require("firebase-functions/v2/firestore");
@@ -33,12 +33,18 @@ async function sendMulticast(targets, message, label) {
         return;
     const response = await admin.messaging().sendEachForMulticast(Object.assign(Object.assign({}, message), { tokens: targets.map((t) => t.token) }));
     console.log(`[${label}] ${response.successCount} succeeded, ${response.failureCount} failed`);
+    response.responses.forEach((res, i) => {
+        var _a, _b;
+        if (!res.success) {
+            console.error(`[${label}] token[${i}] failed — code: ${(_a = res.error) === null || _a === void 0 ? void 0 : _a.code}, message: ${(_b = res.error) === null || _b === void 0 ? void 0 : _b.message}`);
+        }
+    });
     const staleCleanups = response.responses
         .map((res, i) => ({ res, target: targets[i] }))
         .filter(({ res }) => {
-        var _a;
-        return !res.success &&
-            ((_a = res.error) === null || _a === void 0 ? void 0 : _a.code) === "messaging/registration-token-not-registered";
+        var _a, _b;
+        return !res.success && (((_a = res.error) === null || _a === void 0 ? void 0 : _a.code) === "messaging/registration-token-not-registered" ||
+            ((_b = res.error) === null || _b === void 0 ? void 0 : _b.code) === "messaging/third-party-auth-error");
     })
         .map(({ target }) => target.ref.update({ fcmToken: admin.firestore.FieldValue.delete() }));
     if (staleCleanups.length > 0) {
@@ -165,5 +171,26 @@ exports.notifyFriendsOnEventUpdate = (0, firestore_1.onDocumentUpdated)({ docume
             data: { eventId, type: "event_updated" },
         }, "event_updated");
     }
+});
+// Notifies a user when they receive a new friend request
+exports.notifyOnFriendRequestCreate = (0, firestore_1.onDocumentCreated)("friendRequests/{requestId}", async (event) => {
+    var _a, _b;
+    const snap = event.data;
+    if (!snap)
+        return;
+    const data = snap.data();
+    const [fromDoc, toDoc] = await Promise.all([
+        db.collection("users").doc(data.fromUserId).get(),
+        db.collection("users").doc(data.toUserId).get(),
+    ]);
+    const token = (_a = toDoc.data()) === null || _a === void 0 ? void 0 : _a.fcmToken;
+    if (!token)
+        return;
+    const fromName = ((_b = fromDoc.data()) === null || _b === void 0 ? void 0 : _b.displayName) || "Someone";
+    await sendMulticast([{ ref: toDoc.ref, token }], {
+        notification: { title: "New friend request", body: `${fromName} wants to bool` },
+        apns: { payload: { aps: { sound: "default" } } },
+        data: { requestId: event.params.requestId, type: "friend_request" },
+    }, "friend_request");
 });
 //# sourceMappingURL=index.js.map
