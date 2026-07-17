@@ -53,6 +53,12 @@ async function sendMulticast(
 
   console.log(`[${label}] ${response.successCount} succeeded, ${response.failureCount} failed`);
 
+  response.responses.forEach((res, i) => {
+    if (!res.success) {
+      console.error(`[${label}] token[${i}] failed — code: ${res.error?.code}, message: ${res.error?.message}`);
+    }
+  });
+
   const staleCleanups = response.responses
     .map((res, i) => ({ res, target: targets[i] }))
     .filter(({ res }) =>
