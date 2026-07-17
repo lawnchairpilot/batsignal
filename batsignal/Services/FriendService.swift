@@ -9,8 +9,9 @@ class FriendService: ObservableObject {
     // MARK: - Friend lookup
 
     func findUser(byPhoneNumber phoneNumber: String) async throws -> User? {
+        guard let normalized = PhoneNumber.normalize(phoneNumber) else { return nil }
         let snapshot = try await db.collection("users")
-            .whereField("phoneNumber", isEqualTo: phoneNumber)
+            .whereField("phoneNumber", isEqualTo: normalized)
             .limit(to: 1)
             .getDocuments()
         return try snapshot.documents.first?.data(as: User.self)
