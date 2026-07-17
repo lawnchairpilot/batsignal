@@ -9,6 +9,9 @@ struct HomeView: View {
     @EnvironmentObject private var friendsViewModel: FriendsViewModel
     @State private var showCreateEvent = false
     @State private var showActiveEventAlert = false
+    @State private var focusedCoordinate: CLLocationCoordinate2D?
+    @State private var focusedEventId: String?
+    @State private var selectedEventForDetail: EventDetailSelection?
 
     var body: some View {
         NavigationStack {
@@ -23,7 +26,11 @@ struct HomeView: View {
                     }
 
                     // Friends' event map
-                    HomeMapView(annotations: allAnnotations)
+                    HomeMapView(
+                        annotations: allAnnotations,
+                        focusedCoordinate: focusedCoordinate,
+                        onSelectEvent: { event in openEventDetail(for: event) }
+                    )
                         .padding(.horizontal)
                         .padding(.top, 8)
 
@@ -46,11 +53,11 @@ struct HomeView: View {
                                     .padding(.top, 4)
                                 ForEach(viewModel.events) { event in
                                     let creator = friendsViewModel.friends.first { $0.id == event.creatorId }
-                                    NavigationLink(destination: EventDetailView(event: event, creatorName: creator?.displayName, creatorPhotoURL: creator?.profilePhotoURL)) {
-                                        EventCardView(event: event, creatorName: creator?.displayName, creatorPhotoURL: creator?.profilePhotoURL)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .padding(.horizontal)
+                                    EventCardView(event: event, creatorName: creator?.displayName, creatorPhotoURL: creator?.profilePhotoURL, isSelected: event.id != nil && event.id == focusedEventId)
+                                        .padding(.horizontal)
+                                        .contentShape(Rectangle())
+                                        .onTapGesture(count: 2) { openEventDetail(for: event) }
+                                        .onTapGesture(count: 1) { focusMap(on: event) }
                                 }
                             }
 
@@ -61,12 +68,12 @@ struct HomeView: View {
                                     .padding(.top, viewModel.events.isEmpty ? 4 : 8)
                                 ForEach(viewModel.upcomingEvents) { event in
                                     let creator = friendsViewModel.friends.first { $0.id == event.creatorId }
-                                    NavigationLink(destination: EventDetailView(event: event, creatorName: creator?.displayName, creatorPhotoURL: creator?.profilePhotoURL)) {
-                                        EventCardView(event: event, creatorName: creator?.displayName, creatorPhotoURL: creator?.profilePhotoURL)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .padding(.horizontal)
-                                    .opacity(0.6)
+                                    EventCardView(event: event, creatorName: creator?.displayName, creatorPhotoURL: creator?.profilePhotoURL, isSelected: event.id != nil && event.id == focusedEventId)
+                                        .padding(.horizontal)
+                                        .opacity(0.6)
+                                        .contentShape(Rectangle())
+                                        .onTapGesture(count: 2) { openEventDetail(for: event) }
+                                        .onTapGesture(count: 1) { focusMap(on: event) }
                                 }
                             }
                         }
@@ -92,12 +99,44 @@ struct HomeView: View {
             .sheet(isPresented: $showCreateEvent) {
                 CreateEventView()
             }
+            .sheet(item: $selectedEventForDetail) { selection in
+                NavigationStack {
+                    EventDetailView(
+                        event: selection.event,
+                        creatorName: selection.creatorName,
+                        creatorPhotoURL: selection.creatorPhotoURL
+                    )
+                    .navigationTitle(selection.event.activity)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { selectedEventForDetail = nil }
+                        }
+                    }
+                }
+            }
             .alert("Signal already active", isPresented: $showActiveEventAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text("End your current signal before starting a new one.")
             }
         }
+    }
+
+    private func focusMap(on event: Event) {
+        guard let geoPoint = event.locationCoordinate else { return }
+        focusedCoordinate = CLLocationCoordinate2D(latitude: geoPoint.latitude, longitude: geoPoint.longitude)
+        focusedEventId = event.id
+    }
+
+    private func openEventDetail(for event: Event) {
+        guard let id = event.id else { return }
+        let creator = friendsViewModel.friends.first { $0.id == event.creatorId }
+        selectedEventForDetail = EventDetailSelection(
+            id: id,
+            event: event,
+            creatorName: creator?.displayName,
+            creatorPhotoURL: creator?.profilePhotoURL
+        )
     }
 
     private var allAnnotations: [EventAnnotationItem] {
@@ -128,4 +167,11 @@ struct HomeView: View {
             )
         }
     }
+}
+
+private struct EventDetailSelection: Identifiable {
+    let id: String
+    let event: Event
+    let creatorName: String?
+    let creatorPhotoURL: String?
 }

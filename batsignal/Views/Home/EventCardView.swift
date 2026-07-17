@@ -5,6 +5,7 @@ struct EventCardView: View {
     let event: Event
     var creatorName: String?
     var creatorPhotoURL: String?
+    var isSelected: Bool = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -48,6 +49,12 @@ struct EventCardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemBackground))
         .cornerRadius(16)
+        .overlay {
+            if isSelected {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.accentColor, lineWidth: 2)
+            }
+        }
     }
 
     private var iconLabel: String? {

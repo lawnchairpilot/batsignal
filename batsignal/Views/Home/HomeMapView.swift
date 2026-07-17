@@ -16,39 +16,17 @@ struct EventAnnotationItem: Identifiable {
     let creatorName: String?
 }
 
-// MARK: - Camera position helper
+// MARK: - Camera position helpers
 
-func bestCameraPosition(
-    for annotations: [EventAnnotationItem],
-    userCoordinate: CLLocationCoordinate2D?
-) -> MapCameraPosition {
-    let span = MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+private let defaultMapSpan = MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
 
-    guard !annotations.isEmpty else {
-        if let loc = userCoordinate {
-            return .region(MKCoordinateRegion(center: loc, span: span))
-        }
-        return .automatic
-    }
+func cameraPosition(centeredOn coordinate: CLLocationCoordinate2D) -> MapCameraPosition {
+    .region(MKCoordinateRegion(center: coordinate, span: defaultMapSpan))
+}
 
-    let pool: [EventAnnotationItem] = {
-        let active = annotations.filter { $0.isActive }
-        return active.isEmpty ? annotations : active
-    }()
-
-    let center: CLLocationCoordinate2D
-    if let userLoc = userCoordinate {
-        let userCL = CLLocation(latitude: userLoc.latitude, longitude: userLoc.longitude)
-        let nearest = pool.min {
-            CLLocation(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude).distance(from: userCL) <
-            CLLocation(latitude: $1.coordinate.latitude, longitude: $1.coordinate.longitude).distance(from: userCL)
-        }!
-        center = nearest.coordinate
-    } else {
-        center = pool[0].coordinate
-    }
-
-    return .region(MKCoordinateRegion(center: center, span: span))
+private func defaultCameraPosition(userCoordinate: CLLocationCoordinate2D?) -> MapCameraPosition {
+    guard let userCoordinate else { return .automatic }
+    return cameraPosition(centeredOn: userCoordinate)
 }
 
 // MARK: - One-shot location (only fires if permission already granted)
@@ -85,6 +63,8 @@ private final class OneTimeLocationProvider: NSObject, CLLocationManagerDelegate
 
 struct HomeMapView: View {
     let annotations: [EventAnnotationItem]
+    var focusedCoordinate: CLLocationCoordinate2D?
+    var onSelectEvent: (Event) -> Void = { _ in }
 
     @StateObject private var locationProvider = OneTimeLocationProvider()
     @State private var position: MapCameraPosition = .automatic
@@ -94,15 +74,20 @@ struct HomeMapView: View {
 
     var body: some View {
         ZStack {
-            Map(position: $position) {
+            Map(position: $position, interactionModes: []) {
                 ForEach(annotations) { item in
                     Annotation("", coordinate: item.coordinate) {
-                        EventAnnotationView(label: item.label, photoURL: item.creatorPhotoURL)
+                        Button {
+                            onSelectEvent(item.event)
+                        } label: {
+                            EventAnnotationView(label: item.label, photoURL: item.creatorPhotoURL)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
                 UserAnnotation()
             }
-            .disabled(true)
+            .onTapGesture { showFullMap = true }
 
             if hasLiveEvent {
                 VStack {
@@ -112,28 +97,26 @@ struct HomeMapView: View {
                     }
                     Spacer()
                 }
+                .allowsHitTesting(false)
             }
-
-            Color.clear
-                .contentShape(Rectangle())
-                .onTapGesture { showFullMap = true }
         }
         .frame(height: 200)
         .cornerRadius(12)
         .clipped()
         .onAppear { refreshPosition() }
         .onChange(of: locationProvider.coordinate) { _, _ in refreshPosition() }
-        .onChange(of: annotations.count) { _, _ in refreshPosition() }
+        .onChange(of: focusedCoordinate) { _, _ in refreshPosition() }
         .sheet(isPresented: $showFullMap) {
-            HomeFullMapView(
-                annotations: annotations,
-                initialPosition: bestCameraPosition(for: annotations, userCoordinate: locationProvider.coordinate)
-            )
+            HomeFullMapView(annotations: annotations, initialPosition: position)
         }
     }
 
     private func refreshPosition() {
-        position = bestCameraPosition(for: annotations, userCoordinate: locationProvider.coordinate)
+        if let focusedCoordinate {
+            position = cameraPosition(centeredOn: focusedCoordinate)
+        } else {
+            position = defaultCameraPosition(userCoordinate: locationProvider.coordinate)
+        }
     }
 }
 
