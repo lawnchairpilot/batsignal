@@ -57,7 +57,7 @@ struct HomeView: View {
                                         .padding(.horizontal)
                                         .contentShape(Rectangle())
                                         .onTapGesture(count: 2) { openEventDetail(for: event) }
-                                        .onTapGesture(count: 1) { focusMap(on: event) }
+                                        .onTapGesture(count: 1) { handleSingleTap(on: event) }
                                 }
                             }
 
@@ -73,7 +73,7 @@ struct HomeView: View {
                                         .opacity(0.6)
                                         .contentShape(Rectangle())
                                         .onTapGesture(count: 2) { openEventDetail(for: event) }
-                                        .onTapGesture(count: 1) { focusMap(on: event) }
+                                        .onTapGesture(count: 1) { handleSingleTap(on: event) }
                                 }
                             }
                         }
@@ -119,6 +119,14 @@ struct HomeView: View {
             } message: {
                 Text("End your current signal before starting a new one.")
             }
+        }
+    }
+
+    private func handleSingleTap(on event: Event) {
+        if event.id != nil && event.id == focusedEventId {
+            openEventDetail(for: event)
+        } else {
+            focusMap(on: event)
         }
     }
 
