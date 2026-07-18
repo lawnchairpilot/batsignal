@@ -226,6 +226,7 @@ struct MapThumbnailView: View {
                 } else {
                     Marker("", coordinate: markerCoord)
                 }
+                UserAnnotation()
             }
             .disabled(true)
 
@@ -291,6 +292,7 @@ struct FullMapView: View {
                     } else {
                         Marker("", coordinate: markerCoord)
                     }
+                    UserAnnotation()
                 }
                 .ignoresSafeArea()
 

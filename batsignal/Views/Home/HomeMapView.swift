@@ -39,9 +39,17 @@ private final class OneTimeLocationProvider: NSObject, CLLocationManagerDelegate
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-        let status = manager.authorizationStatus
-        if status == .authorizedWhenInUse || status == .authorizedAlways {
+        requestLocationIfPossible()
+    }
+
+    private func requestLocationIfPossible() {
+        switch manager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
             manager.requestLocation()
+        case .notDetermined:
+            manager.requestWhenInUseAuthorization()
+        default:
+            break
         }
     }
 
@@ -50,10 +58,7 @@ private final class OneTimeLocationProvider: NSObject, CLLocationManagerDelegate
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        let status = manager.authorizationStatus
-        if status == .authorizedWhenInUse || status == .authorizedAlways {
-            manager.requestLocation()
-        }
+        requestLocationIfPossible()
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}

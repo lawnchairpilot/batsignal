@@ -60,6 +60,7 @@ struct LocationPickerView: View {
                     Marker(droppedPinName.isEmpty ? Strings.Event.pin : droppedPinName, coordinate: coord)
                         .tint(.red)
                 }
+                UserAnnotation()
             }
             .gesture(
                 LongPressGesture(minimumDuration: 0.5)
