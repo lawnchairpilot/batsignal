@@ -2,6 +2,7 @@ import * as admin from "firebase-admin";
 import * as functions from "firebase-functions/v2";
 import { onDocumentCreated, onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { ScheduledEvent } from "firebase-functions/v2/scheduler";
+import { Strings } from "./strings";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -17,9 +18,9 @@ async function getFriendsTargets(creatorId: string): Promise<{
 }> {
   const creatorDoc = await db.collection("users").doc(creatorId).get();
   const creatorData = creatorDoc.data();
-  if (!creatorData) return { creatorName: "Someone", targets: [] };
+  if (!creatorData) return { creatorName: Strings.common.someone, targets: [] };
 
-  const creatorName: string = creatorData.displayName || "Someone";
+  const creatorName: string = creatorData.displayName || Strings.common.someone;
   const friendIds: string[] = creatorData.friends || [];
   if (friendIds.length === 0) return { creatorName, targets: [] };
 
@@ -123,12 +124,12 @@ export const notifyFriendsOnEventCreate = onDocumentCreated(
 
     const activity: string = data.activity;
     const emoji: string | undefined = data.emoji;
-    const body = emoji ? `${emoji} ${activity}` : activity;
+    const body = Strings.event.body(activity, emoji);
 
     await sendMulticast(
       targets,
       {
-        notification: { title: `${creatorName} sent a signal`, body },
+        notification: { title: Strings.event.createdTitle(creatorName), body },
         apns: { payload: { aps: { sound: "default" } } },
         data: { eventId: event.params.eventId, type: "event_created" },
       },
@@ -162,11 +163,11 @@ export const notifyFriendsOnEventUpdate = onDocumentUpdated(
       if (targets.length > 0) {
         const activity: string = after.activity;
         const emoji: string | undefined = after.emoji;
-        const eventLabel = emoji ? `${emoji} ${activity}` : activity;
+        const eventLabel = Strings.event.body(activity, emoji);
         await sendMulticast(
           targets,
           {
-            notification: { title: `${creatorName} ended their signal`, body: eventLabel },
+            notification: { title: Strings.event.endedTitle(creatorName), body: eventLabel },
             apns: { payload: { aps: { sound: "default" } } },
             data: { eventId, type: "event_ended" },
           },
@@ -189,7 +190,7 @@ export const notifyFriendsOnEventUpdate = onDocumentUpdated(
 
     const activity: string = after.activity;
     const emoji: string | undefined = after.emoji;
-    const eventLabel = emoji ? `${emoji} ${activity}` : activity;
+    const eventLabel = Strings.event.body(activity, emoji);
 
     // Activation fires immediately — there's only ever one false→true transition
     if (justActivated) {
@@ -197,7 +198,7 @@ export const notifyFriendsOnEventUpdate = onDocumentUpdated(
       await sendMulticast(
         targets,
         {
-          notification: { title: `${creatorName} is starting now`, body: eventLabel },
+          notification: { title: Strings.event.startedTitle(creatorName), body: eventLabel },
           apns: { payload: { aps: { sound: "default" } } },
           data: { eventId, type: "event_started" },
         },
@@ -227,7 +228,7 @@ export const notifyFriendsOnEventUpdate = onDocumentUpdated(
       await sendMulticast(
         targets,
         {
-          notification: { title: `${creatorName} updated their signal`, body: eventLabel },
+          notification: { title: Strings.event.updatedTitle(creatorName), body: eventLabel },
           apns: { payload: { aps: { sound: "default" } } },
           data: { eventId, type: "event_updated" },
         },
@@ -253,16 +254,47 @@ export const notifyOnFriendRequestCreate = onDocumentCreated(
     const token = toDoc.data()?.fcmToken as string | undefined;
     if (!token) return;
 
-    const fromName: string = fromDoc.data()?.displayName || "Someone";
+    const fromName: string = fromDoc.data()?.displayName || Strings.common.someone;
 
     await sendMulticast(
       [{ ref: toDoc.ref, token }],
       {
-        notification: { title: "New friend request", body: `${fromName} wants to bool` },
+        notification: { title: Strings.friends.requestTitle, body: Strings.friends.requestBody(fromName) },
         apns: { payload: { aps: { sound: "default" } } },
         data: { requestId: event.params.requestId, type: "friend_request" },
       },
       "friend_request"
+    );
+  }
+);
+
+// Notifies the requester when their friend request is accepted
+export const notifyOnFriendRequestAccept = onDocumentUpdated(
+  "friendRequests/{requestId}",
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!before || !after) return;
+    if (before.status === after.status || after.status !== "accepted") return;
+
+    const [fromDoc, toDoc] = await Promise.all([
+      db.collection("users").doc(after.fromUserId).get(),
+      db.collection("users").doc(after.toUserId).get(),
+    ]);
+
+    const token = fromDoc.data()?.fcmToken as string | undefined;
+    if (!token) return;
+
+    const toName: string = toDoc.data()?.displayName || Strings.common.someone;
+
+    await sendMulticast(
+      [{ ref: fromDoc.ref, token }],
+      {
+        notification: { title: Strings.friends.acceptedTitle, body: Strings.friends.acceptedBody(toName) },
+        apns: { payload: { aps: { sound: "default" } } },
+        data: { requestId: event.params.requestId, type: "friend_request_accepted" },
+      },
+      "friend_request_accepted"
     );
   }
 );
