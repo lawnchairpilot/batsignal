@@ -39,15 +39,15 @@ struct HomeView: View {
                         ProgressView().padding(.top, 40)
                     } else if viewModel.events.isEmpty && viewModel.upcomingEvents.isEmpty {
                         ContentUnavailableView(
-                            "No signals yet",
+                            Strings.Home.emptyStateTitle,
                             systemImage: "antenna.radiowaves.left.and.right",
-                            description: Text("When your friends post an event, it'll show up here.")
+                            description: Text(Strings.Home.emptyStateDescription)
                         )
                         .padding(.top, 40)
                     } else {
                         VStack(alignment: .leading, spacing: 12) {
                             if !viewModel.events.isEmpty {
-                                Text("What's happening")
+                                Text(Strings.Home.whatsHappening)
                                     .font(.title3).bold()
                                     .padding(.horizontal)
                                     .padding(.top, 4)
@@ -62,7 +62,7 @@ struct HomeView: View {
                             }
 
                             if !viewModel.upcomingEvents.isEmpty {
-                                Text("Coming up")
+                                Text(Strings.Home.comingUp)
                                     .font(.title3).bold()
                                     .padding(.horizontal)
                                     .padding(.top, viewModel.events.isEmpty ? 4 : 8)
@@ -81,7 +81,7 @@ struct HomeView: View {
                     }
                 }
             }
-            .navigationTitle("Bool Signal")
+            .navigationTitle(Strings.Common.appName)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: {
@@ -109,15 +109,15 @@ struct HomeView: View {
                     .navigationTitle(selection.event.activity)
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { selectedEventForDetail = nil }
+                            Button(Strings.Common.done) { selectedEventForDetail = nil }
                         }
                     }
                 }
             }
-            .alert("Signal already active", isPresented: $showActiveEventAlert) {
-                Button("OK", role: .cancel) { }
+            .alert(Strings.Home.activeEventAlertTitle, isPresented: $showActiveEventAlert) {
+                Button(Strings.Common.ok, role: .cancel) { }
             } message: {
-                Text("End your current signal before starting a new one.")
+                Text(Strings.Home.activeEventAlertMessage)
             }
         }
     }

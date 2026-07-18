@@ -70,7 +70,7 @@ class EditUpcomingEventViewModel: ObservableObject {
     func save() async {
         guard !eventId.isEmpty else { return }
         guard startTime > Date().addingTimeInterval(-5 * 60) else {
-            errorMessage = "Start time cannot be in the past."
+            errorMessage = Strings.Event.startTimeInPast
             return
         }
         isLoading = true

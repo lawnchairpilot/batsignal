@@ -29,7 +29,7 @@ struct EventCardView: View {
                     Image(systemName: "clock")
                     Text(startTimeLabel)
                     if !event.durationLabel.isEmpty {
-                        Text("· \(event.durationLabel)")
+                        Text(Strings.Home.durationSuffix(event.durationLabel))
                     }
                 }
                 .font(.subheadline)
@@ -69,7 +69,7 @@ struct EventCardView: View {
         formatter.timeStyle = .short
         let time = formatter.string(from: event.startTime.dateValue())
         if Calendar.current.isDateInTomorrow(event.startTime.dateValue()) {
-            return "Tomorrow · \(time)"
+            return Strings.Home.tomorrowAt(time)
         }
         return time
     }

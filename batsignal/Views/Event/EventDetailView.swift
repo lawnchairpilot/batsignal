@@ -53,7 +53,7 @@ struct EventDetailView: View {
 
                 // Time
                 VStack(alignment: .leading, spacing: 4) {
-                    Label("Time", systemImage: "clock")
+                    Label(Strings.Event.timeLabel, systemImage: "clock")
                         .font(.subheadline).foregroundColor(.secondary)
                     Text(startTimeLabel)
                         .font(.body)
@@ -67,7 +67,7 @@ struct EventDetailView: View {
 
                 // Location
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("Location", systemImage: locationIcon)
+                    Label(Strings.Event.locationLabel, systemImage: locationIcon)
                         .font(.subheadline).foregroundColor(.secondary)
 
                     if let label = event.locationLabel {
@@ -89,7 +89,7 @@ struct EventDetailView: View {
                         HStack(spacing: 8) {
                             ProgressView()
                                 .scaleEffect(0.8)
-                            Text("Waiting for location…")
+                            Text(Strings.Event.waitingForLocation)
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
@@ -97,7 +97,7 @@ struct EventDetailView: View {
                     }
 
                     if event.locationType == .live {
-                        Label("Live location", systemImage: "location.fill")
+                        Label(Strings.Event.liveLocation, systemImage: "location.fill")
                             .font(.caption)
                             .foregroundColor(.green)
                     }
@@ -129,7 +129,7 @@ struct EventDetailView: View {
         formatter.timeStyle = .short
         let time = formatter.string(from: event.startTime.dateValue())
         if Calendar.current.isDateInTomorrow(event.startTime.dateValue()) {
-            return "Tomorrow · \(time)"
+            return Strings.Event.tomorrowAt(time)
         }
         return time
     }
@@ -154,7 +154,7 @@ struct LiveBadge: View {
                 .fill(.white)
                 .frame(width: 7, height: 7)
                 .opacity(opacity)
-            Text("LIVE")
+            Text(Strings.Event.live)
                 .font(.caption2.bold())
                 .foregroundStyle(.white)
         }
@@ -305,7 +305,7 @@ struct FullMapView: View {
                     }
                     Spacer()
                     Button(action: openInMaps) {
-                        Label("Open in Maps", systemImage: "map.fill")
+                        Label(Strings.Event.openInMaps, systemImage: "map.fill")
                             .font(.body.bold())
                             .frame(maxWidth: .infinity)
                             .padding()
@@ -319,7 +319,7 @@ struct FullMapView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(Strings.Common.done) { dismiss() }
                 }
             }
         }

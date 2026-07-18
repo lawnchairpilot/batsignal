@@ -50,8 +50,8 @@ struct EditProfileView: View {
                     .padding(.vertical, 8)
                 }
 
-                Section("Display Name") {
-                    TextField("Display name", text: $displayName)
+                Section(Strings.Profile.displayNameSection) {
+                    TextField(Strings.Profile.displayNamePlaceholder, text: $displayName)
                         .textContentType(.name)
                 }
 
@@ -61,15 +61,15 @@ struct EditProfileView: View {
                     }
                 }
             }
-            .navigationTitle("Edit Profile")
+            .navigationTitle(Strings.Profile.editProfileTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(Strings.Common.cancel) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(action: save) {
-                        if isLoading { ProgressView() } else { Text("Save") }
+                        if isLoading { ProgressView() } else { Text(Strings.Common.save) }
                     }
                     .disabled(displayName.isEmpty || isLoading)
                 }
@@ -104,7 +104,7 @@ struct EditProfileView: View {
                 do {
                     photoURL = try await PhotoStorageService().uploadProfilePhoto(image)
                 } catch {
-                    errorMessage = "Photo upload failed: \(error.localizedDescription)"
+                    errorMessage = Strings.Profile.photoUploadFailed(error.localizedDescription)
                     isLoading = false
                     return
                 }

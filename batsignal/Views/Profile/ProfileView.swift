@@ -25,22 +25,22 @@ struct ProfileView: View {
                     .padding(.vertical, 8)
                 }
 
-                Section("Preferences") {
-                    NavigationLink("Event radius filter") {
+                Section(Strings.Profile.preferencesSection) {
+                    NavigationLink(Strings.Profile.eventRadiusFilter) {
                         RadiusSettingView()
                     }
                 }
 
                 Section {
-                    Button("Sign Out", role: .destructive) {
+                    Button(Strings.Profile.signOut, role: .destructive) {
                         try? authService.signOut()
                     }
                 }
             }
-            .navigationTitle("Profile")
+            .navigationTitle(Strings.Profile.title)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button("Edit") { showEditProfile = true }
+                    Button(Strings.Profile.edit) { showEditProfile = true }
                 }
             }
             .sheet(isPresented: $showEditProfile) {

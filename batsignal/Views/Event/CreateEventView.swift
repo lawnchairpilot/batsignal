@@ -10,8 +10,8 @@ struct CreateEventView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("What are you doing?") {
-                    TextField("e.g. Surfing, Hiking, Coffee", text: $viewModel.activity)
+                Section(Strings.Event.whatAreYouDoingSection) {
+                    TextField(Strings.Event.activityPlaceholder, text: $viewModel.activity)
                     // TextField("Description (optional)", text: $viewModel.description, axis: .vertical)
                     //     .lineLimit(3...)
                     // Button(action: { showEmojiPicker = true }) {
@@ -35,8 +35,8 @@ struct CreateEventView: View {
                     // }
                 }
 
-                Section("When?") {
-                    Picker("When", selection: $viewModel.timing) {
+                Section(Strings.Event.whenSection) {
+                    Picker(Strings.Event.whenPickerLabel, selection: $viewModel.timing) {
                         ForEach(TimingOption.allCases, id: \.self) { option in
                             Text(option.rawValue).tag(option)
                         }
@@ -44,28 +44,28 @@ struct CreateEventView: View {
                     .pickerStyle(.segmented)
 
                     if viewModel.timing == .later {
-                        Picker("Day", selection: $viewModel.selectedDay) {
+                        Picker(Strings.Event.dayPickerLabel, selection: $viewModel.selectedDay) {
                             ForEach(DayOption.allCases, id: \.self) { day in
                                 Text(day.rawValue).tag(day)
                             }
                         }
                         .pickerStyle(.segmented)
-                        DatePicker("Time", selection: $viewModel.selectedTime, displayedComponents: [.hourAndMinute])
+                        DatePicker(Strings.Event.timePickerLabel, selection: $viewModel.selectedTime, displayedComponents: [.hourAndMinute])
                     }
                     durationPicker
                 }
 
-                Section("Where?") {
+                Section(Strings.Event.whereSection) {
                     locationTypePicker
 
                     if viewModel.locationType == .text {
-                        TextField("Describe the location", text: $viewModel.locationLabel)
+                        TextField(Strings.Event.locationDescriptionPlaceholder, text: $viewModel.locationLabel)
                     } else if viewModel.locationType == .fixed {
                         Button(action: { showLocationPicker = true }) {
                             HStack {
                                 Image(systemName: "mappin.circle")
                                 if viewModel.locationLabel.isEmpty {
-                                    Text("Pick a location on the map")
+                                    Text(Strings.Event.pickLocationOnMap)
                                         .foregroundColor(.secondary)
                                 } else {
                                     Text(viewModel.locationLabel)
@@ -92,11 +92,11 @@ struct CreateEventView: View {
                     }
                 }
             }
-            .navigationTitle("New Signal")
+            .navigationTitle(Strings.Event.newSignalTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(Strings.Common.cancel) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(action: {
@@ -108,7 +108,7 @@ struct CreateEventView: View {
                         if viewModel.isLoading {
                             ProgressView()
                         } else {
-                            Text("Send")
+                            Text(Strings.Event.send)
                         }
                     }
                     .disabled(viewModel.activity.isEmpty || viewModel.isLoading)
@@ -118,7 +118,7 @@ struct CreateEventView: View {
     }
 
     private var durationPicker: some View {
-        Picker("Duration", selection: durationBinding) {
+        Picker(Strings.Event.durationPickerLabel, selection: durationBinding) {
             ForEach(Event.durationOptions, id: \.minutes) { option in
                 Text(option.label).tag(option.label)
             }
@@ -145,9 +145,9 @@ struct CreateEventView: View {
     }
 
     private var locationTypePicker: some View {
-        Picker("Location type", selection: $viewModel.locationType) {
-            Text("Live location").tag(LocationType.live)
-            Text("Fixed place").tag(LocationType.fixed)
+        Picker(Strings.Event.locationTypePickerLabel, selection: $viewModel.locationType) {
+            Text(Strings.Event.liveLocation).tag(LocationType.live)
+            Text(Strings.Event.fixedPlace).tag(LocationType.fixed)
             // Text("Describe it").tag(LocationType.text)
         }
         .pickerStyle(.segmented)

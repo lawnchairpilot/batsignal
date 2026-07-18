@@ -12,7 +12,7 @@ struct ProfileSetupView: View {
                 Image(systemName: "bolt.circle.fill")
                     .font(.system(size: 64))
                     .foregroundColor(.accentColor)
-                Text("Bool Signal")
+                Text(Strings.Common.appName)
                     .font(.largeTitle).bold()
             }
             .padding(.top, 60)
@@ -20,14 +20,14 @@ struct ProfileSetupView: View {
 
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Set up your profile")
+                    Text(Strings.Auth.setUpProfileHeadline)
                         .font(.title2).bold()
-                    Text("Choose a name so your friends can find you.")
+                    Text(Strings.Auth.setUpProfileSubtitle)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
 
-                TextField("Display name", text: $displayName)
+                TextField(Strings.Auth.displayNamePlaceholder, text: $displayName)
                     .textContentType(.name)
                     .padding()
                     .background(Color(.secondarySystemBackground))
@@ -44,7 +44,7 @@ struct ProfileSetupView: View {
                         if isLoading {
                             ProgressView().tint(.white)
                         } else {
-                            Text("Continue").fontWeight(.semibold)
+                            Text(Strings.Auth.continueLabel).fontWeight(.semibold)
                         }
                     }
                     .frame(maxWidth: .infinity)

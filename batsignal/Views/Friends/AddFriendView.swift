@@ -15,8 +15,8 @@ struct AddFriendView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 Picker("", selection: $selectedTab) {
-                    Text("Search").tag(AddFriendTab.search)
-                    Text("Contacts").tag(AddFriendTab.contacts)
+                    Text(Strings.Friends.search).tag(AddFriendTab.search)
+                    Text(Strings.Friends.contacts).tag(AddFriendTab.contacts)
                 }
                 .pickerStyle(.segmented)
                 .padding()
@@ -28,11 +28,11 @@ struct AddFriendView: View {
                     contactsTab
                 }
             }
-            .navigationTitle("Add Friend")
+            .navigationTitle(Strings.Friends.addFriendTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(Strings.Common.cancel) { dismiss() }
                 }
             }
         }
@@ -47,7 +47,7 @@ struct AddFriendView: View {
 
     private var searchTab: some View {
         VStack(spacing: 20) {
-            TextField("+1 (555) 000-0000", text: $viewModel.searchPhone)
+            TextField(Strings.Friends.phoneSearchPlaceholder, text: $viewModel.searchPhone)
                 .keyboardType(.phonePad)
                 .textContentType(.telephoneNumber)
                 .padding()
@@ -55,7 +55,7 @@ struct AddFriendView: View {
                 .cornerRadius(12)
 
             Button(action: { Task { await viewModel.searchByPhone(currentUserId: authService.currentUser?.id) } }) {
-                Text("Search")
+                Text(Strings.Friends.search)
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Color.accentColor)
@@ -94,18 +94,18 @@ struct AddFriendView: View {
     private var contactsTab: some View {
         if viewModel.contactsPermissionDenied {
             ContentUnavailableView(
-                "Contacts Access Denied",
+                Strings.Friends.contactsAccessDeniedTitle,
                 systemImage: "person.crop.circle.badge.xmark",
-                description: Text("Enable Contacts access in Settings to find friends on Bool Signal.")
+                description: Text(Strings.Friends.contactsAccessDeniedDescription)
             )
         } else if viewModel.isLoadingContacts {
-            ProgressView("Finding friends…")
+            ProgressView(Strings.Friends.findingFriends)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if viewModel.contactMatches.isEmpty {
             ContentUnavailableView(
-                "No Contacts on Bool Signal",
+                Strings.Friends.noContactsTitle,
                 systemImage: "person.2.slash",
-                description: Text("None of your contacts have joined yet.")
+                description: Text(Strings.Friends.noContactsDescription)
             )
         } else {
             List(viewModel.contactMatches) { match in
@@ -154,15 +154,15 @@ private struct ContactResultRow: View {
             }
             Spacer()
             if alreadyFriend {
-                Text("Friends")
+                Text(Strings.Friends.alreadyFriends)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             } else if pendingRequest {
-                Text("Requested")
+                Text(Strings.Friends.requested)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             } else {
-                Button("Add", action: onAdd)
+                Button(Strings.Friends.add, action: onAdd)
                     .buttonStyle(.borderedProminent)
             }
         }

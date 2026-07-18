@@ -169,7 +169,7 @@ struct HomeFullMapView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(Strings.Common.done) { dismiss() }
                 }
             }
             .sheet(item: $selectedItem) { item in
@@ -182,7 +182,7 @@ struct HomeFullMapView: View {
                     .navigationTitle(item.event.activity)
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { selectedItem = nil }
+                            Button(Strings.Common.done) { selectedItem = nil }
                         }
                     }
                 }

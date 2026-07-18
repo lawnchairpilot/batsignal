@@ -23,7 +23,7 @@ struct MyActiveEventCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Coming up")
+                    Text(Strings.Home.comingUp)
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Text(event.activity)
@@ -50,11 +50,11 @@ struct MyActiveEventCard: View {
             }
 
             HStack {
-                Text(!event.durationLabel.isEmpty ? event.durationLabel : "Open-ended")
+                Text(!event.durationLabel.isEmpty ? event.durationLabel : Strings.Home.openEnded)
                     .font(.caption)
                     .foregroundColor(.secondary)
                 Spacer()
-                Button("Cancel", role: .destructive) {
+                Button(Strings.Common.cancel, role: .destructive) {
                     Task { await viewModel.cancelUpcoming() }
                 }
                 .font(.subheadline.bold())
@@ -85,7 +85,7 @@ struct MyActiveEventCard: View {
 
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Your signal")
+                    Text(Strings.Home.yourSignal)
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Text(event.activity)
@@ -129,7 +129,7 @@ struct MyActiveEventCard: View {
                     }) {
                         HStack(spacing: 4) {
                             Image(systemName: "plus")
-                            Text("30 min")
+                            Text(Strings.Home.extend30Min)
                         }
                         .font(.subheadline.bold())
                         .padding(.horizontal, 12)
@@ -188,19 +188,19 @@ struct UpcomingEventDetailView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("What are you doing?") {
-                    TextField("Activity", text: $editViewModel.activity)
-                    TextField("Description (optional)", text: $editViewModel.description, axis: .vertical)
+                Section(Strings.Event.whatAreYouDoingSection) {
+                    TextField(Strings.Event.activityFieldLabel, text: $editViewModel.activity)
+                    TextField(Strings.Event.descriptionPlaceholder, text: $editViewModel.description, axis: .vertical)
                         .lineLimit(3...)
                     Button(action: { showEmojiPicker = true }) {
                         HStack {
-                            Text("Emoji")
+                            Text(Strings.Event.emojiFieldLabel)
                                 .foregroundColor(.primary)
                             Spacer()
                             if let emoji = editViewModel.emoji {
                                 Text(emoji).font(.title2)
                             } else {
-                                Text("None")
+                                Text(Strings.Event.noneSelected)
                                     .foregroundColor(.secondary)
                             }
                             Image(systemName: "chevron.right")
@@ -213,15 +213,15 @@ struct UpcomingEventDetailView: View {
                     }
                 }
 
-                Section("When?") {
-                    Picker("Day", selection: $editViewModel.selectedDay) {
+                Section(Strings.Event.whenSection) {
+                    Picker(Strings.Event.dayPickerLabel, selection: $editViewModel.selectedDay) {
                         ForEach(DayOption.allCases, id: \.self) { day in
                             Text(day.rawValue).tag(day)
                         }
                     }
                     .pickerStyle(.segmented)
-                    DatePicker("Time", selection: $editViewModel.selectedTime, displayedComponents: [.hourAndMinute])
-                    Picker("Duration", selection: durationBinding) {
+                    DatePicker(Strings.Event.timePickerLabel, selection: $editViewModel.selectedTime, displayedComponents: [.hourAndMinute])
+                    Picker(Strings.Event.durationPickerLabel, selection: durationBinding) {
                         ForEach(Event.durationOptions, id: \.minutes) { option in
                             Text(option.label).tag(option.label)
                         }
@@ -231,22 +231,22 @@ struct UpcomingEventDetailView: View {
                     }
                 }
 
-                Section("Where?") {
-                    Picker("Location type", selection: $editViewModel.locationType) {
-                        Text("Describe it").tag(LocationType.text)
-                        Text("Fixed place").tag(LocationType.fixed)
-                        Text("Live location").tag(LocationType.live)
+                Section(Strings.Event.whereSection) {
+                    Picker(Strings.Event.locationTypePickerLabel, selection: $editViewModel.locationType) {
+                        Text(Strings.Event.describeIt).tag(LocationType.text)
+                        Text(Strings.Event.fixedPlace).tag(LocationType.fixed)
+                        Text(Strings.Event.liveLocation).tag(LocationType.live)
                     }
                     .pickerStyle(.segmented)
 
                     if editViewModel.locationType == .text {
-                        TextField("Describe the location", text: $editViewModel.locationLabel)
+                        TextField(Strings.Event.locationDescriptionPlaceholder, text: $editViewModel.locationLabel)
                     } else if editViewModel.locationType == .fixed {
                         Button(action: { showLocationPicker = true }) {
                             HStack {
                                 Image(systemName: "mappin.circle")
                                 if editViewModel.locationLabel.isEmpty {
-                                    Text("Pick a location on the map").foregroundColor(.secondary)
+                                    Text(Strings.Event.pickLocationOnMap).foregroundColor(.secondary)
                                 } else {
                                     Text(editViewModel.locationLabel).foregroundColor(.primary)
                                 }
@@ -270,7 +270,7 @@ struct UpcomingEventDetailView: View {
                 }
 
                 Section {
-                    Button("Cancel Event", role: .destructive) {
+                    Button(Strings.Event.cancelEvent, role: .destructive) {
                         Task {
                             await myEventViewModel.cancelUpcoming()
                             dismiss()
@@ -278,11 +278,11 @@ struct UpcomingEventDetailView: View {
                     }
                 }
             }
-            .navigationTitle("Edit Signal")
+            .navigationTitle(Strings.Event.editSignalTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(Strings.Common.cancel) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(action: {
@@ -294,7 +294,7 @@ struct UpcomingEventDetailView: View {
                         if editViewModel.isLoading {
                             ProgressView()
                         } else {
-                            Text("Save")
+                            Text(Strings.Common.save)
                         }
                     }
                     .disabled(editViewModel.activity.isEmpty || editViewModel.isLoading)
@@ -338,19 +338,19 @@ struct ActiveEventDetailView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("What are you doing?") {
-                    TextField("Activity", text: $editViewModel.activity)
-                    TextField("Description (optional)", text: $editViewModel.description, axis: .vertical)
+                Section(Strings.Event.whatAreYouDoingSection) {
+                    TextField(Strings.Event.activityFieldLabel, text: $editViewModel.activity)
+                    TextField(Strings.Event.descriptionPlaceholder, text: $editViewModel.description, axis: .vertical)
                         .lineLimit(3...)
                     Button(action: { showEmojiPicker = true }) {
                         HStack {
-                            Text("Emoji")
+                            Text(Strings.Event.emojiFieldLabel)
                                 .foregroundColor(.primary)
                             Spacer()
                             if let emoji = editViewModel.emoji {
                                 Text(emoji).font(.title2)
                             } else {
-                                Text("None")
+                                Text(Strings.Event.noneSelected)
                                     .foregroundColor(.secondary)
                             }
                             Image(systemName: "chevron.right")
@@ -363,14 +363,14 @@ struct ActiveEventDetailView: View {
                     }
                 }
 
-                Section("Time") {
+                Section(Strings.Event.timeSection) {
                     HStack {
-                        Text("Started")
+                        Text(Strings.Event.started)
                         Spacer()
                         Text(event.startTime.dateValue(), style: .time)
                             .foregroundColor(.secondary)
                     }
-                    Picker("Duration", selection: durationBinding) {
+                    Picker(Strings.Event.durationPickerLabel, selection: durationBinding) {
                         ForEach(Event.durationOptions, id: \.minutes) { option in
                             Text(option.label).tag(option.label)
                         }
@@ -382,29 +382,29 @@ struct ActiveEventDetailView: View {
                         Button(action: { Task { await myEventViewModel.extend() } }) {
                             HStack(spacing: 6) {
                                 Image(systemName: "plus.circle.fill")
-                                Text("Add 30 minutes")
+                                Text(Strings.Event.add30Minutes)
                             }
                             .foregroundColor(.accentColor)
                         }
                     }
                 }
 
-                Section("Where?") {
-                    Picker("Location type", selection: $editViewModel.locationType) {
-                        Text("Describe it").tag(LocationType.text)
-                        Text("Fixed place").tag(LocationType.fixed)
-                        Text("Live location").tag(LocationType.live)
+                Section(Strings.Event.whereSection) {
+                    Picker(Strings.Event.locationTypePickerLabel, selection: $editViewModel.locationType) {
+                        Text(Strings.Event.describeIt).tag(LocationType.text)
+                        Text(Strings.Event.fixedPlace).tag(LocationType.fixed)
+                        Text(Strings.Event.liveLocation).tag(LocationType.live)
                     }
                     .pickerStyle(.segmented)
 
                     if editViewModel.locationType == .text {
-                        TextField("Describe the location", text: $editViewModel.locationLabel)
+                        TextField(Strings.Event.locationDescriptionPlaceholder, text: $editViewModel.locationLabel)
                     } else if editViewModel.locationType == .fixed {
                         Button(action: { showLocationPicker = true }) {
                             HStack {
                                 Image(systemName: "mappin.circle")
                                 if editViewModel.locationLabel.isEmpty {
-                                    Text("Pick a location on the map").foregroundColor(.secondary)
+                                    Text(Strings.Event.pickLocationOnMap).foregroundColor(.secondary)
                                 } else {
                                     Text(editViewModel.locationLabel).foregroundColor(.primary)
                                 }
@@ -428,7 +428,7 @@ struct ActiveEventDetailView: View {
                 }
 
                 Section {
-                    Button("End Signal", role: .destructive) {
+                    Button(Strings.Event.endSignal, role: .destructive) {
                         Task {
                             await myEventViewModel.end()
                             dismiss()
@@ -436,11 +436,11 @@ struct ActiveEventDetailView: View {
                     }
                 }
             }
-            .navigationTitle("Your Signal")
+            .navigationTitle(Strings.Event.yourSignalTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(Strings.Common.cancel) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(action: {
@@ -452,7 +452,7 @@ struct ActiveEventDetailView: View {
                         if editViewModel.isLoading {
                             ProgressView()
                         } else {
-                            Text("Save")
+                            Text(Strings.Common.save)
                         }
                     }
                     .disabled(editViewModel.activity.isEmpty || editViewModel.isLoading)

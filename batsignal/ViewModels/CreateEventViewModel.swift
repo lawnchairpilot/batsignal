@@ -58,7 +58,7 @@ class CreateEventViewModel: ObservableObject {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         // Allow up to 5 min in the past to account for time spent filling the form
         guard startTime > Date().addingTimeInterval(-5 * 60) else {
-            errorMessage = "Start time cannot be in the past."
+            errorMessage = Strings.Event.startTimeInPast
             return
         }
         isLoading = true

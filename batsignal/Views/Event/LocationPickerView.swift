@@ -24,14 +24,14 @@ struct LocationPickerView: View {
                 mapLayer
                 searchLayer
             }
-            .navigationTitle("Pick a Location")
+            .navigationTitle(Strings.Event.pickLocationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(Strings.Common.cancel) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Confirm") {
+                    Button(Strings.Common.confirm) {
                         if let coord = droppedPin {
                             onPick(PickedLocation(name: droppedPinName, coordinate: coord))
                             dismiss()
@@ -57,7 +57,7 @@ struct LocationPickerView: View {
         MapReader { proxy in
             Map(position: $position, selection: $selectedFeature) {
                 if let coord = droppedPin {
-                    Marker(droppedPinName.isEmpty ? "Pin" : droppedPinName, coordinate: coord)
+                    Marker(droppedPinName.isEmpty ? Strings.Event.pin : droppedPinName, coordinate: coord)
                         .tint(.red)
                 }
             }
@@ -77,7 +77,7 @@ struct LocationPickerView: View {
         .onChange(of: selectedFeature) { _, feature in
             guard let feature else { return }
             droppedPin = feature.coordinate
-            droppedPinName = feature.title ?? "Selected place"
+            droppedPinName = feature.title ?? Strings.Event.selectedPlace
             searchModel.searchText = feature.title ?? ""
             searchModel.results = []
         }
@@ -95,7 +95,7 @@ struct LocationPickerView: View {
     private var searchBar: some View {
         HStack {
             Image(systemName: "magnifyingglass").foregroundColor(.secondary)
-            TextField("Search for a place...", text: $searchModel.searchText)
+            TextField(Strings.Event.searchPlaceholder, text: $searchModel.searchText)
                 .autocorrectionDisabled()
                 .onSubmit { searchModel.search(near: centerCoordinate) }
             if !searchModel.searchText.isEmpty {
@@ -130,7 +130,7 @@ struct LocationPickerView: View {
     }
 
     private func searchResultRow(item: MKMapItem) -> some View {
-        let name = item.name ?? "Unknown"
+        let name = item.name ?? Strings.Event.unknownPlaceName
         let subtitle = item.addressRepresentations?.fullAddress(includingRegion: false, singleLine: true)
         return Button(action: { selectSearchResult(item) }) {
             VStack(alignment: .leading, spacing: 2) {
@@ -154,7 +154,7 @@ struct LocationPickerView: View {
     private func selectSearchResult(_ item: MKMapItem) {
         let coord = item.location.coordinate
         droppedPin = coord
-        droppedPinName = item.name ?? "Selected place"
+        droppedPinName = item.name ?? Strings.Event.selectedPlace
         position = .camera(MapCamera(centerCoordinate: coord, distance: 1000))
         searchModel.searchText = item.name ?? ""
         searchModel.results = []
@@ -163,7 +163,7 @@ struct LocationPickerView: View {
 
     private func selectCustomPin(coord: CLLocationCoordinate2D) {
         droppedPin = coord
-        droppedPinName = "Pinned location"
+        droppedPinName = Strings.Event.pinnedLocation
         selectedFeature = nil
         searchModel.searchText = ""
         searchModel.results = []

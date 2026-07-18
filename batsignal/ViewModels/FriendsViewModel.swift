@@ -70,9 +70,9 @@ class FriendsViewModel: ObservableObject {
         do {
             let user = try await friendService.findUser(byPhoneNumber: searchPhone)
             if let user, user.id == currentUserId {
-                errorMessage = "That's you!"
+                errorMessage = Strings.Friends.thatsYou
             } else if user == nil {
-                errorMessage = "No user found with that number."
+                errorMessage = Strings.Friends.noUserFound
             } else {
                 searchResult = user
             }

@@ -7,11 +7,11 @@ struct RadiusSettingView: View {
     @State private var selectedRadius: Double? = nil
 
     private let options: [(label: String, value: Double?)] = [
-        ("No limit", nil),
-        ("10 miles", 10),
-        ("25 miles", 25),
-        ("50 miles", 50),
-        ("100 miles", 100),
+        (Strings.Profile.noLimit, nil),
+        (Strings.Profile.milesLabel(10), 10),
+        (Strings.Profile.milesLabel(25), 25),
+        (Strings.Profile.milesLabel(50), 50),
+        (Strings.Profile.milesLabel(100), 100),
     ]
 
     var body: some View {
@@ -29,7 +29,7 @@ struct RadiusSettingView: View {
                 .foregroundColor(.primary)
             }
         }
-        .navigationTitle("Event Radius")
+        .navigationTitle(Strings.Profile.radiusTitle)
         .onAppear {
             selectedRadius = authService.currentUser?.maxEventRadius
         }

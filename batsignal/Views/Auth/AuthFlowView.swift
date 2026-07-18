@@ -10,7 +10,7 @@ struct AuthFlowView: View {
                 Image(systemName: "bolt.circle.fill")
                     .font(.system(size: 64))
                     .foregroundColor(.accentColor)
-                Text("Bool Signal")
+                Text(Strings.Common.appName)
                     .font(.largeTitle).bold()
             }
             .padding(.top, 60)
@@ -34,15 +34,15 @@ struct AuthFlowView: View {
     private var phoneEntrySection: some View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("What's your number?")
+                Text(Strings.Auth.phoneEntryHeadline)
                     .font(.title2).bold()
-                Text("We'll send a verification code to confirm it's you.")
+                Text(Strings.Auth.phoneEntrySubtitle)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
 
             HStack(spacing: 0) {
-                Text("+1")
+                Text(Strings.Auth.countryCode)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 14)
                     .background(Color(.tertiarySystemBackground))
@@ -52,7 +52,7 @@ struct AuthFlowView: View {
                     .frame(width: 1, height: 24)
                     .foregroundColor(Color(.separator))
 
-                TextField("(555) 555-5555", text: $viewModel.phoneNumber)
+                TextField(Strings.Auth.phoneNumberPlaceholder, text: $viewModel.phoneNumber)
                     .keyboardType(.phonePad)
                     .textContentType(.telephoneNumber)
                     .padding(.horizontal, 14)
@@ -67,7 +67,7 @@ struct AuthFlowView: View {
             errorText
 
             Button(action: { Task { await viewModel.sendCode() } }) {
-                primaryButtonContent(label: "Send Code")
+                primaryButtonContent(label: Strings.Auth.sendCode)
             }
             .disabled(viewModel.isLoading || viewModel.phoneNumber.filter(\.isNumber).count < 10)
         }
@@ -78,14 +78,14 @@ struct AuthFlowView: View {
     private var codeVerificationSection: some View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Enter the code")
+                Text(Strings.Auth.codeVerificationHeadline)
                     .font(.title2).bold()
-                Text("Sent to +1 \(viewModel.phoneNumber)")
+                Text(Strings.Auth.sentToCode(viewModel.phoneNumber))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
 
-            TextField("6-digit code", text: $viewModel.verificationCode)
+            TextField(Strings.Auth.codePlaceholder, text: $viewModel.verificationCode)
                 .keyboardType(.numberPad)
                 .textContentType(.oneTimeCode)
                 .font(.title2.monospacedDigit())
@@ -101,11 +101,11 @@ struct AuthFlowView: View {
             errorText
 
             Button(action: { Task { await viewModel.verifyCode() } }) {
-                primaryButtonContent(label: "Verify")
+                primaryButtonContent(label: Strings.Auth.verify)
             }
             .disabled(viewModel.isLoading || viewModel.verificationCode.count < 6)
 
-            Button("Use a different number") {
+            Button(Strings.Auth.useDifferentNumber) {
                 viewModel.editPhoneNumber()
             }
             .font(.subheadline)

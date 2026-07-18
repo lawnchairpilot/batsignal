@@ -48,15 +48,15 @@ struct EmojiPickerView: View {
                 }
                 .padding(.vertical)
             }
-            .navigationTitle("Choose Emoji")
+            .navigationTitle(Strings.Event.chooseEmojiTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(Strings.Common.cancel) { dismiss() }
                 }
                 if selectedEmoji != nil {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Remove") {
+                        Button(Strings.Event.remove) {
                             selectedEmoji = nil
                             dismiss()
                         }

@@ -20,7 +20,7 @@ class AuthViewModel: ObservableObject {
     func sendCode() async {
         let digits = phoneNumber.filter(\.isNumber)
         guard digits.count == 10 else {
-            errorMessage = "Please enter a valid 10-digit US phone number."
+            errorMessage = Strings.Auth.invalidPhoneNumber
             return
         }
         isLoading = true
@@ -38,7 +38,7 @@ class AuthViewModel: ObservableObject {
         guard let verificationID else { return }
         let code = verificationCode.filter(\.isNumber)
         guard code.count == 6 else {
-            errorMessage = "Please enter the 6-digit code."
+            errorMessage = Strings.Auth.invalidCode
             return
         }
         isLoading = true

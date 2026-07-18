@@ -10,7 +10,7 @@ struct FriendsView: View {
             List {
                 // Incoming requests
                 if !viewModel.incomingRequests.isEmpty {
-                    Section("Requests") {
+                    Section(Strings.Friends.requestsSectionHeader) {
                         ForEach(viewModel.incomingRequests) { request in
                             IncomingRequestRow(
                                 request: request,
@@ -24,15 +24,15 @@ struct FriendsView: View {
 
                 // Outgoing pending requests
                 if !viewModel.outgoingRequests.isEmpty {
-                    Section("Pending") {
+                    Section(Strings.Friends.pendingSectionHeader) {
                         ForEach(viewModel.outgoingRequests) { request in
                             HStack {
                                 Image(systemName: "clock")
                                     .foregroundColor(.secondary)
-                                Text(viewModel.recipientNames[request.toUserId] ?? "Pending...")
+                                Text(viewModel.recipientNames[request.toUserId] ?? Strings.Friends.pendingEllipsis)
                                     .foregroundColor(.secondary)
                                 Spacer()
-                                Text("Request sent")
+                                Text(Strings.Friends.requestSent)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -41,11 +41,11 @@ struct FriendsView: View {
                 }
 
                 // Friends list
-                Section("Friends") {
+                Section(Strings.Friends.title) {
                     if viewModel.isLoading {
                         ProgressView()
                     } else if viewModel.friends.isEmpty {
-                        Text("No friends yet — add some!")
+                        Text(Strings.Friends.noFriendsYet)
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(viewModel.friends) { friend in
@@ -68,7 +68,7 @@ struct FriendsView: View {
                     }
                 }
             }
-            .navigationTitle("Friends")
+            .navigationTitle(Strings.Friends.title)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: { showAddFriend = true }) {
@@ -93,16 +93,16 @@ struct IncomingRequestRow: View {
             Image(systemName: "person.crop.circle.badge.questionmark")
                 .foregroundColor(.accentColor)
             VStack(alignment: .leading, spacing: 2) {
-                Text(senderName ?? "Someone")
+                Text(senderName ?? Strings.Friends.someone)
                     .font(.subheadline).bold()
-                Text("wants to be friends")
+                Text(Strings.Friends.wantsToBeFriends)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
             Spacer()
-            Button("Accept") { onRespond(true) }
+            Button(Strings.Friends.accept) { onRespond(true) }
                 .buttonStyle(.borderedProminent).controlSize(.small)
-            Button("Decline") { onRespond(false) }
+            Button(Strings.Friends.decline) { onRespond(false) }
                 .buttonStyle(.bordered).controlSize(.small)
         }
     }

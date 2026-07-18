@@ -10,17 +10,17 @@ struct MainTabView: View {
         TabView {
             HomeView()
                 .tabItem {
-                    Label("Home", systemImage: "antenna.radiowaves.left.and.right")
+                    Label(Strings.TabBar.home, systemImage: "antenna.radiowaves.left.and.right")
                 }
 
             FriendsView()
                 .tabItem {
-                    Label("Friends", systemImage: "person.2")
+                    Label(Strings.TabBar.friends, systemImage: "person.2")
                 }
 
             ProfileView()
                 .tabItem {
-                    Label("Profile", systemImage: "person.circle")
+                    Label(Strings.TabBar.profile, systemImage: "person.circle")
                 }
         }
         .environmentObject(myEventViewModel)
