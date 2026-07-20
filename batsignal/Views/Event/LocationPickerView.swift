@@ -24,6 +24,11 @@ struct LocationPickerView: View {
                 mapLayer
                 searchLayer
             }
+            .overlay(alignment: .bottom) {
+                if droppedPin != nil {
+                    nameField
+                }
+            }
             .navigationTitle(Strings.Event.pickLocationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -33,7 +38,9 @@ struct LocationPickerView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(Strings.Common.confirm) {
                         if let coord = droppedPin {
-                            onPick(PickedLocation(name: droppedPinName, coordinate: coord))
+                            let trimmedName = droppedPinName.trimmingCharacters(in: .whitespaces)
+                            let name = trimmedName.isEmpty ? Strings.Event.droppedPin : trimmedName
+                            onPick(PickedLocation(name: name, coordinate: coord))
                             dismiss()
                         }
                     }
@@ -57,7 +64,7 @@ struct LocationPickerView: View {
         MapReader { proxy in
             Map(position: $position, selection: $selectedFeature) {
                 if let coord = droppedPin {
-                    Marker(droppedPinName.isEmpty ? Strings.Event.pin : droppedPinName, coordinate: coord)
+                    Marker(droppedPinName.isEmpty ? Strings.Event.droppedPin : droppedPinName, coordinate: coord)
                         .tint(.red)
                 }
                 UserAnnotation()
@@ -115,6 +122,19 @@ struct LocationPickerView: View {
         .padding(.top, 8)
     }
 
+    private var nameField: some View {
+        HStack {
+            Image(systemName: "pencil").foregroundColor(.secondary)
+            TextField(Strings.Event.nameLocationPlaceholder, text: $droppedPinName)
+                .autocorrectionDisabled()
+        }
+        .padding(10)
+        .background(.regularMaterial)
+        .cornerRadius(12)
+        .padding(.horizontal)
+        .padding(.bottom, 8)
+    }
+
     private var searchResults: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -164,7 +184,7 @@ struct LocationPickerView: View {
 
     private func selectCustomPin(coord: CLLocationCoordinate2D) {
         droppedPin = coord
-        droppedPinName = Strings.Event.pinnedLocation
+        droppedPinName = ""
         selectedFeature = nil
         searchModel.searchText = ""
         searchModel.results = []

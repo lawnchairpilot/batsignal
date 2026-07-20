@@ -4,7 +4,7 @@ extension Strings {
     enum Profile {
         static let title = "Profile"
         static let preferencesSection = "Preferences"
-        static let eventRadiusFilter = "Bool radius filter"
+        static let eventRadiusFilter = "Bool radius"
         static let signOut = "Sign Out"
         static let edit = "Edit"
         static let editProfileTitle = "Edit Profile"

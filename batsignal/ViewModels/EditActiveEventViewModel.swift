@@ -56,9 +56,11 @@ class EditActiveEventViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
 
-        let endTime: Timestamp? = selectedDurationMinutes.map { minutes in
-            Timestamp(date: originalStartTime.dateValue().addingTimeInterval(Double(minutes) * 60))
-        }
+        let endTime = Event.computeEndTime(
+            startTime: originalStartTime.dateValue(),
+            durationMinutes: selectedDurationMinutes,
+            vagueLabel: selectedVagueLabel
+        )
 
         var coordinate: GeoPoint? = nil
         if locationType == .fixed, let fixed = fixedCoordinate {

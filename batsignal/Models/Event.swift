@@ -17,7 +17,7 @@ struct Event: Identifiable, Codable {
     var startTime: Timestamp
     var durationMinutes: Int?           // nil if vague (e.g. "til dark")
     var durationVagueLabel: String?     // set only when durationMinutes is nil
-    var endTime: Timestamp?             // computed from startTime + durationMinutes, nil if vague
+    var endTime: Timestamp?             // computed from startTime + durationMinutes, or 9 PM start date if vague
     var locationType: LocationType
     var locationLabel: String?          // text description or place name
     var locationCoordinate: GeoPoint?   // fixed coordinate or live-updated
@@ -38,6 +38,18 @@ struct Event: Identifiable, Codable {
     ]
 
     static let vagueOptions: [String] = ["til dark", "all day"]
+
+    // Exact durations add minutes to startTime; vague durations always end at 9 PM on the start date.
+    static func computeEndTime(startTime: Date, durationMinutes: Int?, vagueLabel: String?) -> Timestamp? {
+        if let minutes = durationMinutes {
+            return Timestamp(date: startTime.addingTimeInterval(Double(minutes) * 60))
+        }
+        if vagueLabel != nil {
+            let nine = Calendar.current.date(bySettingHour: 21, minute: 0, second: 0, of: startTime) ?? startTime
+            return Timestamp(date: nine)
+        }
+        return nil
+    }
 
     var durationLabel: String {
         if let minutes = durationMinutes {

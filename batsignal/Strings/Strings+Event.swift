@@ -44,11 +44,11 @@ extension Strings {
 
         // Location picker
         static let pickLocationTitle = "Pick a Location"
-        static let pin = "Pin"
         static let selectedPlace = "Selected place"
         static let searchPlaceholder = "Search for a place..."
         static let unknownPlaceName = "Unknown"
-        static let pinnedLocation = "Pinned location"
+        static let droppedPin = "Dropped Pin"
+        static let nameLocationPlaceholder = "Name this location (optional)"
 
         // Emoji picker
         static let chooseEmojiTitle = "Choose Emoji"
