@@ -30,9 +30,18 @@ class CreateEventViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var didCreate = false
+    @Published var groups: [FriendGroup] = []
+    @Published var selectedGroupIds: Set<String> = []
 
     private let eventService = EventService()
     private let locationService = LocationService()
+    private let groupService = GroupService()
+    private let friendService = FriendService()
+
+    func loadGroups() async {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        groups = (try? await groupService.fetchGroups(ownerId: uid)) ?? []
+    }
 
     var startTime: Date {
         guard timing == .later else { return Date() }
@@ -80,6 +89,17 @@ class CreateEventViewModel: ObservableObject {
         // Active immediately if starting now (within 1 min), otherwise Cloud Function activates it
         let isActive = startTime <= Date().addingTimeInterval(60)
 
+        let liveFriendIds = (try? await friendService.fetchUser(id: uid))?.friends ?? []
+        let recipientIds: [String]
+        if selectedGroupIds.isEmpty {
+            recipientIds = liveFriendIds
+        } else {
+            let groupMemberIds = groups
+                .filter { selectedGroupIds.contains($0.id ?? "") }
+                .flatMap { $0.memberIds }
+            recipientIds = Array(Set(groupMemberIds).intersection(liveFriendIds))
+        }
+
         let event = Event(
             creatorId: uid,
             activity: activity,
@@ -93,7 +113,8 @@ class CreateEventViewModel: ObservableObject {
             locationLabel: locationLabel.isEmpty ? nil : locationLabel,
             locationCoordinate: coordinate,
             isActive: isActive,
-            createdAt: .init()
+            createdAt: .init(),
+            recipientIds: recipientIds
         )
 
         do {

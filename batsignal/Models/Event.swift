@@ -23,6 +23,7 @@ struct Event: Identifiable, Codable {
     var locationCoordinate: GeoPoint?   // fixed coordinate or live-updated
     var isActive: Bool
     var createdAt: Timestamp
+    var recipientIds: [String]
 
     // MARK: - Duration display
 

@@ -42,7 +42,7 @@ struct MainTabView: View {
             let ids = newIds ?? []
             let radius = authService.currentUser?.maxEventRadius
             friendsViewModel.reloadFriends(ids: ids)
-            homeViewModel.startListening(friendIds: ids, maxRadius: radius)
+            homeViewModel.startListening(userId: authService.currentUser?.id ?? "", maxRadius: radius)
         }
     }
 
@@ -50,7 +50,7 @@ struct MainTabView: View {
         let friendIds = authService.currentUser?.friends ?? []
         let radius = authService.currentUser?.maxEventRadius
         myEventViewModel.startListening(activeEventId: authService.currentUser?.activeEventId)
-        homeViewModel.startListening(friendIds: friendIds, maxRadius: radius)
+        homeViewModel.startListening(userId: authService.currentUser?.id ?? "", maxRadius: radius)
         friendsViewModel.startListening(friendIds: friendIds)
     }
 }

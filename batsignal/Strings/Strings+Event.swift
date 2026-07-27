@@ -6,6 +6,7 @@ extension Strings {
         static let whatAreYouDoingSection = "What are you doing?"
         static let whenSection = "When?"
         static let whereSection = "Where?"
+        static let whoSection = "Who?"
         static let timeSection = "Time"
 
         // Fields
@@ -22,6 +23,7 @@ extension Strings {
         static let liveLocation = "Share Location"
         static let fixedPlace = "Drop a Pin"
         static let describeIt = "Describe it"
+        static let allFriendsLabel = "All Friends"
         static let locationDescriptionPlaceholder = "Describe the location"
         static let pickLocationOnMap = "Pick a location on the map"
 

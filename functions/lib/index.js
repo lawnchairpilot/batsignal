@@ -9,22 +9,15 @@ admin.initializeApp();
 const db = admin.firestore();
 // MARK: - Shared helpers
 /**
- * Fetches creator name and all friends' FCM targets for a given creator UID.
+ * Fetches FCM targets for a list of user IDs.
  */
-async function getFriendsTargets(creatorId) {
-    const creatorDoc = await db.collection("users").doc(creatorId).get();
-    const creatorData = creatorDoc.data();
-    if (!creatorData)
-        return { creatorName: strings_1.Strings.common.someone, targets: [] };
-    const creatorName = creatorData.displayName || strings_1.Strings.common.someone;
-    const friendIds = creatorData.friends || [];
-    if (friendIds.length === 0)
-        return { creatorName, targets: [] };
-    const friendDocs = await Promise.all(friendIds.map((uid) => db.collection("users").doc(uid).get()));
-    const targets = friendDocs
+async function getTokenTargets(userIds) {
+    if (userIds.length === 0)
+        return [];
+    const userDocs = await Promise.all(userIds.map((uid) => db.collection("users").doc(uid).get()));
+    return userDocs
         .map((doc) => { var _a; return ({ ref: doc.ref, token: (_a = doc.data()) === null || _a === void 0 ? void 0 : _a.fcmToken }); })
         .filter((t) => typeof t.token === "string" && t.token.length > 0);
-    return { creatorName, targets };
 }
 /**
  * Sends an FCM multicast to a list of targets and cleans up any stale tokens.
@@ -82,13 +75,17 @@ exports.activateScheduledEvents = functions.scheduler.onSchedule({ schedule: "ev
 });
 // Notifies friends when a new event is created
 exports.notifyFriendsOnEventCreate = (0, firestore_1.onDocumentCreated)("events/{eventId}", async (event) => {
+    var _a;
     const snap = event.data;
     if (!snap)
         return;
     const data = snap.data();
-    const { creatorName, targets } = await getFriendsTargets(data.creatorId);
+    const recipientIds = data.recipientIds || [];
+    const targets = await getTokenTargets(recipientIds);
     if (targets.length === 0)
         return;
+    const creatorDoc = await db.collection("users").doc(data.creatorId).get();
+    const creatorName = ((_a = creatorDoc.data()) === null || _a === void 0 ? void 0 : _a.displayName) || strings_1.Strings.common.someone;
     const activity = data.activity;
     const emoji = data.emoji;
     const body = strings_1.Strings.event.body(activity, emoji);

@@ -86,6 +86,10 @@ struct CreateEventView: View {
                     }
                 }
 
+                Section(Strings.Event.whoSection) {
+                    whoPicker
+                }
+
                 if let error = viewModel.errorMessage {
                     Section {
                         Text(error).foregroundColor(.red).font(.caption)
@@ -114,6 +118,48 @@ struct CreateEventView: View {
                     .disabled(viewModel.activity.isEmpty || viewModel.isLoading)
                 }
             }
+        }
+        .task {
+            await viewModel.loadGroups()
+        }
+    }
+
+    private var whoPicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                AudienceCard(
+                    title: Strings.Event.allFriendsLabel,
+                    emoji: nil,
+                    systemImage: "person.3.fill",
+                    isSelected: viewModel.selectedGroupIds.isEmpty
+                ) {
+                    viewModel.selectedGroupIds.removeAll()
+                }
+
+                ForEach(viewModel.groups) { group in
+                    AudienceCard(
+                        title: group.name,
+                        emoji: group.emoji,
+                        systemImage: "person.2.fill",
+                        isSelected: group.id.map { viewModel.selectedGroupIds.contains($0) } ?? false
+                    ) {
+                        toggleGroup(group)
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 4)
+        }
+        .listRowInsets(EdgeInsets())
+        .listRowBackground(Color.clear)
+    }
+
+    private func toggleGroup(_ group: FriendGroup) {
+        guard let id = group.id else { return }
+        if viewModel.selectedGroupIds.contains(id) {
+            viewModel.selectedGroupIds.remove(id)
+        } else {
+            viewModel.selectedGroupIds.insert(id)
         }
     }
 
@@ -151,5 +197,42 @@ struct CreateEventView: View {
             // Text("Describe it").tag(LocationType.text)
         }
         .pickerStyle(.segmented)
+    }
+}
+
+private struct AudienceCard: View {
+    let title: String
+    let emoji: String?
+    let systemImage: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                if let emoji {
+                    Text(emoji).font(.title2)
+                } else {
+                    Image(systemName: systemImage)
+                        .font(.title2)
+                        .foregroundColor(.accentColor)
+                }
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+            }
+            .frame(width: 96, height: 84)
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(16)
+            .overlay {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.accentColor, lineWidth: 2)
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
 }

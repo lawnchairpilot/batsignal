@@ -8,20 +8,20 @@ class EventService: ObservableObject {
 
     // MARK: - Fetch
 
-    func listenToFriendEvents(
-        friendIds: [String],
+    func listenToVisibleEvents(
+        userId: String,
         onActive: @escaping ([Event]) -> Void,
         onUpcoming: @escaping ([Event]) -> Void
     ) -> ListenerRegistration? {
-        guard !friendIds.isEmpty else {
+        guard !userId.isEmpty else {
             onActive([]); onUpcoming([])
             return nil
         }
         return db.collection("events")
-            .whereField("creatorId", in: friendIds)
+            .whereField("recipientIds", arrayContains: userId)
             .addSnapshotListener { snapshot, error in
                 if let error = error {
-                    print("listenToFriendEvents error: \(error.localizedDescription)")
+                    print("listenToVisibleEvents error: \(error.localizedDescription)")
                     return
                 }
                 let all = snapshot?.documents.compactMap { try? $0.data(as: Event.self) } ?? []

@@ -13,11 +13,11 @@ class HomeViewModel: ObservableObject {
     private let locationService = LocationService()
     private var listener: ListenerRegistration?
 
-    func startListening(friendIds: [String], maxRadius: Double?) {
+    func startListening(userId: String, maxRadius: Double?) {
         listener?.remove()
         isLoading = true
-        listener = eventService.listenToFriendEvents(
-            friendIds: friendIds,
+        listener = eventService.listenToVisibleEvents(
+            userId: userId,
             onActive: { [weak self] fetched in
                 guard let self else { return }
                 if let maxRadius, self.locationService.currentLocation != nil {

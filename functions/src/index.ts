@@ -10,31 +10,22 @@ const db = admin.firestore();
 // MARK: - Shared helpers
 
 /**
- * Fetches creator name and all friends' FCM targets for a given creator UID.
+ * Fetches FCM targets for a list of user IDs.
  */
-async function getFriendsTargets(creatorId: string): Promise<{
-  creatorName: string;
-  targets: Array<{ ref: FirebaseFirestore.DocumentReference; token: string }>;
-}> {
-  const creatorDoc = await db.collection("users").doc(creatorId).get();
-  const creatorData = creatorDoc.data();
-  if (!creatorData) return { creatorName: Strings.common.someone, targets: [] };
+async function getTokenTargets(
+  userIds: string[]
+): Promise<Array<{ ref: FirebaseFirestore.DocumentReference; token: string }>> {
+  if (userIds.length === 0) return [];
 
-  const creatorName: string = creatorData.displayName || Strings.common.someone;
-  const friendIds: string[] = creatorData.friends || [];
-  if (friendIds.length === 0) return { creatorName, targets: [] };
-
-  const friendDocs = await Promise.all(
-    friendIds.map((uid) => db.collection("users").doc(uid).get())
+  const userDocs = await Promise.all(
+    userIds.map((uid) => db.collection("users").doc(uid).get())
   );
 
-  const targets = friendDocs
+  return userDocs
     .map((doc) => ({ ref: doc.ref, token: doc.data()?.fcmToken as string | undefined }))
     .filter((t): t is { ref: FirebaseFirestore.DocumentReference; token: string } =>
       typeof t.token === "string" && t.token.length > 0
     );
-
-  return { creatorName, targets };
 }
 
 /**
@@ -119,8 +110,12 @@ export const notifyFriendsOnEventCreate = onDocumentCreated(
     if (!snap) return;
 
     const data = snap.data();
-    const { creatorName, targets } = await getFriendsTargets(data.creatorId);
+    const recipientIds: string[] = data.recipientIds || [];
+    const targets = await getTokenTargets(recipientIds);
     if (targets.length === 0) return;
+
+    const creatorDoc = await db.collection("users").doc(data.creatorId).get();
+    const creatorName: string = creatorDoc.data()?.displayName || Strings.common.someone;
 
     const activity: string = data.activity;
     const emoji: string | undefined = data.emoji;
