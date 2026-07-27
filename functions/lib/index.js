@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.notifyOnFriendRequestAccept = exports.notifyOnFriendRequestCreate = exports.notifyFriendsOnEventUpdate = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
+exports.notifyOnFriendRequestAccept = exports.notifyOnFriendRequestCreate = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
 const admin = require("firebase-admin");
 const functions = require("firebase-functions/v2");
 const firestore_1 = require("firebase-functions/v2/firestore");
@@ -97,81 +97,6 @@ exports.notifyFriendsOnEventCreate = (0, firestore_1.onDocumentCreated)("events/
         apns: { payload: { aps: { sound: "default" } } },
         data: { eventId: event.params.eventId, type: "event_created" },
     }, "event_created");
-});
-const DEBOUNCE_COLLECTION = "eventNotifyDebounce";
-const DEBOUNCE_MS = 10000;
-// Handles two cases on event update:
-// 1. isActive flips false→true (scheduled event starting) → "starting now" notification, sent immediately
-// 2. Content fields change (edit) → "updated" notification, debounced 10 s to coalesce rapid taps
-// Live location updates (locationCoordinate) are intentionally excluded.
-exports.notifyFriendsOnEventUpdate = (0, firestore_1.onDocumentUpdated)({ document: "events/{eventId}", timeoutSeconds: 30 }, async (event) => {
-    var _a, _b, _c, _d, _e;
-    const before = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before.data();
-    const after = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after.data();
-    if (!before || !after)
-        return;
-    const eventId = event.params.eventId;
-    const justActivated = before.isActive === false && after.isActive === true;
-    // Event ended (manually or by expiry) — clear debounce and notify friends
-    if (before.isActive === true && after.isActive === false) {
-        await db.collection(DEBOUNCE_COLLECTION).doc(eventId).delete().catch(() => { });
-        const { creatorName, targets } = await getFriendsTargets(after.creatorId);
-        if (targets.length > 0) {
-            const activity = after.activity;
-            const emoji = after.emoji;
-            const eventLabel = strings_1.Strings.event.body(activity, emoji);
-            await sendMulticast(targets, {
-                notification: { title: strings_1.Strings.event.endedTitle(creatorName), body: eventLabel },
-                apns: { payload: { aps: { sound: "default" } } },
-                data: { eventId, type: "event_ended" },
-            }, "event_ended");
-        }
-        return;
-    }
-    const contentFields = [
-        "activity", "description", "emoji",
-        "locationLabel", "locationType",
-        "durationMinutes", "durationVagueLabel",
-    ];
-    const contentChanged = contentFields.some((f) => before[f] !== after[f]) ||
-        ((_c = before.startTime) === null || _c === void 0 ? void 0 : _c.toMillis()) !== ((_d = after.startTime) === null || _d === void 0 ? void 0 : _d.toMillis());
-    if (!justActivated && !contentChanged)
-        return;
-    const activity = after.activity;
-    const emoji = after.emoji;
-    const eventLabel = strings_1.Strings.event.body(activity, emoji);
-    // Activation fires immediately — there's only ever one false→true transition
-    if (justActivated) {
-        const { creatorName, targets } = await getFriendsTargets(after.creatorId);
-        await sendMulticast(targets, {
-            notification: { title: strings_1.Strings.event.startedTitle(creatorName), body: eventLabel },
-            apns: { payload: { aps: { sound: "default" } } },
-            data: { eventId, type: "event_started" },
-        }, "event_started");
-    }
-    // Edit notifications are debounced: write a token, sleep, then only send if
-    // we are still the latest writer (rapid taps overwrite each other's token).
-    if (contentChanged) {
-        const token = `${Date.now()}-${Math.random()}`;
-        const debounceRef = db.collection(DEBOUNCE_COLLECTION).doc(eventId);
-        await debounceRef.set({ token, creatorId: after.creatorId, activity, emoji: emoji !== null && emoji !== void 0 ? emoji : null });
-        await new Promise((resolve) => setTimeout(resolve, DEBOUNCE_MS));
-        const [debounceSnap, eventSnap] = await Promise.all([
-            debounceRef.get(),
-            db.collection("events").doc(eventId).get(),
-        ]);
-        if (!debounceSnap.exists || ((_e = debounceSnap.data()) === null || _e === void 0 ? void 0 : _e.token) !== token)
-            return; // a later edit won
-        if (!eventSnap.exists)
-            return; // event was deleted while debounce was sleeping
-        await debounceRef.delete();
-        const { creatorName, targets } = await getFriendsTargets(after.creatorId);
-        await sendMulticast(targets, {
-            notification: { title: strings_1.Strings.event.updatedTitle(creatorName), body: eventLabel },
-            apns: { payload: { aps: { sound: "default" } } },
-            data: { eventId, type: "event_updated" },
-        }, "event_updated");
-    }
 });
 // Notifies a user when they receive a new friend request
 exports.notifyOnFriendRequestCreate = (0, firestore_1.onDocumentCreated)("friendRequests/{requestId}", async (event) => {

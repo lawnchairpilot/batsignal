@@ -9,14 +9,14 @@ struct AddFriendView: View {
     @EnvironmentObject var authService: AuthService
     @Environment(\.dismiss) private var dismiss
 
-    @State private var selectedTab: AddFriendTab = .search
+    @State private var selectedTab: AddFriendTab = .contacts
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 Picker("", selection: $selectedTab) {
-                    Text(Strings.Friends.search).tag(AddFriendTab.search)
                     Text(Strings.Friends.contacts).tag(AddFriendTab.contacts)
+                    Text(Strings.Friends.search).tag(AddFriendTab.search)
                 }
                 .pickerStyle(.segmented)
                 .padding()
@@ -39,6 +39,11 @@ struct AddFriendView: View {
         .onChange(of: selectedTab) { _, tab in
             if tab == .contacts {
                 Task { await viewModel.loadContactMatches(currentUserId: authService.currentUser?.id) }
+            }
+        }
+        .task {
+            if selectedTab == .contacts {
+                await viewModel.loadContactMatches(currentUserId: authService.currentUser?.id)
             }
         }
     }

@@ -9,9 +9,6 @@ exports.Strings = {
     },
     event: {
         createdTitle: (creatorName) => `${creatorName} sent a signal`,
-        endedTitle: (creatorName) => `${creatorName} ended their signal`,
-        startedTitle: (creatorName) => `${creatorName} is starting now`,
-        updatedTitle: (creatorName) => `${creatorName} updated their signal`,
         body: (activity, emoji) => (emoji ? `${emoji} ${activity}` : activity),
     },
     friends: {

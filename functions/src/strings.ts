@@ -8,9 +8,6 @@ export const Strings = {
 
   event: {
     createdTitle: (creatorName: string) => `${creatorName} sent a signal`,
-    endedTitle: (creatorName: string) => `${creatorName} ended their signal`,
-    startedTitle: (creatorName: string) => `${creatorName} is starting now`,
-    updatedTitle: (creatorName: string) => `${creatorName} updated their signal`,
     body: (activity: string, emoji?: string) => (emoji ? `${emoji} ${activity}` : activity),
   },
 
