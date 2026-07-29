@@ -133,6 +133,48 @@ export const notifyFriendsOnEventCreate = onDocumentCreated(
   }
 );
 
+// Notifies the host when a friend joins their event
+export const notifyHostOnEventJoin = onDocumentUpdated(
+  "events/{eventId}",
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!before || !after) return;
+
+    const beforeJoined: string[] = before.joinedUserIds || [];
+    const afterJoined: string[] = after.joinedUserIds || [];
+    const newJoinerIds = afterJoined.filter(
+      (id) => !beforeJoined.includes(id) && id !== after.creatorId
+    );
+    if (newJoinerIds.length === 0) return;
+
+    const hostDoc = await db.collection("users").doc(after.creatorId).get();
+    const hostToken = hostDoc.data()?.fcmToken as string | undefined;
+    if (!hostToken) return;
+
+    const joinerDocs = await Promise.all(
+      newJoinerIds.map((id) => db.collection("users").doc(id).get())
+    );
+
+    for (const joinerDoc of joinerDocs) {
+      const joinerName: string = joinerDoc.data()?.displayName || Strings.common.someone;
+
+      await sendMulticast(
+        [{ ref: hostDoc.ref, token: hostToken }],
+        {
+          notification: {
+            title: Strings.event.joinedTitle(joinerName),
+            body: Strings.event.joinedBody(joinerName, after.activity),
+          },
+          apns: { payload: { aps: { sound: "default" } } },
+          data: { eventId: event.params.eventId, type: "event_joined" },
+        },
+        "event_joined"
+      );
+    }
+  }
+);
+
 // Notifies a user when they receive a new friend request
 export const notifyOnFriendRequestCreate = onDocumentCreated(
   "friendRequests/{requestId}",

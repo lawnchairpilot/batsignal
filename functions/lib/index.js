@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.notifyOnFriendRequestAccept = exports.notifyOnFriendRequestCreate = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
+exports.notifyOnFriendRequestAccept = exports.notifyOnFriendRequestCreate = exports.notifyHostOnEventJoin = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
 const admin = require("firebase-admin");
 const functions = require("firebase-functions/v2");
 const firestore_1 = require("firebase-functions/v2/firestore");
@@ -94,6 +94,35 @@ exports.notifyFriendsOnEventCreate = (0, firestore_1.onDocumentCreated)("events/
         apns: { payload: { aps: { sound: "default" } } },
         data: { eventId: event.params.eventId, type: "event_created" },
     }, "event_created");
+});
+// Notifies the host when a friend joins their event
+exports.notifyHostOnEventJoin = (0, firestore_1.onDocumentUpdated)("events/{eventId}", async (event) => {
+    var _a, _b, _c, _d;
+    const before = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before.data();
+    const after = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after.data();
+    if (!before || !after)
+        return;
+    const beforeJoined = before.joinedUserIds || [];
+    const afterJoined = after.joinedUserIds || [];
+    const newJoinerIds = afterJoined.filter((id) => !beforeJoined.includes(id) && id !== after.creatorId);
+    if (newJoinerIds.length === 0)
+        return;
+    const hostDoc = await db.collection("users").doc(after.creatorId).get();
+    const hostToken = (_c = hostDoc.data()) === null || _c === void 0 ? void 0 : _c.fcmToken;
+    if (!hostToken)
+        return;
+    const joinerDocs = await Promise.all(newJoinerIds.map((id) => db.collection("users").doc(id).get()));
+    for (const joinerDoc of joinerDocs) {
+        const joinerName = ((_d = joinerDoc.data()) === null || _d === void 0 ? void 0 : _d.displayName) || strings_1.Strings.common.someone;
+        await sendMulticast([{ ref: hostDoc.ref, token: hostToken }], {
+            notification: {
+                title: strings_1.Strings.event.joinedTitle(joinerName),
+                body: strings_1.Strings.event.joinedBody(joinerName, after.activity),
+            },
+            apns: { payload: { aps: { sound: "default" } } },
+            data: { eventId: event.params.eventId, type: "event_joined" },
+        }, "event_joined");
+    }
 });
 // Notifies a user when they receive a new friend request
 exports.notifyOnFriendRequestCreate = (0, firestore_1.onDocumentCreated)("friendRequests/{requestId}", async (event) => {

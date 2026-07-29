@@ -10,6 +10,8 @@ exports.Strings = {
     event: {
         createdTitle: (creatorName) => `${creatorName} sent a signal`,
         body: (activity, emoji) => (emoji ? `${emoji} ${activity}` : activity),
+        joinedTitle: (joinerName) => `${joinerName} is in`,
+        joinedBody: (joinerName, activity) => `${joinerName} joined ${activity}`,
     },
     friends: {
         requestTitle: "New friend request",

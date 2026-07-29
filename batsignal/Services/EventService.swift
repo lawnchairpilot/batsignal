@@ -143,6 +143,20 @@ class EventService: ObservableObject {
         ])
     }
 
+    func joinEvent(id: String) async throws {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        try await db.collection("events").document(id).updateData([
+            "joinedUserIds": FieldValue.arrayUnion([uid])
+        ])
+    }
+
+    func leaveEvent(id: String) async throws {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        try await db.collection("events").document(id).updateData([
+            "joinedUserIds": FieldValue.arrayRemove([uid])
+        ])
+    }
+
     // MARK: - Real-time listener
 
     func listenToEvent(id: String, onChange: @escaping (Event?) -> Void) -> ListenerRegistration {

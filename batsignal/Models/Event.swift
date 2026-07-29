@@ -24,6 +24,7 @@ struct Event: Identifiable, Codable {
     var isActive: Bool
     var createdAt: Timestamp
     var recipientIds: [String]
+    var joinedUserIds: [String]?
 
     // MARK: - Duration display
 

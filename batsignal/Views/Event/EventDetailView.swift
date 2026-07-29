@@ -2,6 +2,7 @@ import SwiftUI
 import MapKit
 import FirebaseFirestore
 import FirebaseCore
+import FirebaseAuth
 internal import FirebaseFirestoreInternal
 
 // Allows CLLocationCoordinate2D to be observed with .onChange(of:)
@@ -18,6 +19,30 @@ struct EventDetailView: View {
 
     @State private var liveCoordinate: CLLocationCoordinate2D?
     @State private var liveListener: ListenerRegistration?
+    @State private var joinedUserIds: [String]
+    @State private var joinedUsers: [User] = []
+    @State private var isJoining = false
+    @State private var isAttendeeListExpanded = false
+
+    init(event: Event, creatorName: String? = nil, creatorPhotoURL: String? = nil) {
+        self.event = event
+        self.creatorName = creatorName
+        self.creatorPhotoURL = creatorPhotoURL
+        self._joinedUserIds = State(initialValue: event.joinedUserIds ?? [])
+    }
+
+    private var currentUserId: String? {
+        Auth.auth().currentUser?.uid
+    }
+
+    private var isJoined: Bool {
+        guard let uid = currentUserId else { return false }
+        return joinedUserIds.contains(uid)
+    }
+
+    private var isOwnEvent: Bool {
+        currentUserId != nil && event.creatorId == currentUserId
+    }
 
     private var displayCoordinate: CLLocationCoordinate2D? {
         if let live = liveCoordinate { return live }
@@ -46,6 +71,69 @@ struct EventDetailView: View {
                     Text(event.activity).font(.title.bold())
                     if let desc = event.description {
                         Text(desc).foregroundColor(.secondary)
+                    }
+                }
+
+                if !isOwnEvent {
+                    Button(action: toggleJoin) {
+                        HStack {
+                            Image(systemName: isJoined ? "checkmark.circle.fill" : "person.badge.plus")
+                            Text(isJoined ? Strings.Event.joined : Strings.Event.join)
+                        }
+                        .font(.body.bold())
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(isJoined ? Color.accentColor.opacity(0.15) : Color.accentColor)
+                        .foregroundColor(isJoined ? .accentColor : .white)
+                        .cornerRadius(14)
+                    }
+                    .disabled(isJoining)
+                }
+
+                if !joinedUsers.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        if isAttendeeListExpanded {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(alignment: .top, spacing: 16) {
+                                    ForEach(joinedUsers) { user in
+                                        VStack(spacing: 6) {
+                                            EventIconView(photoURL: user.profilePhotoURL, label: initials(for: user.displayName), size: 64)
+                                            Text(user.displayName)
+                                                .font(.caption)
+                                                .foregroundColor(.primary)
+                                                .lineLimit(1)
+                                                .frame(width: 72)
+                                        }
+                                    }
+                                }
+                                .padding(.vertical, 2)
+                            }
+                        } else {
+                            HStack(spacing: -8) {
+                                ForEach(joinedUsers.prefix(6)) { user in
+                                    EventIconView(photoURL: user.profilePhotoURL, label: initials(for: user.displayName), size: 28)
+                                        .overlay(Circle().stroke(Color(.systemBackground), lineWidth: 2))
+                                }
+                                if joinedUsers.count > 6 {
+                                    Text("+\(joinedUsers.count - 6)")
+                                        .font(.caption.bold())
+                                        .foregroundStyle(.white)
+                                        .frame(width: 28, height: 28)
+                                        .background(Color(.systemGray3))
+                                        .clipShape(Circle())
+                                        .overlay(Circle().stroke(Color(.systemBackground), lineWidth: 2))
+                                }
+                            }
+                        }
+                        Text(Strings.Event.goingCount(joinedUsers.count))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            isAttendeeListExpanded.toggle()
+                        }
                     }
                 }
 
@@ -107,20 +195,75 @@ struct EventDetailView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            guard event.locationType == .live, let eventId = event.id else { return }
+            Task { await loadJoinedUsers() }
+            guard let eventId = event.id else { return }
             liveListener = EventService().listenToEvent(id: eventId) { updatedEvent in
                 Task { @MainActor in
-                    guard let geoPoint = updatedEvent?.locationCoordinate else { return }
-                    liveCoordinate = CLLocationCoordinate2D(
-                        latitude: geoPoint.latitude,
-                        longitude: geoPoint.longitude
-                    )
+                    guard let updatedEvent else { return }
+                    if event.locationType == .live, let geoPoint = updatedEvent.locationCoordinate {
+                        liveCoordinate = CLLocationCoordinate2D(
+                            latitude: geoPoint.latitude,
+                            longitude: geoPoint.longitude
+                        )
+                    }
+                    let newJoinedIds = updatedEvent.joinedUserIds ?? []
+                    if Set(newJoinedIds) != Set(joinedUserIds) {
+                        joinedUserIds = newJoinedIds
+                        await loadJoinedUsers()
+                    }
                 }
             }
         }
         .onDisappear {
             liveListener?.remove()
             liveListener = nil
+        }
+    }
+
+    private func initials(for name: String) -> String? {
+        let initials = name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
+        return initials.isEmpty ? nil : initials.uppercased()
+    }
+
+    private func loadJoinedUsers() async {
+        guard let users = try? await FriendService().fetchFriends(ids: joinedUserIds) else { return }
+        await MainActor.run { joinedUsers = users }
+    }
+
+    private func toggleJoin() {
+        guard let eventId = event.id, let uid = currentUserId else { return }
+        let wasJoined = isJoined
+        isJoining = true
+        if wasJoined {
+            joinedUserIds.removeAll { $0 == uid }
+            joinedUsers.removeAll { $0.id == uid }
+        } else {
+            joinedUserIds.append(uid)
+            if let me = AuthService.shared.currentUser {
+                joinedUsers.append(me)
+            }
+        }
+        Task {
+            do {
+                if wasJoined {
+                    try await EventService().leaveEvent(id: eventId)
+                } else {
+                    try await EventService().joinEvent(id: eventId)
+                }
+            } catch {
+                await MainActor.run {
+                    if wasJoined {
+                        joinedUserIds.append(uid)
+                        if let me = AuthService.shared.currentUser {
+                            joinedUsers.append(me)
+                        }
+                    } else {
+                        joinedUserIds.removeAll { $0 == uid }
+                        joinedUsers.removeAll { $0.id == uid }
+                    }
+                }
+            }
+            await MainActor.run { isJoining = false }
         }
     }
 

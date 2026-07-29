@@ -43,6 +43,12 @@ extension Strings {
         static let waitingForLocation = "Waiting for location…"
         static let live = "LIVE"
         static let openInMaps = "Open in Maps"
+        static let join = "Join"
+        static let joined = "Joined"
+
+        static func goingCount(_ count: Int) -> String {
+            count == 1 ? "1 going" : "\(count) going"
+        }
 
         // Location picker
         static let pickLocationTitle = "Pick a Location"
