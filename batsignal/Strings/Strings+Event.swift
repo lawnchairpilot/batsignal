@@ -43,12 +43,23 @@ extension Strings {
         static let waitingForLocation = "Waiting for location…"
         static let live = "LIVE"
         static let openInMaps = "Open in Maps"
+        static let eventEnded = "Event ended"
+
+        static func timeLeft(_ duration: String) -> String {
+            "Time left to bool: \(duration)"
+        }
         static let join = "Join"
         static let joined = "Joined"
 
         static func goingCount(_ count: Int) -> String {
             count == 1 ? "1 going" : "\(count) going"
         }
+
+        // Comments
+        static let commentsSection = "Comments"
+        static let commentsToggleLabel = "Enable Comments"
+        static let commentPlaceholder = "Add a comment..."
+        static let noComments = "No comments yet"
 
         // Location picker
         static let pickLocationTitle = "Pick a Location"

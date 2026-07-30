@@ -263,6 +263,10 @@ struct UpcomingEventDetailView: View {
                     }
                 }
 
+                Section {
+                    Toggle(Strings.Event.commentsToggleLabel, isOn: $editViewModel.commentsEnabled)
+                }
+
                 if let error = editViewModel.errorMessage {
                     Section {
                         Text(error).foregroundColor(.red).font(.caption)
@@ -419,6 +423,10 @@ struct ActiveEventDetailView: View {
                             }
                         }
                     }
+                }
+
+                Section {
+                    Toggle(Strings.Event.commentsToggleLabel, isOn: $editViewModel.commentsEnabled)
                 }
 
                 if let error = editViewModel.errorMessage {

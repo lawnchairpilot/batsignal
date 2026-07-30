@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import MapKit
 import FirebaseFirestore
 import FirebaseCore
@@ -23,6 +24,9 @@ struct EventDetailView: View {
     @State private var joinedUsers: [User] = []
     @State private var isJoining = false
     @State private var isAttendeeListExpanded = false
+    @State private var now = Date()
+
+    private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     init(event: Event, creatorName: String? = nil, creatorPhotoURL: String? = nil) {
         self.event = event
@@ -74,7 +78,48 @@ struct EventDetailView: View {
                     }
                 }
 
+                Divider()
+
+                // Time
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(timeLeftLabel)
+                        .font(.body)
+                }
+
+                // Location
+                VStack(alignment: .leading, spacing: 8) {
+                    // Label(Strings.Event.locationLabel, systemImage: locationIcon)
+                    //     .font(.subheadline).foregroundColor(.secondary)
+
+                    // if let label = event.locationLabel {
+                    //     Text(label).font(.body)
+                    // }
+
+                    if let coordinate = displayCoordinate {
+                        MapThumbnailView(
+                            coordinate: coordinate,
+                            annotationLabel: annotationLabel,
+                            annotationPhotoURL: creatorPhotoURL,
+                            isLive: event.locationType == .live,
+                            eventId: event.id
+                        )
+                        .frame(height: 180)
+                        .cornerRadius(12)
+                        .clipped()
+                    } else if event.locationType == .live {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text(Strings.Event.waitingForLocation)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+
                 if !isOwnEvent {
+
                     Button(action: toggleJoin) {
                         HStack {
                             Image(systemName: isJoined ? "checkmark.circle.fill" : "person.badge.plus")
@@ -137,63 +182,15 @@ struct EventDetailView: View {
                     }
                 }
 
-                Divider()
-
-                // Time
-                VStack(alignment: .leading, spacing: 4) {
-                    Label(Strings.Event.timeLabel, systemImage: "clock")
-                        .font(.subheadline).foregroundColor(.secondary)
-                    Text(startTimeLabel)
-                        .font(.body)
-                    if !event.durationLabel.isEmpty {
-                        Text(event.durationLabel)
-                            .font(.body).foregroundColor(.secondary)
-                    }
-                }
-
-                Divider()
-
-                // Location
-                VStack(alignment: .leading, spacing: 8) {
-                    Label(Strings.Event.locationLabel, systemImage: locationIcon)
-                        .font(.subheadline).foregroundColor(.secondary)
-
-                    if let label = event.locationLabel {
-                        Text(label).font(.body)
-                    }
-
-                    if let coordinate = displayCoordinate {
-                        MapThumbnailView(
-                            coordinate: coordinate,
-                            annotationLabel: annotationLabel,
-                            annotationPhotoURL: creatorPhotoURL,
-                            isLive: event.locationType == .live,
-                            eventId: event.id
-                        )
-                        .frame(height: 180)
-                        .cornerRadius(12)
-                        .clipped()
-                    } else if event.locationType == .live {
-                        HStack(spacing: 8) {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                            Text(Strings.Event.waitingForLocation)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-
-                    if event.locationType == .live {
-                        Label(Strings.Event.liveLocation, systemImage: "location.fill")
-                            .font(.caption)
-                            .foregroundColor(.green)
-                    }
+                if event.commentsAllowed, let eventId = event.id {
+                    Divider()
+                    CommentsSectionView(eventId: eventId)
                 }
             }
             .padding()
         }
         .navigationBarTitleDisplayMode(.inline)
+        .onReceive(timer) { now = $0 }
         .onAppear {
             Task { await loadJoinedUsers() }
             guard let eventId = event.id else { return }
@@ -265,6 +262,18 @@ struct EventDetailView: View {
             }
             await MainActor.run { isJoining = false }
         }
+    }
+
+    private var timeLeftLabel: String {
+        guard let endTime = event.endTime?.dateValue() else { return startTimeLabel }
+        let remaining = endTime.timeIntervalSince(now)
+        guard remaining > 0 else { return Strings.Event.eventEnded }
+
+        let totalMinutes = Int(remaining / 60)
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        let duration = hours > 0 ? "\(hours)h\(String(format: "%02d", minutes))m" : "\(minutes)m"
+        return Strings.Event.timeLeft(duration)
     }
 
     private var startTimeLabel: String {

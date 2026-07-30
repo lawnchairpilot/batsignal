@@ -16,6 +16,7 @@ class EditActiveEventViewModel: ObservableObject {
     @Published var locationType: LocationType
     @Published var locationLabel: String
     @Published var fixedCoordinate: CLLocationCoordinate2D?
+    @Published var commentsEnabled: Bool
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var didSave = false
@@ -30,6 +31,7 @@ class EditActiveEventViewModel: ObservableObject {
         self.description = event.description ?? ""
         self.locationType = event.locationType
         self.locationLabel = event.locationLabel ?? ""
+        self.commentsEnabled = event.commentsAllowed
 
         if let minutes = event.durationMinutes {
             self.selectedDurationMinutes = minutes
@@ -80,7 +82,8 @@ class EditActiveEventViewModel: ObservableObject {
                 locationType: locationType,
                 locationLabel: locationLabel.isEmpty ? nil : locationLabel,
                 locationCoordinate: coordinate,
-                isActive: true
+                isActive: true,
+                commentsEnabled: commentsEnabled
             )
             didSave = true
         } catch {

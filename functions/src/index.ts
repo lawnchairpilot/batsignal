@@ -175,6 +175,46 @@ export const notifyHostOnEventJoin = onDocumentUpdated(
   }
 );
 
+// Notifies the host when someone comments on their event
+export const notifyHostOnCommentCreate = onDocumentCreated(
+  "events/{eventId}/comments/{commentId}",
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const comment = snap.data();
+
+    const eventDoc = await db.collection("events").doc(event.params.eventId).get();
+    const eventData = eventDoc.data();
+    if (!eventData) return;
+
+    // The host doesn't need to be notified about their own comment
+    if (comment.authorId === eventData.creatorId) return;
+
+    const hostDoc = await db.collection("users").doc(eventData.creatorId).get();
+    const hostToken = hostDoc.data()?.fcmToken as string | undefined;
+    if (!hostToken) return;
+
+    const commenterName: string = comment.authorName || Strings.common.someone;
+
+    await sendMulticast(
+      [{ ref: hostDoc.ref, token: hostToken }],
+      {
+        notification: {
+          title: Strings.event.commentTitle(commenterName),
+          body: Strings.event.commentBody(comment.text),
+        },
+        apns: { payload: { aps: { sound: "default" } } },
+        data: {
+          eventId: event.params.eventId,
+          commentId: event.params.commentId,
+          type: "event_comment",
+        },
+      },
+      "event_comment"
+    );
+  }
+);
+
 // Notifies a user when they receive a new friend request
 export const notifyOnFriendRequestCreate = onDocumentCreated(
   "friendRequests/{requestId}",

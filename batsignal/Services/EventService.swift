@@ -110,13 +110,15 @@ class EventService: ObservableObject {
         locationType: LocationType,
         locationLabel: String?,
         locationCoordinate: GeoPoint?,
-        isActive: Bool
+        isActive: Bool,
+        commentsEnabled: Bool
     ) async throws {
         var data: [String: Any] = [
             "activity": activity,
             "startTime": startTime,
             "locationType": locationType.rawValue,
-            "isActive": isActive
+            "isActive": isActive,
+            "commentsEnabled": commentsEnabled
         ]
         data["emoji"]              = emoji              != nil ? emoji!              : FieldValue.delete()
         data["description"]        = description        != nil ? description!        : FieldValue.delete()
@@ -163,5 +165,34 @@ class EventService: ObservableObject {
         db.collection("events").document(id).addSnapshotListener { snapshot, _ in
             onChange(try? snapshot?.data(as: Event.self))
         }
+    }
+
+    // MARK: - Comments
+
+    func postComment(eventId: String, text: String) async throws {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        let trimmed = String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(Comment.characterLimit))
+        guard !trimmed.isEmpty else { return }
+
+        let comment = Comment(
+            authorId: uid,
+            authorName: AuthService.shared.currentUser?.displayName ?? "",
+            authorPhotoURL: AuthService.shared.currentUser?.profilePhotoURL,
+            text: trimmed,
+            createdAt: Timestamp(date: Date())
+        )
+        _ = try db.collection("events").document(eventId).collection("comments").addDocument(from: comment)
+    }
+
+    func listenToComments(eventId: String, onChange: @escaping ([Comment]) -> Void) -> ListenerRegistration {
+        db.collection("events").document(eventId).collection("comments")
+            .order(by: "createdAt")
+            .addSnapshotListener { snapshot, error in
+                if let error = error {
+                    print("listenToComments error: \(error.localizedDescription)")
+                    return
+                }
+                onChange(snapshot?.documents.compactMap { try? $0.data(as: Comment.self) } ?? [])
+            }
     }
 }

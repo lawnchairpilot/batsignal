@@ -11,6 +11,8 @@ export const Strings = {
     body: (activity: string, emoji?: string) => (emoji ? `${emoji} ${activity}` : activity),
     joinedTitle: (joinerName: string) => `${joinerName} is in`,
     joinedBody: (joinerName: string, activity: string) => `${joinerName} joined ${activity}`,
+    commentTitle: (commenterName: string) => `${commenterName} commented`,
+    commentBody: (text: string) => text,
   },
 
   friends: {

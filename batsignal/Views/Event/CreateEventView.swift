@@ -90,6 +90,10 @@ struct CreateEventView: View {
                     whoPicker
                 }
 
+                Section {
+                    Toggle(Strings.Event.commentsToggleLabel, isOn: $viewModel.commentsEnabled)
+                }
+
                 if let error = viewModel.errorMessage {
                     Section {
                         Text(error).foregroundColor(.red).font(.caption)

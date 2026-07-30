@@ -17,6 +17,7 @@ class EditUpcomingEventViewModel: ObservableObject {
     @Published var locationType: LocationType
     @Published var locationLabel: String
     @Published var fixedCoordinate: CLLocationCoordinate2D?
+    @Published var commentsEnabled: Bool
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var didSave = false
@@ -30,6 +31,7 @@ class EditUpcomingEventViewModel: ObservableObject {
         self.description = event.description ?? ""
         self.locationType = event.locationType
         self.locationLabel = event.locationLabel ?? ""
+        self.commentsEnabled = event.commentsAllowed
 
         let startDate = event.startTime.dateValue()
         self.selectedDay = Calendar.current.isDateInTomorrow(startDate) ? .tomorrow : .today
@@ -102,7 +104,8 @@ class EditUpcomingEventViewModel: ObservableObject {
                 locationType: locationType,
                 locationLabel: locationLabel.isEmpty ? nil : locationLabel,
                 locationCoordinate: coordinate,
-                isActive: isActive
+                isActive: isActive,
+                commentsEnabled: commentsEnabled
             )
             didSave = true
         } catch {

@@ -25,6 +25,7 @@ struct Event: Identifiable, Codable {
     var createdAt: Timestamp
     var recipientIds: [String]
     var joinedUserIds: [String]?
+    var commentsEnabled: Bool?
 
     // MARK: - Duration display
 
@@ -69,5 +70,10 @@ struct Event: Identifiable, Codable {
 
     var isVisible: Bool {
         isActive && !isExpired
+    }
+
+    // Missing field on older documents defaults to enabled
+    var commentsAllowed: Bool {
+        commentsEnabled ?? true
     }
 }

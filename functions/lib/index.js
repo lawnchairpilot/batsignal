@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.notifyOnFriendRequestAccept = exports.notifyOnFriendRequestCreate = exports.notifyHostOnEventJoin = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
+exports.notifyOnFriendRequestAccept = exports.notifyOnFriendRequestCreate = exports.notifyHostOnCommentCreate = exports.notifyHostOnEventJoin = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
 const admin = require("firebase-admin");
 const functions = require("firebase-functions/v2");
 const firestore_1 = require("firebase-functions/v2/firestore");
@@ -123,6 +123,38 @@ exports.notifyHostOnEventJoin = (0, firestore_1.onDocumentUpdated)("events/{even
             data: { eventId: event.params.eventId, type: "event_joined" },
         }, "event_joined");
     }
+});
+// Notifies the host when someone comments on their event
+exports.notifyHostOnCommentCreate = (0, firestore_1.onDocumentCreated)("events/{eventId}/comments/{commentId}", async (event) => {
+    var _a;
+    const snap = event.data;
+    if (!snap)
+        return;
+    const comment = snap.data();
+    const eventDoc = await db.collection("events").doc(event.params.eventId).get();
+    const eventData = eventDoc.data();
+    if (!eventData)
+        return;
+    // The host doesn't need to be notified about their own comment
+    if (comment.authorId === eventData.creatorId)
+        return;
+    const hostDoc = await db.collection("users").doc(eventData.creatorId).get();
+    const hostToken = (_a = hostDoc.data()) === null || _a === void 0 ? void 0 : _a.fcmToken;
+    if (!hostToken)
+        return;
+    const commenterName = comment.authorName || strings_1.Strings.common.someone;
+    await sendMulticast([{ ref: hostDoc.ref, token: hostToken }], {
+        notification: {
+            title: strings_1.Strings.event.commentTitle(commenterName),
+            body: strings_1.Strings.event.commentBody(comment.text),
+        },
+        apns: { payload: { aps: { sound: "default" } } },
+        data: {
+            eventId: event.params.eventId,
+            commentId: event.params.commentId,
+            type: "event_comment",
+        },
+    }, "event_comment");
 });
 // Notifies a user when they receive a new friend request
 exports.notifyOnFriendRequestCreate = (0, firestore_1.onDocumentCreated)("friendRequests/{requestId}", async (event) => {

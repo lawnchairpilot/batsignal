@@ -27,6 +27,7 @@ class CreateEventViewModel: ObservableObject {
     @Published var locationType: LocationType = .live
     @Published var locationLabel = ""
     @Published var fixedCoordinate: CLLocationCoordinate2D? = nil  // set by map picker
+    @Published var commentsEnabled = true
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var didCreate = false
@@ -114,7 +115,8 @@ class CreateEventViewModel: ObservableObject {
             locationCoordinate: coordinate,
             isActive: isActive,
             createdAt: .init(),
-            recipientIds: recipientIds
+            recipientIds: recipientIds,
+            commentsEnabled: commentsEnabled
         )
 
         do {

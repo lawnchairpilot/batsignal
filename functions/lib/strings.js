@@ -12,6 +12,8 @@ exports.Strings = {
         body: (activity, emoji) => (emoji ? `${emoji} ${activity}` : activity),
         joinedTitle: (joinerName) => `${joinerName} is in`,
         joinedBody: (joinerName, activity) => `${joinerName} joined ${activity}`,
+        commentTitle: (commenterName) => `${commenterName} commented`,
+        commentBody: (text) => text,
     },
     friends: {
         requestTitle: "New friend request",
