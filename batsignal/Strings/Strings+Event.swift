@@ -48,11 +48,11 @@ extension Strings {
         static func timeLeft(_ duration: String) -> String {
             "Time left to bool: \(duration)"
         }
-        static let join = "Join"
-        static let joined = "Joined"
+        static let join = "Join the Bool"
+        static let joined = "Bool Joined"
 
         static func goingCount(_ count: Int) -> String {
-            count == 1 ? "1 going" : "\(count) going"
+            count == 1 ? "1 additional booler" : "\(count) additional boolers"
         }
 
         // Comments

@@ -21,6 +21,10 @@ struct DefaultEmptyStringArray: Codable {
     init(from decoder: Decoder) throws {
         wrappedValue = (try? [String](from: decoder)) ?? []
     }
+
+    func encode(to encoder: Encoder) throws {
+        try wrappedValue.encode(to: encoder)
+    }
 }
 
 extension KeyedDecodingContainer {

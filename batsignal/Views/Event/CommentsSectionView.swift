@@ -15,6 +15,8 @@ struct CommentsSectionView: View {
                 .font(.subheadline)
                 .foregroundColor(.secondary)
 
+            Divider()
+
             if !comments.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(comments) { comment in

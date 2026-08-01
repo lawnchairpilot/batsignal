@@ -272,7 +272,7 @@ struct EventDetailView: View {
         let totalMinutes = Int(remaining / 60)
         let hours = totalMinutes / 60
         let minutes = totalMinutes % 60
-        let duration = hours > 0 ? "\(hours)h\(String(format: "%02d", minutes))m" : "\(minutes)m"
+        let duration = hours > 0 ? "\(hours)h \(String(format: "%02d", minutes))m" : "\(minutes)m"
         return Strings.Event.timeLeft(duration)
     }
 
