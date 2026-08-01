@@ -8,6 +8,27 @@ enum LocationType: String, Codable {
     case live
 }
 
+// Defaults to [] when the key is missing, so events written before recipientIds
+// existed still decode instead of silently vanishing (and leaving activeEventId stuck).
+@propertyWrapper
+struct DefaultEmptyStringArray: Codable {
+    var wrappedValue: [String]
+
+    init(wrappedValue: [String] = []) {
+        self.wrappedValue = wrappedValue
+    }
+
+    init(from decoder: Decoder) throws {
+        wrappedValue = (try? [String](from: decoder)) ?? []
+    }
+}
+
+extension KeyedDecodingContainer {
+    func decode(_ type: DefaultEmptyStringArray.Type, forKey key: Key) throws -> DefaultEmptyStringArray {
+        try decodeIfPresent(type, forKey: key) ?? DefaultEmptyStringArray()
+    }
+}
+
 struct Event: Identifiable, Codable {
     @DocumentID var id: String?
     var creatorId: String
@@ -23,9 +44,47 @@ struct Event: Identifiable, Codable {
     var locationCoordinate: GeoPoint?   // fixed coordinate or live-updated
     var isActive: Bool
     var createdAt: Timestamp
-    var recipientIds: [String]
+    @DefaultEmptyStringArray var recipientIds: [String]
     var joinedUserIds: [String]?
     var commentsEnabled: Bool?
+
+    init(
+        id: String? = nil,
+        creatorId: String,
+        activity: String,
+        emoji: String?,
+        description: String?,
+        startTime: Timestamp,
+        durationMinutes: Int?,
+        durationVagueLabel: String?,
+        endTime: Timestamp?,
+        locationType: LocationType,
+        locationLabel: String?,
+        locationCoordinate: GeoPoint?,
+        isActive: Bool,
+        createdAt: Timestamp,
+        recipientIds: [String],
+        joinedUserIds: [String]? = nil,
+        commentsEnabled: Bool? = nil
+    ) {
+        self.id = id
+        self.creatorId = creatorId
+        self.activity = activity
+        self.emoji = emoji
+        self.description = description
+        self.startTime = startTime
+        self.durationMinutes = durationMinutes
+        self.durationVagueLabel = durationVagueLabel
+        self.endTime = endTime
+        self.locationType = locationType
+        self.locationLabel = locationLabel
+        self.locationCoordinate = locationCoordinate
+        self.isActive = isActive
+        self.createdAt = createdAt
+        self.recipientIds = recipientIds
+        self.joinedUserIds = joinedUserIds
+        self.commentsEnabled = commentsEnabled
+    }
 
     // MARK: - Duration display
 
