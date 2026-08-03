@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import FirebaseCore
+import PhotosUI
 
 struct MyActiveEventCard: View {
     @ObservedObject var viewModel: MyActiveEventViewModel
@@ -227,6 +228,7 @@ struct UpcomingEventDetailView: View {
             Form {
                 Section(Strings.Event.whatAreYouDoingSection) {
                     TextField(Strings.Event.activityFieldLabel, text: $editViewModel.activity)
+                    EventImagePickerRow(imageURL: $editViewModel.imageURL, selectedImage: $editViewModel.selectedImage)
                     TextField(Strings.Event.descriptionPlaceholder, text: $editViewModel.description, axis: .vertical)
                         .lineLimit(3...)
                     Button(action: { showEmojiPicker = true }) {
@@ -365,6 +367,65 @@ struct UpcomingEventDetailView: View {
     }
 }
 
+// MARK: - Shared event image picker row (edit forms)
+
+struct EventImagePickerRow: View {
+    @Binding var imageURL: String?
+    @Binding var selectedImage: UIImage?
+    @State private var selectedPhotoItem: PhotosPickerItem?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Group {
+                if let selectedImage {
+                    Image(uiImage: selectedImage)
+                        .resizable()
+                        .scaledToFill()
+                } else if let imageURL, let url = URL(string: imageURL) {
+                    AsyncImage(url: url) { phase in
+                        if case .success(let image) = phase {
+                            image.resizable().scaledToFill()
+                        } else {
+                            Image(systemName: "photo").foregroundColor(.secondary)
+                        }
+                    }
+                } else {
+                    Image(systemName: "photo")
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(width: 44, height: 44)
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                Text(selectedImage == nil && imageURL == nil ? Strings.Event.addImage : Strings.Event.changeImage)
+                    .foregroundColor(.accentColor)
+            }
+
+            Spacer()
+
+            if selectedImage != nil || imageURL != nil {
+                Button(role: .destructive) {
+                    selectedImage = nil
+                    imageURL = nil
+                    selectedPhotoItem = nil
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.red)
+                }
+            }
+        }
+        .onChange(of: selectedPhotoItem) { _, item in
+            Task {
+                guard let data = try? await item?.loadTransferable(type: Data.self),
+                      let image = UIImage(data: data) else { return }
+                selectedImage = image
+            }
+        }
+    }
+}
+
 // MARK: - Active event detail / edit sheet
 
 struct ActiveEventDetailView: View {
@@ -395,6 +456,7 @@ struct ActiveEventDetailView: View {
             Form {
                 Section(Strings.Event.whatAreYouDoingSection) {
                     TextField(Strings.Event.activityFieldLabel, text: $editViewModel.activity)
+                    EventImagePickerRow(imageURL: $editViewModel.imageURL, selectedImage: $editViewModel.selectedImage)
                     TextField(Strings.Event.descriptionPlaceholder, text: $editViewModel.description, axis: .vertical)
                         .lineLimit(3...)
                     Button(action: { showEmojiPicker = true }) {

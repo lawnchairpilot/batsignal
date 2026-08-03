@@ -26,6 +26,13 @@ extension Strings {
         static let allFriendsLabel = "All Friends"
         static let locationDescriptionPlaceholder = "Describe the location"
         static let pickLocationOnMap = "Pick a location on the map"
+        static let addImage = "Add Image"
+        static let changeImage = "Change Image"
+        static let removeImage = "Remove Image"
+
+        static func imageUploadFailed(_ message: String) -> String {
+            "Image upload failed: \(message)"
+        }
 
         // Titles & actions
         static let newSignalTitle = "New Signal"
@@ -45,9 +52,7 @@ extension Strings {
         static let openInMaps = "Open in Maps"
         static let eventEnded = "Event ended"
 
-        static func timeLeft(_ duration: String) -> String {
-            "Time left to bool: \(duration)"
-        }
+        static let timeLeftCaption = "left to bool"
         static let join = "Join the Bool"
         static let joined = "Bool Joined"
 

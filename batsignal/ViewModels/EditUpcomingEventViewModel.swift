@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import FirebaseFirestore
 import CoreLocation
+import UIKit
 
 @MainActor
 class EditUpcomingEventViewModel: ObservableObject {
@@ -18,6 +19,8 @@ class EditUpcomingEventViewModel: ObservableObject {
     @Published var locationLabel: String
     @Published var fixedCoordinate: CLLocationCoordinate2D?
     @Published var commentsEnabled: Bool
+    @Published var imageURL: String?
+    @Published var selectedImage: UIImage?
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var didSave = false
@@ -32,6 +35,7 @@ class EditUpcomingEventViewModel: ObservableObject {
         self.locationType = event.locationType
         self.locationLabel = event.locationLabel ?? ""
         self.commentsEnabled = event.commentsAllowed
+        self.imageURL = event.imageURL
 
         let startDate = event.startTime.dateValue()
         self.selectedDay = Calendar.current.isDateInTomorrow(startDate) ? .tomorrow : .today
@@ -91,6 +95,17 @@ class EditUpcomingEventViewModel: ObservableObject {
 
         let isActive = startTime <= Date().addingTimeInterval(60)
 
+        var finalImageURL = imageURL
+        if let selectedImage {
+            do {
+                finalImageURL = try await PhotoStorageService().uploadEventImage(selectedImage)
+            } catch {
+                errorMessage = Strings.Event.imageUploadFailed(error.localizedDescription)
+                isLoading = false
+                return
+            }
+        }
+
         do {
             try await eventService.updateEvent(
                 id: eventId,
@@ -105,7 +120,8 @@ class EditUpcomingEventViewModel: ObservableObject {
                 locationLabel: locationLabel.isEmpty ? nil : locationLabel,
                 locationCoordinate: coordinate,
                 isActive: isActive,
-                commentsEnabled: commentsEnabled
+                commentsEnabled: commentsEnabled,
+                imageURL: finalImageURL
             )
             didSave = true
         } catch {

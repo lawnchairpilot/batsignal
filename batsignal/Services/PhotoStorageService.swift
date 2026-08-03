@@ -8,11 +8,24 @@ struct PhotoStorageService {
         guard let uid = Auth.auth().currentUser?.uid else {
             throw URLError(.userAuthenticationRequired)
         }
+        return try await upload(image, to: "profile-photos/\(uid)/profile.jpg")
+    }
+
+    func uploadEventImage(_ image: UIImage) async throws -> String {
+        guard Auth.auth().currentUser != nil else {
+            throw URLError(.userAuthenticationRequired)
+        }
+        return try await upload(image, to: "event-photos/\(UUID().uuidString).jpg")
+    }
+
+    // MARK: - Private
+
+    private func upload(_ image: UIImage, to path: String) async throws -> String {
         guard let data = image.jpegData(compressionQuality: 0.8) else {
             throw URLError(.cannotCreateFile)
         }
 
-        let ref = Storage.storage().reference().child("profile-photos/\(uid)/profile.jpg")
+        let ref = Storage.storage().reference().child(path)
         let metadata = StorageMetadata()
         metadata.contentType = "image/jpeg"
 

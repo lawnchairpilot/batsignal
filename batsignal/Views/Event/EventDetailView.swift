@@ -80,42 +80,54 @@ struct EventDetailView: View {
 
                 Divider()
 
-                // Time
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(timeLeftLabel)
-                        .font(.body)
-                }
+                // Time + Location, side by side
+                HStack(alignment: .top, spacing: 12) {
+                    timeBlock
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
 
-                // Location
-                VStack(alignment: .leading, spacing: 8) {
-                    // Label(Strings.Event.locationLabel, systemImage: locationIcon)
-                    //     .font(.subheadline).foregroundColor(.secondary)
-
-                    // if let label = event.locationLabel {
-                    //     Text(label).font(.body)
-                    // }
-
-                    if let coordinate = displayCoordinate {
-                        MapThumbnailView(
-                            coordinate: coordinate,
-                            annotationLabel: annotationLabel,
-                            annotationPhotoURL: creatorPhotoURL,
-                            isLive: event.locationType == .live,
-                            eventId: event.id
-                        )
-                        .frame(height: 180)
-                        .cornerRadius(12)
-                        .clipped()
-                    } else if event.locationType == .live {
-                        HStack(spacing: 8) {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                            Text(Strings.Event.waitingForLocation)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                    Group {
+                        if let coordinate = displayCoordinate {
+                            MapThumbnailView(
+                                coordinate: coordinate,
+                                annotationLabel: annotationLabel,
+                                annotationPhotoURL: event.imageURL ?? creatorPhotoURL,
+                                isLive: event.locationType == .live,
+                                eventId: event.id
+                            )
+                        } else if event.locationType == .live {
+                            VStack(spacing: 8) {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                Text(Strings.Event.waitingForLocation)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(Color(.secondarySystemBackground))
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    .frame(maxWidth: .infinity)
+                    .cornerRadius(12)
+                    .clipped()
+                }
+                .frame(height: 180)
+
+                if let imageURL = event.imageURL, let url = URL(string: imageURL) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFill()
+                        default:
+                            Color(.secondarySystemBackground)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 200)
+                    .cornerRadius(12)
+                    .clipped()
                 }
 
                 if !isOwnEvent {
@@ -264,16 +276,45 @@ struct EventDetailView: View {
         }
     }
 
-    private var timeLeftLabel: String {
-        guard let endTime = event.endTime?.dateValue() else { return startTimeLabel }
+    private var remainingSeconds: TimeInterval? {
+        guard let endTime = event.endTime?.dateValue() else { return nil }
         let remaining = endTime.timeIntervalSince(now)
-        guard remaining > 0 else { return Strings.Event.eventEnded }
+        return remaining > 0 ? remaining : nil
+    }
 
-        let totalMinutes = Int(remaining / 60)
-        let hours = totalMinutes / 60
-        let minutes = totalMinutes % 60
-        let duration = hours > 0 ? "\(hours)h \(String(format: "%02d", minutes))m" : "\(minutes)m"
-        return Strings.Event.timeLeft(duration)
+    private var remainingHours: Int {
+        Int((remainingSeconds ?? 0) / 3600)
+    }
+
+    private var remainingMinutes: Int {
+        Int((remainingSeconds ?? 0) / 60) % 60
+    }
+
+    @ViewBuilder
+    private var timeBlock: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if event.endTime == nil {
+                Text(Strings.Event.timeLabel)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text(startTimeLabel)
+                    .font(.title2.bold())
+            } else if remainingSeconds == nil {
+                Text(Strings.Event.eventEnded)
+                    .font(.title2.bold())
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    if remainingHours > 0 {
+                        Text("\(remainingHours)h")
+                    }
+                    Text("\(remainingMinutes)m")
+                }
+                .font(.system(size: 52, weight: .bold, design: .rounded))
+                Text(Strings.Event.timeLeftCaption)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
     }
 
     private var startTimeLabel: String {
@@ -334,6 +375,7 @@ struct EventAnnotationView: View {
     var body: some View {
         VStack(spacing: 0) {
             EventIconView(photoURL: photoURL, label: label)
+                .overlay(Circle().stroke(Color.white, lineWidth: 2))
                 .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 2)
             Image(systemName: "triangle.fill")
                 .font(.system(size: 9))

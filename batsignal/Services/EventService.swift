@@ -111,7 +111,8 @@ class EventService: ObservableObject {
         locationLabel: String?,
         locationCoordinate: GeoPoint?,
         isActive: Bool,
-        commentsEnabled: Bool
+        commentsEnabled: Bool,
+        imageURL: String?
     ) async throws {
         var data: [String: Any] = [
             "activity": activity,
@@ -127,6 +128,7 @@ class EventService: ObservableObject {
         data["endTime"]            = endTime            != nil ? endTime!            : FieldValue.delete()
         data["locationLabel"]      = locationLabel      != nil ? locationLabel!      : FieldValue.delete()
         data["locationCoordinate"] = locationCoordinate != nil ? locationCoordinate! : FieldValue.delete()
+        data["imageURL"]           = imageURL           != nil ? imageURL!           : FieldValue.delete()
         try await db.collection("events").document(id).updateData(data)
     }
 

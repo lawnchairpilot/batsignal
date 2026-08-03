@@ -7,12 +7,16 @@ struct EventCardView: View {
     var creatorPhotoURL: String?
     var isSelected: Bool = false
 
+    private var resolvedPhotoURL: String? {
+        event.imageURL ?? creatorPhotoURL
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             if let label = iconLabel {
-                EventIconView(photoURL: creatorPhotoURL, label: label)
-            } else if creatorPhotoURL != nil {
-                EventIconView(photoURL: creatorPhotoURL, label: nil)
+                EventIconView(photoURL: resolvedPhotoURL, label: label)
+            } else if resolvedPhotoURL != nil {
+                EventIconView(photoURL: resolvedPhotoURL, label: nil)
             }
 
             VStack(alignment: .leading, spacing: 8) {

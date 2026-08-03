@@ -3,6 +3,7 @@ import Combine
 import FirebaseFirestore
 import FirebaseAuth
 import CoreLocation
+import UIKit
 
 enum DayOption: String, CaseIterable {
     case today = "Today"
@@ -28,6 +29,7 @@ class CreateEventViewModel: ObservableObject {
     @Published var locationLabel = ""
     @Published var fixedCoordinate: CLLocationCoordinate2D? = nil  // set by map picker
     @Published var commentsEnabled = true
+    @Published var selectedImage: UIImage? = nil
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var didCreate = false
@@ -74,6 +76,17 @@ class CreateEventViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
 
+        var imageURL: String? = nil
+        if let selectedImage {
+            do {
+                imageURL = try await PhotoStorageService().uploadEventImage(selectedImage)
+            } catch {
+                errorMessage = Strings.Event.imageUploadFailed(error.localizedDescription)
+                isLoading = false
+                return
+            }
+        }
+
         let endTime = Event.computeEndTime(
             startTime: startTime,
             durationMinutes: selectedDurationMinutes,
@@ -116,7 +129,8 @@ class CreateEventViewModel: ObservableObject {
             isActive: isActive,
             createdAt: .init(),
             recipientIds: recipientIds,
-            commentsEnabled: commentsEnabled
+            commentsEnabled: commentsEnabled,
+            imageURL: imageURL
         )
 
         do {

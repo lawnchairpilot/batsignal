@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import FirebaseFirestore
 import CoreLocation
+import UIKit
 
 @MainActor
 class EditActiveEventViewModel: ObservableObject {
@@ -17,6 +18,8 @@ class EditActiveEventViewModel: ObservableObject {
     @Published var locationLabel: String
     @Published var fixedCoordinate: CLLocationCoordinate2D?
     @Published var commentsEnabled: Bool
+    @Published var imageURL: String?
+    @Published var selectedImage: UIImage?
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var didSave = false
@@ -32,6 +35,7 @@ class EditActiveEventViewModel: ObservableObject {
         self.locationType = event.locationType
         self.locationLabel = event.locationLabel ?? ""
         self.commentsEnabled = event.commentsAllowed
+        self.imageURL = event.imageURL
 
         if let minutes = event.durationMinutes {
             self.selectedDurationMinutes = minutes
@@ -69,6 +73,17 @@ class EditActiveEventViewModel: ObservableObject {
             coordinate = GeoPoint(latitude: fixed.latitude, longitude: fixed.longitude)
         }
 
+        var finalImageURL = imageURL
+        if let selectedImage {
+            do {
+                finalImageURL = try await PhotoStorageService().uploadEventImage(selectedImage)
+            } catch {
+                errorMessage = Strings.Event.imageUploadFailed(error.localizedDescription)
+                isLoading = false
+                return
+            }
+        }
+
         do {
             try await eventService.updateEvent(
                 id: eventId,
@@ -83,7 +98,8 @@ class EditActiveEventViewModel: ObservableObject {
                 locationLabel: locationLabel.isEmpty ? nil : locationLabel,
                 locationCoordinate: coordinate,
                 isActive: true,
-                commentsEnabled: commentsEnabled
+                commentsEnabled: commentsEnabled,
+                imageURL: finalImageURL
             )
             didSave = true
         } catch {

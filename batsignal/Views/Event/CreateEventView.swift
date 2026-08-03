@@ -1,5 +1,6 @@
 import SwiftUI
 import MapKit
+import PhotosUI
 
 struct CreateEventView: View {
     @StateObject private var viewModel = CreateEventViewModel()
@@ -7,6 +8,7 @@ struct CreateEventView: View {
     @State private var showLocationPicker = false
     @State private var showEmojiPicker = false
     @State private var attemptedSubmitWithoutLocation = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
 
     private var isFixedLocationMissing: Bool {
         viewModel.locationType == .fixed && viewModel.fixedCoordinate == nil
@@ -21,6 +23,7 @@ struct CreateEventView: View {
             Form {
                 Section(Strings.Event.whatAreYouDoingSection) {
                     TextField(Strings.Event.activityPlaceholder, text: $viewModel.activity)
+                    imagePickerRow
                     // TextField("Description (optional)", text: $viewModel.description, axis: .vertical)
                     //     .lineLimit(3...)
                     // Button(action: { showEmojiPicker = true }) {
@@ -139,6 +142,48 @@ struct CreateEventView: View {
         }
         .task {
             await viewModel.loadGroups()
+        }
+        .onChange(of: selectedPhotoItem) { _, item in
+            Task {
+                guard let data = try? await item?.loadTransferable(type: Data.self),
+                      let image = UIImage(data: data) else { return }
+                viewModel.selectedImage = image
+            }
+        }
+    }
+
+    private var imagePickerRow: some View {
+        HStack(spacing: 12) {
+            Group {
+                if let image = viewModel.selectedImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Image(systemName: "photo")
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(width: 44, height: 44)
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                Text(viewModel.selectedImage == nil ? Strings.Event.addImage : Strings.Event.changeImage)
+                    .foregroundColor(.accentColor)
+            }
+
+            Spacer()
+
+            if viewModel.selectedImage != nil {
+                Button(role: .destructive) {
+                    viewModel.selectedImage = nil
+                    selectedPhotoItem = nil
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.red)
+                }
+            }
         }
     }
 

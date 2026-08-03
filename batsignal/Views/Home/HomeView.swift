@@ -167,7 +167,7 @@ struct HomeView: View {
                 id: id,
                 coordinate: coordinate,
                 label: label,
-                creatorPhotoURL: creator?.profilePhotoURL,
+                creatorPhotoURL: event.imageURL ?? creator?.profilePhotoURL,
                 isLive: event.locationType == .live,
                 isActive: isActive,
                 event: event,

@@ -51,6 +51,7 @@ struct Event: Identifiable, Codable {
     @DefaultEmptyStringArray var recipientIds: [String]
     var joinedUserIds: [String]?
     var commentsEnabled: Bool?
+    var imageURL: String?
 
     init(
         id: String? = nil,
@@ -69,7 +70,8 @@ struct Event: Identifiable, Codable {
         createdAt: Timestamp,
         recipientIds: [String],
         joinedUserIds: [String]? = nil,
-        commentsEnabled: Bool? = nil
+        commentsEnabled: Bool? = nil,
+        imageURL: String? = nil
     ) {
         self.id = id
         self.creatorId = creatorId
@@ -88,6 +90,7 @@ struct Event: Identifiable, Codable {
         self.recipientIds = recipientIds
         self.joinedUserIds = joinedUserIds
         self.commentsEnabled = commentsEnabled
+        self.imageURL = imageURL
     }
 
     // MARK: - Duration display
