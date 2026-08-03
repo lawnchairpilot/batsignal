@@ -17,6 +17,7 @@ struct LocationPickerView: View {
     @State private var selectedFeature: MapFeature? = nil
     @State private var droppedPin: CLLocationCoordinate2D? = nil
     @State private var droppedPinName: String = ""
+    @State private var isLocatingCurrentPosition = false
 
     var body: some View {
         NavigationStack {
@@ -28,6 +29,11 @@ struct LocationPickerView: View {
                 if droppedPin != nil {
                     nameField
                 }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                currentLocationButton
+                    .padding(.trailing, 16)
+                    .padding(.bottom, droppedPin != nil ? 76 : 16)
             }
             .navigationTitle(Strings.Event.pickLocationTitle)
             .navigationBarTitleDisplayMode(.inline)
@@ -52,8 +58,13 @@ struct LocationPickerView: View {
                 locationService.requestCurrentLocation()
             }
             .onChange(of: locationService.currentLocation) { _, loc in
-                guard let loc, droppedPin == nil else { return }
-                position = .camera(MapCamera(centerCoordinate: loc.coordinate, distance: 5000))
+                guard let loc else { return }
+                if isLocatingCurrentPosition {
+                    isLocatingCurrentPosition = false
+                    dropPin(at: loc.coordinate, name: Strings.Event.currentLocation)
+                } else if droppedPin == nil {
+                    position = .camera(MapCamera(centerCoordinate: loc.coordinate, distance: 5000))
+                }
             }
         }
     }
@@ -122,6 +133,18 @@ struct LocationPickerView: View {
         .padding(.top, 8)
     }
 
+    private var currentLocationButton: some View {
+        Button(action: useCurrentLocation) {
+            Image(systemName: "location.circle.fill")
+                .font(.system(size: 32))
+                .foregroundColor(.white)
+                .padding(10)
+                .background(Color.accentColor)
+                .clipShape(Circle())
+                .shadow(radius: 3)
+        }
+    }
+
     private var nameField: some View {
         HStack {
             Image(systemName: "pencil").foregroundColor(.secondary)
@@ -185,6 +208,25 @@ struct LocationPickerView: View {
     private func selectCustomPin(coord: CLLocationCoordinate2D) {
         droppedPin = coord
         droppedPinName = ""
+        selectedFeature = nil
+        searchModel.searchText = ""
+        searchModel.results = []
+    }
+
+    private func useCurrentLocation() {
+        if let coord = locationService.currentLocation?.coordinate {
+            dropPin(at: coord, name: Strings.Event.currentLocation)
+        } else {
+            isLocatingCurrentPosition = true
+            locationService.requestPermission()
+            locationService.requestCurrentLocation()
+        }
+    }
+
+    private func dropPin(at coord: CLLocationCoordinate2D, name: String) {
+        droppedPin = coord
+        droppedPinName = name
+        position = .camera(MapCamera(centerCoordinate: coord, distance: 1000))
         selectedFeature = nil
         searchModel.searchText = ""
         searchModel.results = []

@@ -205,12 +205,21 @@ struct UpcomingEventDetailView: View {
     @StateObject private var editViewModel: EditUpcomingEventViewModel
     @State private var showLocationPicker = false
     @State private var showEmojiPicker = false
+    @State private var attemptedSubmitWithoutLocation = false
     @Environment(\.dismiss) private var dismiss
 
     init(event: Event, viewModel: MyActiveEventViewModel) {
         self.event = event
         self.myEventViewModel = viewModel
         self._editViewModel = StateObject(wrappedValue: EditUpcomingEventViewModel(event: event))
+    }
+
+    private var isFixedLocationMissing: Bool {
+        editViewModel.locationType == .fixed && editViewModel.fixedCoordinate == nil
+    }
+
+    private var showLocationError: Bool {
+        attemptedSubmitWithoutLocation && isFixedLocationMissing
     }
 
     var body: some View {
@@ -273,8 +282,9 @@ struct UpcomingEventDetailView: View {
                         Button(action: { showLocationPicker = true }) {
                             HStack {
                                 Image(systemName: "mappin.circle")
+                                    .foregroundColor(showLocationError ? .red : .accentColor)
                                 if editViewModel.locationLabel.isEmpty {
-                                    Text(Strings.Event.pickLocationOnMap).foregroundColor(.secondary)
+                                    Text(Strings.Event.pickLocationOnMap).foregroundColor(showLocationError ? .red : .secondary)
                                 } else {
                                     Text(editViewModel.locationLabel).foregroundColor(.primary)
                                 }
@@ -318,6 +328,10 @@ struct UpcomingEventDetailView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(action: {
+                        guard !isFixedLocationMissing else {
+                            attemptedSubmitWithoutLocation = true
+                            return
+                        }
                         Task {
                             await editViewModel.save()
                             if editViewModel.didSave { dismiss() }
@@ -359,12 +373,21 @@ struct ActiveEventDetailView: View {
     @StateObject private var editViewModel: EditActiveEventViewModel
     @State private var showLocationPicker = false
     @State private var showEmojiPicker = false
+    @State private var attemptedSubmitWithoutLocation = false
     @Environment(\.dismiss) private var dismiss
 
     init(event: Event, viewModel: MyActiveEventViewModel) {
         self.event = event
         self.myEventViewModel = viewModel
         self._editViewModel = StateObject(wrappedValue: EditActiveEventViewModel(event: event))
+    }
+
+    private var isFixedLocationMissing: Bool {
+        editViewModel.locationType == .fixed && editViewModel.fixedCoordinate == nil
+    }
+
+    private var showLocationError: Bool {
+        attemptedSubmitWithoutLocation && isFixedLocationMissing
     }
 
     var body: some View {
@@ -435,8 +458,9 @@ struct ActiveEventDetailView: View {
                         Button(action: { showLocationPicker = true }) {
                             HStack {
                                 Image(systemName: "mappin.circle")
+                                    .foregroundColor(showLocationError ? .red : .accentColor)
                                 if editViewModel.locationLabel.isEmpty {
-                                    Text(Strings.Event.pickLocationOnMap).foregroundColor(.secondary)
+                                    Text(Strings.Event.pickLocationOnMap).foregroundColor(showLocationError ? .red : .secondary)
                                 } else {
                                     Text(editViewModel.locationLabel).foregroundColor(.primary)
                                 }
@@ -480,6 +504,10 @@ struct ActiveEventDetailView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(action: {
+                        guard !isFixedLocationMissing else {
+                            attemptedSubmitWithoutLocation = true
+                            return
+                        }
                         Task {
                             await editViewModel.save()
                             if editViewModel.didSave { dismiss() }

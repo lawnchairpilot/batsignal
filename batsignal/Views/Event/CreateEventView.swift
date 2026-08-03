@@ -6,6 +6,15 @@ struct CreateEventView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showLocationPicker = false
     @State private var showEmojiPicker = false
+    @State private var attemptedSubmitWithoutLocation = false
+
+    private var isFixedLocationMissing: Bool {
+        viewModel.locationType == .fixed && viewModel.fixedCoordinate == nil
+    }
+
+    private var showLocationError: Bool {
+        attemptedSubmitWithoutLocation && isFixedLocationMissing
+    }
 
     var body: some View {
         NavigationStack {
@@ -64,9 +73,10 @@ struct CreateEventView: View {
                         Button(action: { showLocationPicker = true }) {
                             HStack {
                                 Image(systemName: "mappin.circle")
+                                    .foregroundColor(showLocationError ? .red : .accentColor)
                                 if viewModel.locationLabel.isEmpty {
                                     Text(Strings.Event.pickLocationOnMap)
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(showLocationError ? .red : .secondary)
                                 } else {
                                     Text(viewModel.locationLabel)
                                         .foregroundColor(.primary)
@@ -108,6 +118,10 @@ struct CreateEventView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(action: {
+                        guard !isFixedLocationMissing else {
+                            attemptedSubmitWithoutLocation = true
+                            return
+                        }
                         Task {
                             await viewModel.submit()
                             if viewModel.didCreate { dismiss() }

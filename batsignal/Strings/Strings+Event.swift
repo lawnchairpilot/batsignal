@@ -68,6 +68,7 @@ extension Strings {
         static let unknownPlaceName = "Unknown"
         static let droppedPin = "Dropped Pin"
         static let nameLocationPlaceholder = "Name this location (optional)"
+        static let currentLocation = "Current Location"
 
         // Emoji picker
         static let chooseEmojiTitle = "Choose Emoji"
