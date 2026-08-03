@@ -29,6 +29,8 @@ extension Strings {
         static let addImage = "Add Image"
         static let changeImage = "Change Image"
         static let removeImage = "Remove Image"
+        static let takePhoto = "Take Photo"
+        static let chooseFromLibrary = "Choose from Library"
 
         static func imageUploadFailed(_ message: String) -> String {
             "Image upload failed: \(message)"
