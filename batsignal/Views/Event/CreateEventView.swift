@@ -24,25 +24,27 @@ struct CreateEventView: View {
                     EventImagePickerRow(imageURL: .constant(nil), selectedImage: $viewModel.selectedImage)
                     // TextField("Description (optional)", text: $viewModel.description, axis: .vertical)
                     //     .lineLimit(3...)
-                    // Button(action: { showEmojiPicker = true }) {
-                    //     HStack {
-                    //         Text("Symbol")
-                    //             .foregroundColor(.primary)
-                    //         Spacer()
-                    //         if let emoji = viewModel.emoji {
-                    //             Text(emoji).font(.title2)
-                    //         } else {
-                    //             Text("None")
-                    //                 .foregroundColor(.secondary)
-                    //         }
-                    //         Image(systemName: "chevron.right")
-                    //             .font(.caption)
-                    //             .foregroundColor(.secondary)
-                    //     }
-                    // }
-                    // .sheet(isPresented: $showEmojiPicker) {
-                    //     EmojiPickerView(selectedEmoji: $viewModel.emoji)
-                    // }
+                    Button(action: { showEmojiPicker = true }) {
+                        HStack {
+                            Text(Strings.Event.emojiFieldLabel)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            if let emoji = viewModel.emoji {
+                                Text(emoji).font(.title2)
+                            } else {
+                                Text(Strings.Event.noneSelected)
+                                    .foregroundColor(.secondary)
+                            }
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .disabled(viewModel.selectedImage != nil)
+                    .opacity(viewModel.selectedImage != nil ? 0.4 : 1)
+                    .sheet(isPresented: $showEmojiPicker) {
+                        EmojiPickerView(selectedEmoji: $viewModel.emoji)
+                    }
                 }
 
                 Section(Strings.Event.whenSection) {

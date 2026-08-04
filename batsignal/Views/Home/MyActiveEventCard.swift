@@ -222,6 +222,10 @@ struct UpcomingEventDetailView: View {
         attemptedSubmitWithoutLocation && isFixedLocationMissing
     }
 
+    private var hasImage: Bool {
+        editViewModel.selectedImage != nil || editViewModel.imageURL != nil
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -246,6 +250,8 @@ struct UpcomingEventDetailView: View {
                                 .foregroundColor(.secondary)
                         }
                     }
+                    .disabled(hasImage)
+                    .opacity(hasImage ? 0.4 : 1)
                     .sheet(isPresented: $showEmojiPicker) {
                         EmojiPickerView(selectedEmoji: $editViewModel.emoji)
                     }
@@ -391,6 +397,10 @@ struct ActiveEventDetailView: View {
         attemptedSubmitWithoutLocation && isFixedLocationMissing
     }
 
+    private var hasImage: Bool {
+        editViewModel.selectedImage != nil || editViewModel.imageURL != nil
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -415,6 +425,8 @@ struct ActiveEventDetailView: View {
                                 .foregroundColor(.secondary)
                         }
                     }
+                    .disabled(hasImage)
+                    .opacity(hasImage ? 0.4 : 1)
                     .sheet(isPresented: $showEmojiPicker) {
                         EmojiPickerView(selectedEmoji: $editViewModel.emoji)
                     }
