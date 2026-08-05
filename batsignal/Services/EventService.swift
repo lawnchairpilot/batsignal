@@ -65,37 +65,50 @@ class EventService: ObservableObject {
     // MARK: - Create
 
     func createEvent(_ event: Event) async throws {
-        let ref = try db.collection("events").addDocument(from: event)
+        // Batched so the event doc and the user's activeEventId pointer either both
+        // land or neither does — a partial failure here used to leave activeEventId
+        // stuck (or unset) with no way to recover short of a manual data fix.
+        let ref = db.collection("events").document()
+        let batch = db.batch()
+        try batch.setData(from: event, forDocument: ref)
         if let uid = Auth.auth().currentUser?.uid {
-            try await db.collection("users").document(uid).updateData([
-                "activeEventId": ref.documentID
-            ])
+            batch.updateData(["activeEventId": ref.documentID], forDocument: db.collection("users").document(uid))
         }
+        try await batch.commit()
     }
 
     // MARK: - Update
 
     func cancelEvent(id: String) async throws {
-        try await db.collection("events").document(id).delete()
+        let batch = db.batch()
+        batch.deleteDocument(db.collection("events").document(id))
         if let uid = Auth.auth().currentUser?.uid {
-            try await db.collection("users").document(uid).updateData([
-                "activeEventId": FieldValue.delete()
-            ])
+            batch.updateData(["activeEventId": FieldValue.delete()], forDocument: db.collection("users").document(uid))
         }
+        try await batch.commit()
     }
 
     func endEvent(id: String) async throws {
         // Setting endTime = now makes isExpired true, distinguishing a manually ended
         // event from one that is still pending activation by the Cloud Function
-        try await db.collection("events").document(id).updateData([
+        let batch = db.batch()
+        batch.updateData([
             "isActive": false,
             "endTime": Timestamp(date: Date())
-        ])
+        ], forDocument: db.collection("events").document(id))
         if let uid = Auth.auth().currentUser?.uid {
-            try await db.collection("users").document(uid).updateData([
-                "activeEventId": FieldValue.delete()
-            ])
+            batch.updateData(["activeEventId": FieldValue.delete()], forDocument: db.collection("users").document(uid))
         }
+        try await batch.commit()
+    }
+
+    // Detaches a stale activeEventId pointer when the event it refers to is already
+    // terminal (or failed to decode) so it can't keep blocking new event creation.
+    func clearActiveEventId() async throws {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        try await db.collection("users").document(uid).updateData([
+            "activeEventId": FieldValue.delete()
+        ])
     }
 
     func updateEvent(

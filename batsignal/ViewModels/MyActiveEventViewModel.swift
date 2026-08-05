@@ -42,6 +42,10 @@ class MyActiveEventViewModel: ObservableObject {
                     self.upcomingEvent = nil
                     if let event, event.isActive, event.isExpired, let id = event.id {
                         try? await self.eventService.endEvent(id: id)
+                    } else {
+                        // Event is already terminal (or failed to decode) but activeEventId
+                        // still points at it — detach it so it can't keep blocking creation.
+                        try? await self.eventService.clearActiveEventId()
                     }
                 }
             }
