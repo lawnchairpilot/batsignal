@@ -69,6 +69,15 @@ async function sendMulticast(
   }
 }
 
+/**
+ * Data-payload field the NotificationServiceExtension reads to attach the
+ * event's photo to the notification instead of just showing the app icon.
+ * Omitted (empty string) when the event has no photo.
+ */
+function eventIconData(imageURL?: string): Record<string, string> {
+  return { iconImageURL: imageURL || "" };
+}
+
 // MARK: - Cloud Functions
 
 // Runs every minute — activates any events whose startTime has passed
@@ -125,8 +134,12 @@ export const notifyFriendsOnEventCreate = onDocumentCreated(
       targets,
       {
         notification: { title: Strings.event.createdTitle(creatorName), body },
-        apns: { payload: { aps: { sound: "default" } } },
-        data: { eventId: event.params.eventId, type: "event_created" },
+        apns: { payload: { aps: { sound: "default", mutableContent: true } } },
+        data: {
+          eventId: event.params.eventId,
+          type: "event_created",
+          ...eventIconData(data.imageURL),
+        },
       },
       "event_created"
     );
@@ -166,8 +179,12 @@ export const notifyHostOnEventJoin = onDocumentUpdated(
             title: Strings.event.joinedTitle(joinerName),
             body: Strings.event.joinedBody(joinerName, after.activity),
           },
-          apns: { payload: { aps: { sound: "default" } } },
-          data: { eventId: event.params.eventId, type: "event_joined" },
+          apns: { payload: { aps: { sound: "default", mutableContent: true } } },
+          data: {
+            eventId: event.params.eventId,
+            type: "event_joined",
+            ...eventIconData(after.imageURL),
+          },
         },
         "event_joined"
       );
@@ -203,11 +220,12 @@ export const notifyHostOnCommentCreate = onDocumentCreated(
           title: Strings.event.commentTitle(commenterName),
           body: Strings.event.commentBody(comment.text),
         },
-        apns: { payload: { aps: { sound: "default" } } },
+        apns: { payload: { aps: { sound: "default", mutableContent: true } } },
         data: {
           eventId: event.params.eventId,
           commentId: event.params.commentId,
           type: "event_comment",
+          ...eventIconData(eventData.imageURL),
         },
       },
       "event_comment"

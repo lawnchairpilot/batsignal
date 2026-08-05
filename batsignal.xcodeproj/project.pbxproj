@@ -7,14 +7,45 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		37DD6AFE9AE20908B3DEFAB6 /* NotificationServiceExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 9C577C6BEEC4E4C98FB80AD5 /* NotificationServiceExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		7036E56A9E1129B449799E01 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6B328785CEB2B9906958F4CA /* Foundation.framework */; };
 		EB6548302FF638C500A7ECBA /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = EB65482F2FF638C500A7ECBA /* FirebaseMessaging */; };
+		EB7C5D620D70C34EB1F0D4C7 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0357E52FC0AED168CC42F8E5 /* NotificationService.swift */; };
 		EB9BF0F82FA1C6A20062C3B0 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = EB9BF0F72FA1C6A20062C3B0 /* FirebaseAuth */; };
 		EB9BF0FA2FA1C6A20062C3B0 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = EB9BF0F92FA1C6A20062C3B0 /* FirebaseFirestore */; };
 		EB9BF0FC2FA1C6A20062C3B0 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = EB9BF0FB2FA1C6A20062C3B0 /* FirebaseStorage */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		9B2FCCCAFEB9B30AC11FB3ED /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = EB9BF0E02F8CBC4C0062C3B0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5CE4A6132CDA55311DEAC7ED;
+			remoteInfo = NotificationServiceExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		9E1C8661A898D606EFB70AD3 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				37DD6AFE9AE20908B3DEFAB6 /* NotificationServiceExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		0357E52FC0AED168CC42F8E5 /* NotificationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		6B328785CEB2B9906958F4CA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		9C577C6BEEC4E4C98FB80AD5 /* NotificationServiceExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NotificationServiceExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		EB9BF0E82F8CBC4C0062C3B0 /* batsignal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = batsignal.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EF717F6B23BB35F57CB13837 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -39,6 +70,14 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		A2AFC3B20F5CF2AB94F0391E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7036E56A9E1129B449799E01 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		EB9BF0E52F8CBC4C0062C3B0 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -53,9 +92,28 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		3ECB4651B6C00D1499E9A6EA /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				6B328785CEB2B9906958F4CA /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		BBE13B3467AB71BF43F009D6 /* NotificationServiceExtension */ = {
+			isa = PBXGroup;
+			children = (
+				0357E52FC0AED168CC42F8E5 /* NotificationService.swift */,
+				EF717F6B23BB35F57CB13837 /* Info.plist */,
+			);
+			name = NotificationServiceExtension;
+			path = NotificationServiceExtension;
+			sourceTree = "<group>";
+		};
 		EB65482E2FF638C500A7ECBA /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				3ECB4651B6C00D1499E9A6EA /* iOS */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -66,6 +124,7 @@
 				EB9BF0EA2F8CBC4C0062C3B0 /* batsignal */,
 				EB65482E2FF638C500A7ECBA /* Frameworks */,
 				EB9BF0E92F8CBC4C0062C3B0 /* Products */,
+				BBE13B3467AB71BF43F009D6 /* NotificationServiceExtension */,
 			);
 			sourceTree = "<group>";
 		};
@@ -73,6 +132,7 @@
 			isa = PBXGroup;
 			children = (
 				EB9BF0E82F8CBC4C0062C3B0 /* batsignal.app */,
+				9C577C6BEEC4E4C98FB80AD5 /* NotificationServiceExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -80,6 +140,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		5CE4A6132CDA55311DEAC7ED /* NotificationServiceExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A67FF0087966ADB6C7109E92 /* Build configuration list for PBXNativeTarget "NotificationServiceExtension" */;
+			buildPhases = (
+				F69A3DE0A379865FAF5D689B /* Sources */,
+				A2AFC3B20F5CF2AB94F0391E /* Frameworks */,
+				973F1F9DD363DE11B0476BC5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = NotificationServiceExtension;
+			productName = NotificationServiceExtension;
+			productReference = 9C577C6BEEC4E4C98FB80AD5 /* NotificationServiceExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		EB9BF0E72F8CBC4C0062C3B0 /* batsignal */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = EB9BF0F32F8CBC4D0062C3B0 /* Build configuration list for PBXNativeTarget "batsignal" */;
@@ -87,10 +164,12 @@
 				EB9BF0E42F8CBC4C0062C3B0 /* Sources */,
 				EB9BF0E52F8CBC4C0062C3B0 /* Frameworks */,
 				EB9BF0E62F8CBC4C0062C3B0 /* Resources */,
+				9E1C8661A898D606EFB70AD3 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				E4D8DB8B269F9571EFE28B10 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				EB9BF0EA2F8CBC4C0062C3B0 /* batsignal */,
@@ -139,11 +218,19 @@
 			projectRoot = "";
 			targets = (
 				EB9BF0E72F8CBC4C0062C3B0 /* batsignal */,
+				5CE4A6132CDA55311DEAC7ED /* NotificationServiceExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		973F1F9DD363DE11B0476BC5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		EB9BF0E62F8CBC4C0062C3B0 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -161,9 +248,77 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F69A3DE0A379865FAF5D689B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EB7C5D620D70C34EB1F0D4C7 /* NotificationService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		E4D8DB8B269F9571EFE28B10 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = NotificationServiceExtension;
+			target = 5CE4A6132CDA55311DEAC7ED /* NotificationServiceExtension */;
+			targetProxy = 9B2FCCCAFEB9B30AC11FB3ED /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		371E669202E012E3AA293D99 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 4;
+				DEVELOPMENT_TEAM = QGY38FJH7M;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = NotificationServiceExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = eggurd.batsignal.NotificationServiceExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D3E06B5B3FB846A79AFB9AC6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 4;
+				DEVELOPMENT_TEAM = QGY38FJH7M;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = NotificationServiceExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = eggurd.batsignal.NotificationServiceExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		EB9BF0F12F8CBC4D0062C3B0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -362,6 +517,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		A67FF0087966ADB6C7109E92 /* Build configuration list for PBXNativeTarget "NotificationServiceExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D3E06B5B3FB846A79AFB9AC6 /* Release */,
+				371E669202E012E3AA293D99 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		EB9BF0E32F8CBC4C0062C3B0 /* Build configuration list for PBXProject "batsignal" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
