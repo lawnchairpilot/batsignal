@@ -6,11 +6,10 @@ extension Strings {
         static let whatAreYouDoingSection = "What are you doing?"
         static let whenSection = "When?"
         static let whereSection = "Where?"
-        static let whoSection = "Who?"
         static let timeSection = "Time"
 
         // Fields
-        static let activityPlaceholder = "e.g. Surfing, Hiking, Coffee"
+        static let activityPlaceholder = "Message"
         static let activityFieldLabel = "Activity"
         static let descriptionPlaceholder = "Description (optional)"
         static let emojiFieldLabel = "Emoji"
@@ -18,7 +17,6 @@ extension Strings {
         static let dayPickerLabel = "Day"
         static let timePickerLabel = "Time"
         static let durationPickerLabel = "Duration"
-        static let whenPickerLabel = "When"
         static let locationTypePickerLabel = "Location type"
         static let liveLocation = "Share Location"
         static let fixedPlace = "Drop a Pin"
@@ -29,16 +27,13 @@ extension Strings {
         static let addImage = "Add Image"
         static let changeImage = "Change Image"
         static let removeImage = "Remove Image"
-        static let takePhoto = "Take Photo"
-        static let chooseFromLibrary = "Choose from Library"
 
         static func imageUploadFailed(_ message: String) -> String {
             "Image upload failed: \(message)"
         }
 
         // Titles & actions
-        static let newSignalTitle = "New Signal"
-        static let send = "Send"
+        static let swipeUpToSend = "Swipe up to send"
         static let editSignalTitle = "Edit Signal"
         static let yourSignalTitle = "Your Signal"
         static let cancelEvent = "Cancel Event"

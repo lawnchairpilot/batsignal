@@ -8,6 +8,7 @@ struct CommentsSectionView: View {
     @State private var listener: ListenerRegistration?
     @State private var newCommentText = ""
     @State private var isPosting = false
+    @FocusState private var isCommentFieldFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -30,6 +31,7 @@ struct CommentsSectionView: View {
                     TextField(Strings.Event.commentPlaceholder, text: $newCommentText, axis: .vertical)
                         .lineLimit(1...3)
                         .textFieldStyle(.roundedBorder)
+                        .focused($isCommentFieldFocused)
                         .onChange(of: newCommentText) { _, newValue in
                             if newValue.count > Comment.characterLimit {
                                 newCommentText = String(newValue.prefix(Comment.characterLimit))
@@ -65,6 +67,7 @@ struct CommentsSectionView: View {
     private func post() {
         let text = newCommentText
         isPosting = true
+        isCommentFieldFocused = false
         Task {
             try? await EventService().postComment(eventId: eventId, text: text)
             await MainActor.run {

@@ -1,13 +1,11 @@
 import SwiftUI
-import PhotosUI
 
 // Shared image picker row used by the create and edit event forms.
+// Camera-only: photos must be taken live, not chosen from the library.
 struct EventImagePickerRow: View {
     @Binding var imageURL: String?
     @Binding var selectedImage: UIImage?
-    @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showCamera = false
-    @State private var showPhotoLibrary = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -33,19 +31,11 @@ struct EventImagePickerRow: View {
             .background(Color(.secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 8))
 
-            Menu {
-                if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                    Button(action: { showCamera = true }) {
-                        Label(Strings.Event.takePhoto, systemImage: "camera")
-                    }
-                }
-                Button(action: { showPhotoLibrary = true }) {
-                    Label(Strings.Event.chooseFromLibrary, systemImage: "photo.on.rectangle")
-                }
-            } label: {
+            Button(action: { showCamera = true }) {
                 Text(selectedImage == nil && imageURL == nil ? Strings.Event.addImage : Strings.Event.changeImage)
                     .foregroundColor(.accentColor)
             }
+            .disabled(!UIImagePickerController.isSourceTypeAvailable(.camera))
 
             Spacer()
 
@@ -53,21 +43,12 @@ struct EventImagePickerRow: View {
                 Button(role: .destructive) {
                     selectedImage = nil
                     imageURL = nil
-                    selectedPhotoItem = nil
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.red)
                 }
             }
         }
-        .onChange(of: selectedPhotoItem) { _, item in
-            Task {
-                guard let data = try? await item?.loadTransferable(type: Data.self),
-                      let image = UIImage(data: data) else { return }
-                selectedImage = image
-            }
-        }
-        .photosPicker(isPresented: $showPhotoLibrary, selection: $selectedPhotoItem, matching: .images)
         .fullScreenCover(isPresented: $showCamera) {
             CameraPickerView(image: $selectedImage)
                 .ignoresSafeArea()
