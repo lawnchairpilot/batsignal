@@ -9,10 +9,6 @@ struct CreateEventView: View {
     @State private var isPulsing = false
     @State private var showAudienceDropdown = false
 
-    // Pushes the audience button down so its label lines up with the
-    // vertical center of the duration wheel next to it.
-    private let audienceButtonTopPadding: CGFloat = 30
-
     private let swipeToSendThreshold: CGFloat = -70
 
     private var canSubmit: Bool {
@@ -41,18 +37,18 @@ struct CreateEventView: View {
                     }
 
                     Section {
-                        HStack(alignment: .top, spacing: 16) {
-                            VStack(spacing: 8) {
-                                audienceButton
-                                if showAudienceDropdown {
-                                    audienceChecklist
-                                }
+                        VStack(spacing: 8) {
+                            audienceButton
+                            if showAudienceDropdown {
+                                audienceChecklist
                             }
-                            .padding(.top, audienceButtonTopPadding)
-
-                            durationPicker
                         }
                         .listRowBackground(Color.clear)
+                    }
+
+                    Section {
+                        durationPicker
+                            .listRowBackground(Color.clear)
                     }
 
                     if let error = viewModel.errorMessage {
