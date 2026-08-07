@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.notifyOnFriendRequestAccept = exports.notifyOnFriendRequestCreate = exports.notifyHostOnCommentCreate = exports.notifyHostOnEventJoin = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
+exports.notifyOnFriendRequestAccept = exports.backfillEventVisibilityOnFriendAccept = exports.notifyOnFriendRequestCreate = exports.notifyHostOnCommentCreate = exports.notifyHostOnEventJoin = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
 const admin = require("firebase-admin");
 const functions = require("firebase-functions/v2");
 const firestore_1 = require("firebase-functions/v2/firestore");
@@ -180,6 +180,55 @@ exports.notifyOnFriendRequestCreate = (0, firestore_1.onDocumentCreated)("friend
         apns: { payload: { aps: { sound: "default" } } },
         data: { requestId: event.params.requestId, type: "friend_request" },
     }, "friend_request");
+});
+// Backfills recipientIds on each user's still-visible events when a friend request
+// is accepted, so a newly-added friend can immediately see events created before
+// the friendship existed. recipientIds is otherwise a snapshot frozen at event
+// creation — without this, "add a friend after the event started" silently hides
+// the event from them forever. Runs server-side (not from the client) because
+// whichever user taps accept only has write access to their own events; this
+// needs to write to the *other* user's events too.
+exports.backfillEventVisibilityOnFriendAccept = (0, firestore_1.onDocumentUpdated)("friendRequests/{requestId}", async (event) => {
+    var _a, _b;
+    const before = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before.data();
+    const after = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after.data();
+    if (!before || !after)
+        return;
+    if (before.status === after.status || after.status !== "accepted")
+        return;
+    const now = admin.firestore.Timestamp.now();
+    // Equality-only and unordered so it needs no composite index — mirrors the
+    // pattern in listenToMyActiveEvent on the client.
+    const addAsRecipientToOwnedEvents = async (ownerId, newRecipientId) => {
+        const snapshot = await db.collection("events").where("creatorId", "==", ownerId).get();
+        if (snapshot.empty)
+            return;
+        const batch = db.batch();
+        let updateCount = 0;
+        snapshot.docs.forEach((doc) => {
+            var _a, _b;
+            const data = doc.data();
+            const endTimeMillis = (_b = (_a = data.endTime) === null || _a === void 0 ? void 0 : _a.toMillis) === null || _b === void 0 ? void 0 : _b.call(_a);
+            if (endTimeMillis !== undefined && endTimeMillis < now.toMillis())
+                return; // already over
+            // Missing field predates the group-scoping feature, so it was always "all friends".
+            if (data.audienceIsAllFriends === false)
+                return; // creator scoped this to specific groups
+            const recipientIds = data.recipientIds || [];
+            if (recipientIds.includes(newRecipientId))
+                return; // already visible to them
+            batch.update(doc.ref, {
+                recipientIds: admin.firestore.FieldValue.arrayUnion(newRecipientId),
+            });
+            updateCount++;
+        });
+        if (updateCount > 0)
+            await batch.commit();
+    };
+    await Promise.all([
+        addAsRecipientToOwnedEvents(after.fromUserId, after.toUserId),
+        addAsRecipientToOwnedEvents(after.toUserId, after.fromUserId),
+    ]);
 });
 // Notifies the requester when their friend request is accepted
 exports.notifyOnFriendRequestAccept = (0, firestore_1.onDocumentUpdated)("friendRequests/{requestId}", async (event) => {

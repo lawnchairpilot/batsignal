@@ -93,7 +93,8 @@ class CreateEventViewModel: ObservableObject {
             createdAt: .init(),
             recipientIds: recipientIds,
             commentsEnabled: commentsEnabled,
-            imageURL: imageURL
+            imageURL: imageURL,
+            audienceIsAllFriends: selectedGroupIds.isEmpty
         )
 
         do {

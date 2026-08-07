@@ -8,6 +8,9 @@ import UIKit
 class EditActiveEventViewModel: ObservableObject {
     let eventId: String
     private let originalStartTime: Timestamp
+    private let originalEndTime: Timestamp?
+    private let originalDurationMinutes: Int?
+    private let originalVagueLabel: String?
 
     @Published var activity: String
     @Published var emoji: String?
@@ -29,6 +32,9 @@ class EditActiveEventViewModel: ObservableObject {
     init(event: Event) {
         self.eventId = event.id ?? ""
         self.originalStartTime = event.startTime
+        self.originalEndTime = event.endTime
+        self.originalDurationMinutes = event.durationMinutes
+        self.originalVagueLabel = event.durationVagueLabel
         self.activity = event.activity
         self.emoji = event.emoji
         self.description = event.description ?? ""
@@ -62,15 +68,36 @@ class EditActiveEventViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
 
-        let endTime = Event.computeEndTime(
-            startTime: originalStartTime.dateValue(),
-            durationMinutes: selectedDurationMinutes,
-            vagueLabel: selectedVagueLabel
-        )
+        // Only recompute endTime when the duration selection actually changed —
+        // recomputing unconditionally on every save re-pins vague durations ("til
+        // dark") to 9 PM on the start date, which can already be in the past by
+        // the time an unrelated field (photo, description, ...) gets edited later
+        // in the evening, instantly "expiring" a still-active event on save.
+        let durationChanged = selectedDurationMinutes != originalDurationMinutes
+            || selectedVagueLabel != originalVagueLabel
+        let endTime = durationChanged
+            ? Event.computeEndTime(
+                startTime: originalStartTime.dateValue(),
+                durationMinutes: selectedDurationMinutes,
+                vagueLabel: selectedVagueLabel
+            )
+            : originalEndTime
 
-        var coordinate: GeoPoint? = nil
-        if locationType == .fixed, let fixed = fixedCoordinate {
-            coordinate = GeoPoint(latitude: fixed.latitude, longitude: fixed.longitude)
+        let coordinate: EventService.CoordinateUpdate
+        switch locationType {
+        case .fixed:
+            if let fixed = fixedCoordinate {
+                coordinate = .set(GeoPoint(latitude: fixed.latitude, longitude: fixed.longitude))
+            } else {
+                coordinate = .clear
+            }
+        case .live:
+            // LocationService owns this field while the event is live. Writing the
+            // sheet's nil here deleted it, dropping the pin off friends' maps until
+            // the next significant-location update landed.
+            coordinate = .unchanged
+        case .text:
+            coordinate = .clear
         }
 
         var finalImageURL = imageURL

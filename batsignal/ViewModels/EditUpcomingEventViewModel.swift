@@ -88,9 +88,13 @@ class EditUpcomingEventViewModel: ObservableObject {
             vagueLabel: selectedVagueLabel
         )
 
-        var coordinate: GeoPoint? = nil
+        // An upcoming event isn't sharing live location yet, so there's no tracked
+        // coordinate to preserve — clearing is correct for every non-fixed type.
+        let coordinate: EventService.CoordinateUpdate
         if locationType == .fixed, let fixed = fixedCoordinate {
-            coordinate = GeoPoint(latitude: fixed.latitude, longitude: fixed.longitude)
+            coordinate = .set(GeoPoint(latitude: fixed.latitude, longitude: fixed.longitude))
+        } else {
+            coordinate = .clear
         }
 
         let isActive = startTime <= Date().addingTimeInterval(60)

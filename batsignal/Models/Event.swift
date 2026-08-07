@@ -52,6 +52,13 @@ struct Event: Identifiable, Codable {
     var joinedUserIds: [String]?
     var commentsEnabled: Bool?
     var imageURL: String?
+    // True when recipientIds was populated from "all my friends" rather than a
+    // specific group selection. Drives whether a newly-added friend gets
+    // backfilled into recipientIds after the fact (see functions/src/index.ts,
+    // backfillEventsOnFriendAccept) — a group-scoped event shouldn't gain
+    // recipients the creator deliberately excluded. Missing on older documents
+    // defaults to true, since every event predates the group-scoping feature.
+    var audienceIsAllFriends: Bool?
 
     init(
         id: String? = nil,
@@ -71,7 +78,8 @@ struct Event: Identifiable, Codable {
         recipientIds: [String],
         joinedUserIds: [String]? = nil,
         commentsEnabled: Bool? = nil,
-        imageURL: String? = nil
+        imageURL: String? = nil,
+        audienceIsAllFriends: Bool = true
     ) {
         self.id = id
         self.creatorId = creatorId
@@ -91,6 +99,7 @@ struct Event: Identifiable, Codable {
         self.joinedUserIds = joinedUserIds
         self.commentsEnabled = commentsEnabled
         self.imageURL = imageURL
+        self.audienceIsAllFriends = audienceIsAllFriends
     }
 
     // MARK: - Duration display

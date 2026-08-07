@@ -46,19 +46,28 @@ class EventService: ObservableObject {
         return snapshot.documents.compactMap { try? $0.data(as: Event.self) }
     }
 
+    // Finds an event this user still owns server-side, whether or not their
+    // activeEventId still points at it. Equality-only and unordered so it needs no
+    // composite index — a single user's active events are a handful of documents.
     func listenToMyActiveEvent(onChange: @escaping (Event?) -> Void) -> ListenerRegistration? {
         guard let uid = Auth.auth().currentUser?.uid else { return nil }
         return db.collection("events")
             .whereField("creatorId", isEqualTo: uid)
             .whereField("isActive", isEqualTo: true)
-            .limit(to: 1)
             .addSnapshotListener { snapshot, error in
                 if let error = error {
                     print("listenToMyActiveEvent error: \(error.localizedDescription)")
                     return
                 }
-                let event = snapshot?.documents.compactMap { try? $0.data(as: Event.self) }.first
-                onChange(event?.isExpired == false ? event : nil)
+                let mine = snapshot?.documents.compactMap { try? $0.data(as: Event.self) } ?? []
+                // Live events first (those are the ones friends can still see), then most
+                // recently started, so recovery adopts what the user thinks of as current
+                // and only falls back to expired leftovers once the live one is dealt with.
+                let ranked = mine.sorted { lhs, rhs in
+                    if lhs.isExpired != rhs.isExpired { return !lhs.isExpired }
+                    return lhs.startTime.dateValue() > rhs.startTime.dateValue()
+                }
+                onChange(ranked.first)
             }
     }
 
@@ -102,13 +111,29 @@ class EventService: ObservableObject {
         try await batch.commit()
     }
 
-    // Detaches a stale activeEventId pointer when the event it refers to is already
-    // terminal (or failed to decode) so it can't keep blocking new event creation.
+    // Re-points a user at an event they still own. Recovers events orphaned by earlier
+    // builds, which could detach activeEventId without ever ending the event — leaving
+    // it live for every friend with no owner left to end it.
+    func adoptActiveEvent(id: String) async throws {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        try await db.collection("users").document(uid).updateData(["activeEventId": id])
+    }
+
+    // Detaches a stale activeEventId pointer when the event it refers to is confirmed
+    // gone or terminal, so it can't keep blocking new event creation.
     func clearActiveEventId() async throws {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         try await db.collection("users").document(uid).updateData([
             "activeEventId": FieldValue.delete()
         ])
+    }
+
+    // A nil coordinate is ambiguous on edit: "the user cleared the location" and "this
+    // event's coordinate is owned by live tracking, don't touch it" need different writes.
+    enum CoordinateUpdate {
+        case set(GeoPoint)
+        case clear
+        case unchanged
     }
 
     func updateEvent(
@@ -122,7 +147,7 @@ class EventService: ObservableObject {
         endTime: Timestamp?,
         locationType: LocationType,
         locationLabel: String?,
-        locationCoordinate: GeoPoint?,
+        locationCoordinate: CoordinateUpdate,
         isActive: Bool,
         commentsEnabled: Bool,
         imageURL: String?
@@ -140,8 +165,14 @@ class EventService: ObservableObject {
         data["durationVagueLabel"] = durationVagueLabel != nil ? durationVagueLabel! : FieldValue.delete()
         data["endTime"]            = endTime            != nil ? endTime!            : FieldValue.delete()
         data["locationLabel"]      = locationLabel      != nil ? locationLabel!      : FieldValue.delete()
-        data["locationCoordinate"] = locationCoordinate != nil ? locationCoordinate! : FieldValue.delete()
         data["imageURL"]           = imageURL           != nil ? imageURL!           : FieldValue.delete()
+
+        switch locationCoordinate {
+        case .set(let point): data["locationCoordinate"] = point
+        case .clear:          data["locationCoordinate"] = FieldValue.delete()
+        case .unchanged:      break
+        }
+
         try await db.collection("events").document(id).updateData(data)
     }
 
@@ -176,9 +207,52 @@ class EventService: ObservableObject {
 
     // MARK: - Real-time listener
 
+    // A document listener has three distinct outcomes, and collapsing them into a
+    // single `Event?` is only safe for read-only callers. Anything that writes state
+    // back (clearing activeEventId, ending the event) must be able to tell "the
+    // server says this event is gone" apart from "we couldn't read it right now" —
+    // otherwise a transient read failure permanently detaches a still-live event.
+    enum EventSnapshot {
+        case value(Event)
+        case missing        // server confirmed the document no longer exists
+        case unavailable    // listener error, uncached read, or decode failure — state unknown
+    }
+
+    func listenToEventSnapshot(id: String, onChange: @escaping (EventSnapshot) -> Void) -> ListenerRegistration {
+        db.collection("events").document(id).addSnapshotListener { snapshot, error in
+            if let error {
+                print("listenToEvent error for \(id): \(error.localizedDescription)")
+                onChange(.unavailable)
+                return
+            }
+            guard let snapshot else {
+                onChange(.unavailable)
+                return
+            }
+            guard snapshot.exists else {
+                // A listener always emits the local cache first, and a document that
+                // isn't cached yet reads as "does not exist" until the server replies.
+                // Only a server-confirmed absence means the event was really deleted.
+                onChange(snapshot.metadata.isFromCache ? .unavailable : .missing)
+                return
+            }
+            do {
+                onChange(.value(try snapshot.data(as: Event.self)))
+            } catch {
+                print("listenToEvent decode failed for \(id): \(error)")
+                onChange(.unavailable)
+            }
+        }
+    }
+
+    // Convenience for read-only observers that simply ignore a nil update.
     func listenToEvent(id: String, onChange: @escaping (Event?) -> Void) -> ListenerRegistration {
-        db.collection("events").document(id).addSnapshotListener { snapshot, _ in
-            onChange(try? snapshot?.data(as: Event.self))
+        listenToEventSnapshot(id: id) { snapshot in
+            if case .value(let event) = snapshot {
+                onChange(event)
+            } else {
+                onChange(nil)
+            }
         }
     }
 
