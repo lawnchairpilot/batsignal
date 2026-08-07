@@ -8,7 +8,6 @@ struct HomeView: View {
     @EnvironmentObject private var myEventViewModel: MyActiveEventViewModel
     @EnvironmentObject private var friendsViewModel: FriendsViewModel
     @State private var showCreateEvent = false
-    @State private var showActiveEventAlert = false
     @State private var focusedCoordinate: CLLocationCoordinate2D?
     @State private var focusedEventId: String?
     @State private var selectedEventForDetail: EventDetailSelection?
@@ -18,9 +17,13 @@ struct HomeView: View {
             ScrollView {
                 VStack(spacing: 16) {
 
-                    // My event (active or upcoming)
+                    // My event (active or upcoming), or a prompt to create one
                     if myEventViewModel.activeEvent != nil || myEventViewModel.upcomingEvent != nil {
                         MyActiveEventCard(viewModel: myEventViewModel)
+                            .padding(.horizontal)
+                            .padding(.top, 8)
+                    } else {
+                        CreateEventPromptCard(action: { showCreateEvent = true })
                             .padding(.horizontal)
                             .padding(.top, 8)
                     }
@@ -53,7 +56,7 @@ struct HomeView: View {
                                     .padding(.top, 4)
                                 ForEach(viewModel.events) { event in
                                     let creator = friendsViewModel.friends.first { $0.id == event.creatorId }
-                                    EventCardView(event: event, creatorName: creator?.displayName, creatorPhotoURL: creator?.profilePhotoURL, isSelected: event.id != nil && event.id == focusedEventId)
+                                    EventCardView(event: event, creatorName: creator?.displayName, isSelected: event.id != nil && event.id == focusedEventId)
                                         .padding(.horizontal)
                                         .contentShape(Rectangle())
                                         .onTapGesture(count: 2) { openEventDetail(for: event) }
@@ -68,7 +71,7 @@ struct HomeView: View {
                                     .padding(.top, viewModel.events.isEmpty ? 4 : 8)
                                 ForEach(viewModel.upcomingEvents) { event in
                                     let creator = friendsViewModel.friends.first { $0.id == event.creatorId }
-                                    EventCardView(event: event, creatorName: creator?.displayName, creatorPhotoURL: creator?.profilePhotoURL, isSelected: event.id != nil && event.id == focusedEventId)
+                                    EventCardView(event: event, creatorName: creator?.displayName, isSelected: event.id != nil && event.id == focusedEventId)
                                         .padding(.horizontal)
                                         .opacity(0.6)
                                         .contentShape(Rectangle())
@@ -82,20 +85,6 @@ struct HomeView: View {
                 }
             }
             .navigationTitle(Strings.Common.appName)
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: {
-                        if authService.currentUser?.activeEventId != nil || myEventViewModel.upcomingEvent != nil {
-                            showActiveEventAlert = true
-                        } else {
-                            showCreateEvent = true
-                        }
-                    }) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
-                    }
-                }
-            }
             .sheet(isPresented: $showCreateEvent) {
                 CreateEventView()
             }
@@ -113,11 +102,6 @@ struct HomeView: View {
                         }
                     }
                 }
-            }
-            .alert(Strings.Home.activeEventAlertTitle, isPresented: $showActiveEventAlert) {
-                Button(Strings.Common.ok, role: .cancel) { }
-            } message: {
-                Text(Strings.Home.activeEventAlertMessage)
             }
         }
     }
@@ -210,4 +194,35 @@ private struct EventDetailSelection: Identifiable {
     let event: Event
     let creatorName: String?
     let creatorPhotoURL: String?
+}
+
+private struct CreateEventPromptCard: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.title)
+                    .foregroundColor(.accentColor)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(Strings.Home.createSignalTitle)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    Text(Strings.Home.createSignalSubtitle)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+            }
+            .padding()
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.accentColor.opacity(0.4), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
 }

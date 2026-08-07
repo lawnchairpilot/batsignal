@@ -1,43 +1,51 @@
 import SwiftUI
+import Combine
 import FirebaseCore
 
 struct EventCardView: View {
     let event: Event
     var creatorName: String?
-    var creatorPhotoURL: String?
     var isSelected: Bool = false
 
-    private var resolvedPhotoURL: String? {
-        event.imageURL ?? creatorPhotoURL
-    }
+    @State private var now = Date()
+    private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            if let label = iconLabel {
-                EventIconView(photoURL: resolvedPhotoURL, label: label)
-            } else if resolvedPhotoURL != nil {
-                EventIconView(photoURL: resolvedPhotoURL, label: nil)
+        VStack(alignment: .leading, spacing: 0) {
+            if event.isActive, let progress = event.progress {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Rectangle()
+                            .fill(Color.primary.opacity(0.08))
+                        Rectangle()
+                            .fill(progressColor(progress))
+                            .frame(width: geometry.size.width * progress)
+                    }
+                }
+                .frame(height: 4)
             }
 
             VStack(alignment: .leading, spacing: 8) {
                 if let name = creatorName {
                     Text(name)
-                        .font(.subheadline)
+                        .font(.caption)
                         .foregroundColor(.accentColor)
                         .bold()
                 }
                 Text(event.activity)
                     .font(.headline)
 
-                HStack(spacing: 4) {
-                    Image(systemName: "clock")
-                    Text(startTimeLabel)
-                    if !event.durationLabel.isEmpty {
-                        Text(Strings.Home.durationSuffix(event.durationLabel))
+                if !event.isActive {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                        Text(startTimeLabel)
+                        if !event.durationLabel.isEmpty {
+                            Text(Strings.Home.durationSuffix(event.durationLabel))
+                        }
                     }
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
                 }
-                .font(.subheadline)
-                .foregroundColor(.secondary)
 
                 if let label = event.locationLabel {
                     HStack(spacing: 4) {
@@ -48,8 +56,8 @@ struct EventCardView: View {
                     .foregroundColor(.secondary)
                 }
             }
+            .padding()
         }
-        .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemBackground))
         .cornerRadius(16)
@@ -59,13 +67,13 @@ struct EventCardView: View {
                     .stroke(Color.accentColor, lineWidth: 2)
             }
         }
+        .onReceive(timer) { _ in now = Date() }
     }
 
-    private var iconLabel: String? {
-        if let emoji = event.emoji { return emoji }
-        guard let name = creatorName, !name.isEmpty else { return nil }
-        let initials = name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
-        return initials.isEmpty ? nil : initials.uppercased()
+    private func progressColor(_ progress: Double) -> Color {
+        if progress > 0.75 { return .red }
+        if progress > 0.5 { return .orange }
+        return .accentColor
     }
 
     private var startTimeLabel: String {

@@ -136,6 +136,28 @@ struct Event: Identifiable, Codable {
         return durationVagueLabel ?? ""
     }
 
+    // MARK: - Progress
+
+    var progress: Double? {
+        guard let durationMinutes, let endTime else { return nil }
+        let total = Double(durationMinutes) * 60
+        let elapsed = Date().timeIntervalSince(startTime.dateValue())
+        return min(max(elapsed / total, 0), 1)
+    }
+
+    var timeRemainingLabel: String? {
+        guard let endTime else { return nil }
+        let remaining = endTime.dateValue().timeIntervalSince(Date())
+        guard remaining > 0 else { return "Ending..." }
+        let minutes = Int(remaining) / 60
+        let hours = minutes / 60
+        if hours > 0 {
+            let mins = minutes % 60
+            return mins > 0 ? "\(hours)h \(mins)m left" : "\(hours)h left"
+        }
+        return "\(minutes)m left"
+    }
+
     // MARK: - Expiry (client-side for MVP)
 
     var isExpired: Bool {

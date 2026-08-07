@@ -116,25 +116,11 @@ class MyActiveEventViewModel: ObservableObject {
     // MARK: - Progress
 
     var progress: Double? {
-        guard let event = activeEvent,
-              let durationMinutes = event.durationMinutes,
-              let endTime = event.endTime else { return nil }
-        let total = Double(durationMinutes) * 60
-        let elapsed = Date().timeIntervalSince(event.startTime.dateValue())
-        return min(max(elapsed / total, 0), 1)
+        activeEvent?.progress
     }
 
     var timeRemainingLabel: String? {
-        guard let endTime = activeEvent?.endTime else { return nil }
-        let remaining = endTime.dateValue().timeIntervalSince(Date())
-        guard remaining > 0 else { return "Ending..." }
-        let minutes = Int(remaining) / 60
-        let hours = minutes / 60
-        if hours > 0 {
-            let mins = minutes % 60
-            return mins > 0 ? "\(hours)h \(mins)m left" : "\(hours)h left"
-        }
-        return "\(minutes)m left"
+        activeEvent?.timeRemainingLabel
     }
 
     var etaLabel: String? {
