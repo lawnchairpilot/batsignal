@@ -4,6 +4,7 @@ import FirebaseCore
 
 struct MyActiveEventCard: View {
     @ObservedObject var viewModel: MyActiveEventViewModel
+    @State private var isExpanded = false
     @State private var showDetail = false
     @State private var showUpcomingDetail = false
     @State private var showEventPreview = false
@@ -14,10 +15,63 @@ struct MyActiveEventCard: View {
 
     var body: some View {
         if let event = viewModel.upcomingEvent {
-            upcomingCard(event: event)
+            if isExpanded {
+                upcomingCard(event: event)
+            } else {
+                compactCard(event: event)
+            }
         } else if let event = viewModel.activeEvent {
-            activeCard(event: event)
+            if isExpanded {
+                activeCard(event: event)
+            } else {
+                compactCard(event: event)
+            }
         }
+    }
+
+    @ViewBuilder
+    private func compactCard(event: Event) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if event.isActive, let progress = viewModel.progress {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Rectangle()
+                            .fill(Color.primary.opacity(0.08))
+                        Rectangle()
+                            .fill(progressColor(progress))
+                            .frame(width: geometry.size.width * progress)
+                    }
+                }
+                .frame(height: 4)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(event.activity)
+                    .font(.headline)
+
+                if !event.isActive, let eta = viewModel.etaLabel {
+                    Text(eta)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+
+                if let locationLabel = event.locationLabel {
+                    Label(locationLabel, systemImage: locationIcon(event))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .padding()
+        }
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.accentColor.opacity(0.4), lineWidth: 1)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture { isExpanded = true }
     }
 
     @ViewBuilder
@@ -35,6 +89,11 @@ struct MyActiveEventCard: View {
                 if let eta = viewModel.etaLabel {
                     Text(eta)
                         .font(.caption.bold())
+                        .foregroundColor(.accentColor)
+                }
+                Button(action: { isExpanded = false }) {
+                    Image(systemName: "chevron.up.circle")
+                        .font(.title2)
                         .foregroundColor(.accentColor)
                 }
                 Button(action: { showUpcomingDetail = true }) {
@@ -99,14 +158,14 @@ struct MyActiveEventCard: View {
         VStack(alignment: .leading, spacing: 12) {
 
             HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(Strings.Home.yourSignal)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text(event.activity)
-                        .font(.headline)
-                }
+                Text(event.activity)
+                    .font(.headline)
                 Spacer()
+                Button(action: { isExpanded = false }) {
+                    Image(systemName: "chevron.up.circle")
+                        .font(.title2)
+                        .foregroundColor(.accentColor)
+                }
                 Button(action: { showDetail = true }) {
                     Image(systemName: "pencil.circle")
                         .font(.title2)

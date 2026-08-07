@@ -8,7 +8,6 @@ extension Strings {
         static let comingUp = "Future Bools"
         static let createSignalTitle = "Send a Signal"
         static let createSignalSubtitle = "Let your friends know what you're up to"
-        static let yourSignal = "Your signal"
         static let openEnded = "Open-ended"
         static let extend30Min = "30 min"
 

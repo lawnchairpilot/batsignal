@@ -105,7 +105,7 @@ struct HomeMapView: View {
                 .allowsHitTesting(false)
             }
         }
-        .frame(height: 200)
+        .frame(height: 340)
         .cornerRadius(12)
         .clipped()
         .onAppear { refreshPosition() }

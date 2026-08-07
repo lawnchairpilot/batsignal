@@ -17,25 +17,26 @@ struct HomeView: View {
             ScrollView {
                 VStack(spacing: 16) {
 
-                    // My event (active or upcoming), or a prompt to create one
-                    if myEventViewModel.activeEvent != nil || myEventViewModel.upcomingEvent != nil {
-                        MyActiveEventCard(viewModel: myEventViewModel)
-                            .padding(.horizontal)
-                            .padding(.top, 8)
-                    } else {
-                        CreateEventPromptCard(action: { showCreateEvent = true })
-                            .padding(.horizontal)
-                            .padding(.top, 8)
-                    }
+                    // Friends' event map, with my event (or a prompt to create one) overlaid on top
+                    ZStack(alignment: .top) {
+                        HomeMapView(
+                            annotations: allAnnotations,
+                            focusedCoordinate: focusedCoordinate,
+                            onSelectEvent: { event in openEventDetail(for: event) }
+                        )
 
-                    // Friends' event map
-                    HomeMapView(
-                        annotations: allAnnotations,
-                        focusedCoordinate: focusedCoordinate,
-                        onSelectEvent: { event in openEventDetail(for: event) }
-                    )
-                        .padding(.horizontal)
-                        .padding(.top, 8)
+                        Group {
+                            if myEventViewModel.activeEvent != nil || myEventViewModel.upcomingEvent != nil {
+                                MyActiveEventCard(viewModel: myEventViewModel)
+                            } else {
+                                CreateEventPromptCard(action: { showCreateEvent = true })
+                            }
+                        }
+                        .padding(12)
+                        .opacity(0.92)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 8)
 
                     // Friends' active events
                     if viewModel.isLoading {
