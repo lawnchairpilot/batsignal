@@ -64,7 +64,7 @@ private final class OneTimeLocationProvider: NSObject, CLLocationManagerDelegate
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}
 }
 
-// MARK: - Thumbnail (non-interactive, tappable to expand)
+// MARK: - Thumbnail (pan/zoom in place, with a button to expand full-screen)
 
 struct HomeMapView: View {
     let annotations: [EventAnnotationItem]
@@ -79,7 +79,7 @@ struct HomeMapView: View {
 
     var body: some View {
         ZStack {
-            Map(position: $position, interactionModes: []) {
+            Map(position: $position, interactionModes: [.pan, .zoom]) {
                 ForEach(annotations) { item in
                     Annotation("", coordinate: item.coordinate) {
                         Button {
@@ -92,17 +92,23 @@ struct HomeMapView: View {
                 }
                 UserAnnotation()
             }
-            .onTapGesture { showFullMap = true }
 
-            if hasLiveEvent {
-                VStack {
-                    HStack {
-                        Spacer()
+            VStack {
+                HStack {
+                    if hasLiveEvent {
                         LiveBadge().padding(8)
                     }
                     Spacer()
+                    Button(action: { showFullMap = true }) {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.primary)
+                            .padding(8)
+                            .background(.thinMaterial, in: Circle())
+                    }
+                    .padding(8)
                 }
-                .allowsHitTesting(false)
+                Spacer()
             }
         }
         .frame(height: 340)

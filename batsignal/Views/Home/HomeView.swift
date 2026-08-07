@@ -18,7 +18,7 @@ struct HomeView: View {
                 VStack(spacing: 16) {
 
                     // Friends' event map, with my event (or a prompt to create one) overlaid on top
-                    ZStack(alignment: .top) {
+                    ZStack(alignment: .bottom) {
                         HomeMapView(
                             annotations: allAnnotations,
                             focusedCoordinate: focusedCoordinate,

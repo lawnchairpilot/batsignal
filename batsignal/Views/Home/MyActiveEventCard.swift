@@ -46,6 +46,11 @@ struct MyActiveEventCard: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
+                if event.isActive {
+                    Text(Strings.Home.yourSignal)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
                 Text(event.activity)
                     .font(.headline)
 
@@ -92,7 +97,7 @@ struct MyActiveEventCard: View {
                         .foregroundColor(.accentColor)
                 }
                 Button(action: { isExpanded = false }) {
-                    Image(systemName: "chevron.up.circle")
+                    Image(systemName: "chevron.down.circle")
                         .font(.title2)
                         .foregroundColor(.accentColor)
                 }
@@ -162,7 +167,7 @@ struct MyActiveEventCard: View {
                     .font(.headline)
                 Spacer()
                 Button(action: { isExpanded = false }) {
-                    Image(systemName: "chevron.up.circle")
+                    Image(systemName: "chevron.down.circle")
                         .font(.title2)
                         .foregroundColor(.accentColor)
                 }
