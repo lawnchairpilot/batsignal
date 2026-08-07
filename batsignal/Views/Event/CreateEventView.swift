@@ -5,7 +5,6 @@ struct CreateEventView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var dragOffset: CGFloat = 0
     @State private var isPulsing = false
-    @State private var showAudienceDropdown = false
 
     private let swipeToSendThreshold: CGFloat = -70
 
@@ -27,7 +26,7 @@ struct CreateEventView: View {
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
 
-                        VStack(alignment: .leading, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 14) {
                             TextField(Strings.Event.activityPlaceholder, text: $viewModel.activity)
                             Rectangle()
                                 .fill(Color(.separator))
@@ -36,19 +35,9 @@ struct CreateEventView: View {
                         }
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
-                    }
 
-                    Section {
-                        VStack(spacing: 8) {
-                            audienceButton
-                            if showAudienceDropdown {
-                                audienceChecklist
-                            }
-                        }
-                        .listRowBackground(Color.clear)
-                    }
+                        whoPicker
 
-                    Section {
                         EventDurationWheel(
                             durationMinutes: $viewModel.selectedDurationMinutes,
                             vagueLabel: $viewModel.selectedVagueLabel
@@ -149,73 +138,42 @@ struct CreateEventView: View {
         }
     }
 
-    private var audienceButton: some View {
-        Button {
-            showAudienceDropdown.toggle()
-        } label: {
-            HStack {
-                Text(selectedAudienceLabel)
-                    .foregroundColor(.primary)
-                    .fontWeight(.medium)
-                    .lineLimit(1)
-                Spacer()
-                Image(systemName: "chevron.down")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.secondary)
-                    .rotationEffect(.degrees(showAudienceDropdown ? 180 : 0))
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .tactileCard()
-        }
-        .buttonStyle(.plain)
-        .frame(maxWidth: .infinity)
-    }
+    private var whoPicker: some View {
+        GeometryReader { geo in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    AudienceCard(
+                        title: Strings.Event.allFriendsLabel,
+                        emoji: nil,
+                        systemImage: "person.3.fill",
+                        isSelected: viewModel.selectedGroupIds.isEmpty
+                    ) {
+                        viewModel.selectedGroupIds.removeAll()
+                    }
 
-    private var audienceChecklist: some View {
-        VStack(spacing: 0) {
-            audienceRow(
-                title: Strings.Event.allFriendsLabel,
-                isSelected: viewModel.selectedGroupIds.isEmpty
-            ) {
-                viewModel.selectedGroupIds.removeAll()
-            }
+                    Spacer(minLength: 12)
 
-            ForEach(viewModel.groups) { group in
-                Rectangle()
-                    .fill(Color(.separator))
-                    .frame(height: 1)
-                    .padding(.leading, 14)
-                audienceRow(
-                    title: group.name,
-                    isSelected: group.id.map { viewModel.selectedGroupIds.contains($0) } ?? false
-                ) {
-                    toggleGroup(group)
+                    HStack(spacing: 12) {
+                        ForEach(viewModel.groups) { group in
+                            AudienceCard(
+                                title: group.name,
+                                emoji: group.emoji,
+                                systemImage: "person.2.fill",
+                                isSelected: group.id.map { viewModel.selectedGroupIds.contains($0) } ?? false
+                            ) {
+                                toggleGroup(group)
+                            }
+                        }
+                    }
                 }
+                .padding(.horizontal)
+                .padding(.vertical, 4)
+                .frame(minWidth: geo.size.width)
             }
         }
-        .tactileCard()
-    }
-
-    private func audienceRow(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack {
-                Text(title)
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
-                Spacer()
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.caption.weight(.semibold))
-                        .foregroundColor(.accentColor)
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
+        .frame(height: 100)
+        .listRowInsets(EdgeInsets())
+        .listRowBackground(Color.clear)
     }
 
     private func toggleGroup(_ group: FriendGroup) {
@@ -226,16 +184,46 @@ struct CreateEventView: View {
             viewModel.selectedGroupIds.insert(id)
         }
     }
+}
 
-    private var selectedAudienceLabel: String {
-        if viewModel.selectedGroupIds.isEmpty {
-            return Strings.Event.allFriendsLabel
+private struct AudienceCard: View {
+    let title: String
+    let emoji: String?
+    let systemImage: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    private let circleSize: CGFloat = 56
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                ZStack {
+                    Circle().fill(Color(.secondarySystemBackground))
+
+                    if let emoji {
+                        Text(emoji).font(.title2)
+                    } else {
+                        Image(systemName: systemImage)
+                            .font(.title3)
+                            .foregroundColor(.accentColor)
+                    }
+                }
+                .frame(width: circleSize, height: circleSize)
+                .overlay(
+                    Circle()
+                        .stroke(isSelected ? Color.accentColor : Color(.separator), lineWidth: isSelected ? 2 : 1)
+                )
+                .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+            }
+            .frame(width: 76)
         }
-        if viewModel.selectedGroupIds.count == 1,
-           let id = viewModel.selectedGroupIds.first,
-           let group = viewModel.groups.first(where: { $0.id == id }) {
-            return group.name
-        }
-        return Strings.Event.groupsSelectedLabel(viewModel.selectedGroupIds.count)
+        .buttonStyle(.plain)
     }
 }

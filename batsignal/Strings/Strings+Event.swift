@@ -9,10 +9,6 @@ extension Strings {
         static let liveLocation = "Share Location"
         static let fixedPlace = "Drop a Pin"
         static let allFriendsLabel = "All Friends"
-
-        static func groupsSelectedLabel(_ count: Int) -> String {
-            "\(count) Groups"
-        }
         static let pickLocationOnMap = "Pick a location on the map"
         static let addImage = "Add Image"
         static let changeImage = "Change Image"

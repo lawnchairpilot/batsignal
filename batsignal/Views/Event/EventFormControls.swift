@@ -1,21 +1,6 @@
 import SwiftUI
 import CoreLocation
 
-// Shared rectangular, tactile card styling used across the create/edit event forms.
-extension View {
-    func tactileCard() -> some View {
-        background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.secondarySystemBackground))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(.separator), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
-    }
-}
-
 // Large circular preview of how the event's icon will appear on the map, with
 // camera/emoji selector buttons flanking it. Shared by the create and edit forms.
 struct EventSymbolHeader: View {
@@ -158,8 +143,8 @@ struct EventDurationWheel: View {
         .pickerStyle(.wheel)
         .frame(maxWidth: .infinity)
         .frame(height: 100)
+        .padding(.horizontal, 40)
         .clipped()
-        .tactileCard()
     }
 
     private var currentLabel: String {
