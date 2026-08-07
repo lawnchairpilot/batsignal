@@ -7,6 +7,11 @@ struct CreateEventView: View {
     @State private var showCamera = false
     @State private var dragOffset: CGFloat = 0
     @State private var isPulsing = false
+    @State private var showAudienceDropdown = false
+
+    // Pushes the audience button down so its label lines up with the
+    // vertical center of the duration wheel next to it.
+    private let audienceButtonTopPadding: CGFloat = 30
 
     private let swipeToSendThreshold: CGFloat = -70
 
@@ -22,18 +27,32 @@ struct CreateEventView: View {
                         symbolHeader
                             .listRowInsets(EdgeInsets())
                             .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
 
-                        TextField(Strings.Event.activityPlaceholder, text: $viewModel.activity)
-                            .listRowBackground(Color.clear)
+                        VStack(alignment: .leading, spacing: 6) {
+                            TextField(Strings.Event.activityPlaceholder, text: $viewModel.activity)
+                            Rectangle()
+                                .fill(Color(.separator))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 1)
+                        }
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                     }
 
                     Section {
-                        durationPicker
-                            .listRowBackground(Color.clear)
-                    }
+                        HStack(alignment: .top, spacing: 16) {
+                            VStack(spacing: 8) {
+                                audienceButton
+                                if showAudienceDropdown {
+                                    audienceChecklist
+                                }
+                            }
+                            .padding(.top, audienceButtonTopPadding)
 
-                    Section {
-                        whoPicker
+                            durationPicker
+                        }
+                        .listRowBackground(Color.clear)
                     }
 
                     if let error = viewModel.errorMessage {
@@ -47,12 +66,12 @@ struct CreateEventView: View {
                     Color.clear.frame(height: 110)
                 }
 
+                swipeToSendIndicator
+            }
+            .overlay(alignment: .topLeading) {
                 cancelButton
                     .padding(.leading, 24)
-                    .padding(.bottom, 20)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                swipeToSendIndicator
+                    .padding(.top, 12)
             }
             .toolbar(.hidden, for: .navigationBar)
         }
@@ -69,6 +88,8 @@ struct CreateEventView: View {
                 .frame(width: 44, height: 44)
                 .background(Color(.secondarySystemBackground))
                 .clipShape(Circle())
+                .overlay(Circle().stroke(Color(.separator), lineWidth: 1))
+                .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
         }
         .buttonStyle(.plain)
     }
@@ -127,34 +148,73 @@ struct CreateEventView: View {
         }
     }
 
-    private var whoPicker: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
-                AudienceCard(
-                    title: Strings.Event.allFriendsLabel,
-                    emoji: nil,
-                    systemImage: "person.3.fill",
-                    isSelected: viewModel.selectedGroupIds.isEmpty
-                ) {
-                    viewModel.selectedGroupIds.removeAll()
-                }
+    private var audienceButton: some View {
+        Button {
+            showAudienceDropdown.toggle()
+        } label: {
+            HStack {
+                Text(selectedAudienceLabel)
+                    .foregroundColor(.primary)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+                Spacer()
+                Image(systemName: "chevron.down")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.secondary)
+                    .rotationEffect(.degrees(showAudienceDropdown ? 180 : 0))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .tactileCard()
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
+    }
 
-                ForEach(viewModel.groups) { group in
-                    AudienceCard(
-                        title: group.name,
-                        emoji: group.emoji,
-                        systemImage: "person.2.fill",
-                        isSelected: group.id.map { viewModel.selectedGroupIds.contains($0) } ?? false
-                    ) {
-                        toggleGroup(group)
-                    }
+    private var audienceChecklist: some View {
+        VStack(spacing: 0) {
+            audienceRow(
+                title: Strings.Event.allFriendsLabel,
+                isSelected: viewModel.selectedGroupIds.isEmpty
+            ) {
+                viewModel.selectedGroupIds.removeAll()
+            }
+
+            ForEach(viewModel.groups) { group in
+                Rectangle()
+                    .fill(Color(.separator))
+                    .frame(height: 1)
+                    .padding(.leading, 14)
+                audienceRow(
+                    title: group.name,
+                    isSelected: group.id.map { viewModel.selectedGroupIds.contains($0) } ?? false
+                ) {
+                    toggleGroup(group)
                 }
             }
-            .padding(.horizontal)
-            .padding(.vertical, 4)
         }
-        .listRowInsets(EdgeInsets())
-        .listRowBackground(Color.clear)
+        .tactileCard()
+    }
+
+    private func audienceRow(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Text(title)
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                Spacer()
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.accentColor)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private func toggleGroup(_ group: FriendGroup) {
@@ -164,6 +224,18 @@ struct CreateEventView: View {
         } else {
             viewModel.selectedGroupIds.insert(id)
         }
+    }
+
+    private var selectedAudienceLabel: String {
+        if viewModel.selectedGroupIds.isEmpty {
+            return Strings.Event.allFriendsLabel
+        }
+        if viewModel.selectedGroupIds.count == 1,
+           let id = viewModel.selectedGroupIds.first,
+           let group = viewModel.groups.first(where: { $0.id == id }) {
+            return group.name
+        }
+        return Strings.Event.groupsSelectedLabel(viewModel.selectedGroupIds.count)
     }
 
     private var durationPicker: some View {
@@ -176,8 +248,10 @@ struct CreateEventView: View {
             }
         }
         .pickerStyle(.wheel)
+        .frame(maxWidth: .infinity)
         .frame(height: 100)
         .clipped()
+        .tactileCard()
     }
 
     // Maps picker selection (a label string) back to the viewModel's two fields
@@ -235,7 +309,7 @@ struct CreateEventView: View {
                 Text(emoji)
                     .font(.system(size: symbolPreviewSize * 0.45))
             } else {
-                Image(systemName: "sparkles")
+                Image(systemName: "antenna.radiowaves.left.and.right")
                     .font(.system(size: symbolPreviewSize * 0.3))
                     .foregroundColor(.white.opacity(0.8))
             }
@@ -289,39 +363,17 @@ struct CreateEventView: View {
     }
 }
 
-private struct AudienceCard: View {
-    let title: String
-    let emoji: String?
-    let systemImage: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                if let emoji {
-                    Text(emoji).font(.title2)
-                } else {
-                    Image(systemName: systemImage)
-                        .font(.title2)
-                        .foregroundColor(.accentColor)
-                }
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
-            }
-            .frame(width: 96, height: 84)
-            .background(Color(.secondarySystemBackground))
-            .cornerRadius(16)
-            .overlay {
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.accentColor, lineWidth: 2)
-                }
-            }
-        }
-        .buttonStyle(.plain)
+// Shared rectangular, tactile card styling for the audience/duration controls.
+private extension View {
+    func tactileCard() -> some View {
+        background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.secondarySystemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(.separator), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
     }
 }
