@@ -185,6 +185,15 @@ class EventService: ObservableObject {
         ])
     }
 
+    func reduceEvent(id: String, currentEndTime: Date, currentDurationMinutes: Int) async throws {
+        let newDuration = currentDurationMinutes - 30
+        let newEndTime = currentEndTime.addingTimeInterval(-30 * 60)
+        try await db.collection("events").document(id).updateData([
+            "durationMinutes": newDuration,
+            "endTime": Timestamp(date: newEndTime)
+        ])
+    }
+
     func updateLiveLocation(eventId: String, coordinate: GeoPoint) async throws {
         try await db.collection("events").document(eventId).updateData([
             "locationCoordinate": coordinate

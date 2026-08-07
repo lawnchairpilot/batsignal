@@ -2,31 +2,17 @@ import Foundation
 
 extension Strings {
     enum Event {
-        // Section headers
-        static let whatAreYouDoingSection = "What are you doing?"
-        static let whenSection = "When?"
-        static let whereSection = "Where?"
-        static let timeSection = "Time"
-
         // Fields
         static let activityPlaceholder = "Message"
-        static let activityFieldLabel = "Activity"
-        static let descriptionPlaceholder = "Description (optional)"
-        static let emojiFieldLabel = "Emoji"
-        static let noneSelected = "None"
-        static let dayPickerLabel = "Day"
-        static let timePickerLabel = "Time"
         static let durationPickerLabel = "Duration"
         static let locationTypePickerLabel = "Location type"
         static let liveLocation = "Share Location"
         static let fixedPlace = "Drop a Pin"
-        static let describeIt = "Describe it"
         static let allFriendsLabel = "All Friends"
 
         static func groupsSelectedLabel(_ count: Int) -> String {
             "\(count) Groups"
         }
-        static let locationDescriptionPlaceholder = "Describe the location"
         static let pickLocationOnMap = "Pick a location on the map"
         static let addImage = "Add Image"
         static let changeImage = "Change Image"
@@ -42,8 +28,6 @@ extension Strings {
         static let yourSignalTitle = "Your Signal"
         static let cancelEvent = "Cancel Event"
         static let endSignal = "End Signal"
-        static let started = "Started"
-        static let add30Minutes = "Add 30 minutes"
 
         // Detail view
         static let timeLabel = "Time"

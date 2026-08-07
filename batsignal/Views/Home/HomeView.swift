@@ -148,8 +148,36 @@ struct HomeView: View {
     }
 
     private var allAnnotations: [EventAnnotationItem] {
+        // recipientIds never contains the creator themself, so listenToVisibleEvents
+        // (which viewModel.events/upcomingEvents come from) never surfaces this
+        // user's own event — without this it fell back to the plain blue user dot.
+        (ownEventAnnotation.map { [$0] } ?? []) +
         makeAnnotationItems(from: viewModel.events, isActive: true) +
         makeAnnotationItems(from: viewModel.upcomingEvents, isActive: false)
+    }
+
+    private var ownEventAnnotation: EventAnnotationItem? {
+        guard let event = myEventViewModel.activeEvent,
+              let id = event.id,
+              let geoPoint = event.locationCoordinate else { return nil }
+        let coordinate = CLLocationCoordinate2D(latitude: geoPoint.latitude, longitude: geoPoint.longitude)
+        let name = authService.currentUser?.displayName
+        let label: String? = {
+            if let emoji = event.emoji { return emoji }
+            guard let name, !name.isEmpty else { return nil }
+            let parts = name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
+            return parts.isEmpty ? nil : parts.uppercased()
+        }()
+        return EventAnnotationItem(
+            id: id,
+            coordinate: coordinate,
+            label: label,
+            creatorPhotoURL: event.imageURL ?? authService.currentUser?.profilePhotoURL,
+            isLive: event.locationType == .live,
+            isActive: true,
+            event: event,
+            creatorName: name
+        )
     }
 
     private func makeAnnotationItems(from events: [Event], isActive: Bool) -> [EventAnnotationItem] {

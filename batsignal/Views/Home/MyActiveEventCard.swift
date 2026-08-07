@@ -130,14 +130,49 @@ struct MyActiveEventCard: View {
                     .foregroundColor(.secondary)
             }
 
+            if let locationLabel = event.locationLabel {
+                Label(locationLabel, systemImage: locationIcon(event))
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+
             HStack {
-                if let locationLabel = event.locationLabel {
-                    Label(locationLabel, systemImage: locationIcon(event))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
+                Button(role: .destructive, action: {
+                    Task { await viewModel.end() }
+                }) {
+                    Text(Strings.Event.endSignal)
+                        .font(.subheadline.bold())
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.red.opacity(0.1))
+                        .foregroundColor(.red)
+                        .cornerRadius(20)
                 }
+
                 Spacer()
+
+                if viewModel.canReduceByThirtyMinutes {
+                    Button(action: {
+                        Task { await viewModel.reduce() }
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "minus")
+                            Text(Strings.Home.extend30Min)
+                        }
+                        .font(.subheadline.bold())
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color(.secondarySystemBackground))
+                        .foregroundColor(.accentColor)
+                        .cornerRadius(20)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(Color.accentColor.opacity(0.4), lineWidth: 1)
+                        )
+                    }
+                }
+
                 if event.durationMinutes != nil {
                     Button(action: {
                         Task { await viewModel.extend() }
@@ -167,7 +202,7 @@ struct MyActiveEventCard: View {
         .onTapGesture { showEventPreview = true }
         .onReceive(timer) { _ in now = Date() }
         .sheet(isPresented: $showDetail) {
-            ActiveEventDetailView(event: event, viewModel: viewModel)
+            ActiveEventDetailView(event: event)
         }
         .sheet(isPresented: $showEventPreview) {
             NavigationStack {
@@ -203,8 +238,6 @@ struct UpcomingEventDetailView: View {
     let event: Event
     @ObservedObject var myEventViewModel: MyActiveEventViewModel
     @StateObject private var editViewModel: EditUpcomingEventViewModel
-    @State private var showLocationPicker = false
-    @State private var showEmojiPicker = false
     @State private var attemptedSubmitWithoutLocation = false
     @Environment(\.dismiss) private var dismiss
 
@@ -222,90 +255,45 @@ struct UpcomingEventDetailView: View {
         attemptedSubmitWithoutLocation && isFixedLocationMissing
     }
 
-    private var hasImage: Bool {
-        editViewModel.selectedImage != nil || editViewModel.imageURL != nil
-    }
-
     var body: some View {
         NavigationStack {
             Form {
-                Section(Strings.Event.whatAreYouDoingSection) {
-                    TextField(Strings.Event.activityFieldLabel, text: $editViewModel.activity)
-                    EventImagePickerRow(imageURL: $editViewModel.imageURL, selectedImage: $editViewModel.selectedImage)
-                    TextField(Strings.Event.descriptionPlaceholder, text: $editViewModel.description, axis: .vertical)
-                        .lineLimit(3...)
-                    Button(action: { showEmojiPicker = true }) {
-                        HStack {
-                            Text(Strings.Event.emojiFieldLabel)
-                                .foregroundColor(.primary)
-                            Spacer()
-                            if let emoji = editViewModel.emoji {
-                                Text(emoji).font(.title2)
-                            } else {
-                                Text(Strings.Event.noneSelected)
-                                    .foregroundColor(.secondary)
-                            }
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
+                Section {
+                    EventSymbolHeader(
+                        selectedImage: $editViewModel.selectedImage,
+                        emoji: $editViewModel.emoji,
+                        imageURL: $editViewModel.imageURL
+                    )
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField(Strings.Event.activityPlaceholder, text: $editViewModel.activity)
+                        Rectangle()
+                            .fill(Color(.separator))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 1)
                     }
-                    .disabled(hasImage)
-                    .opacity(hasImage ? 0.4 : 1)
-                    .sheet(isPresented: $showEmojiPicker) {
-                        EmojiPickerView(selectedEmoji: $editViewModel.emoji)
-                    }
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 }
 
-                Section(Strings.Event.whenSection) {
-                    Picker(Strings.Event.dayPickerLabel, selection: $editViewModel.selectedDay) {
-                        ForEach(DayOption.allCases, id: \.self) { day in
-                            Text(day.rawValue).tag(day)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    DatePicker(Strings.Event.timePickerLabel, selection: $editViewModel.selectedTime, displayedComponents: [.hourAndMinute])
-                    Picker(Strings.Event.durationPickerLabel, selection: durationBinding) {
-                        ForEach(Event.durationOptions, id: \.minutes) { option in
-                            Text(option.label).tag(option.label)
-                        }
-                        ForEach(Event.vagueOptions, id: \.self) { label in
-                            Text(label).tag(label)
-                        }
-                    }
+                Section {
+                    EventDurationWheel(
+                        durationMinutes: $editViewModel.selectedDurationMinutes,
+                        vagueLabel: $editViewModel.selectedVagueLabel
+                    )
+                    .listRowBackground(Color.clear)
                 }
 
-                Section(Strings.Event.whereSection) {
-                    Picker(Strings.Event.locationTypePickerLabel, selection: $editViewModel.locationType) {
-                        Text(Strings.Event.describeIt).tag(LocationType.text)
-                        Text(Strings.Event.fixedPlace).tag(LocationType.fixed)
-                        Text(Strings.Event.liveLocation).tag(LocationType.live)
-                    }
-                    .pickerStyle(.segmented)
-
-                    if editViewModel.locationType == .text {
-                        TextField(Strings.Event.locationDescriptionPlaceholder, text: $editViewModel.locationLabel)
-                    } else if editViewModel.locationType == .fixed {
-                        Button(action: { showLocationPicker = true }) {
-                            HStack {
-                                Image(systemName: "mappin.circle")
-                                    .foregroundColor(showLocationError ? .red : .accentColor)
-                                if editViewModel.locationLabel.isEmpty {
-                                    Text(Strings.Event.pickLocationOnMap).foregroundColor(showLocationError ? .red : .secondary)
-                                } else {
-                                    Text(editViewModel.locationLabel).foregroundColor(.primary)
-                                }
-                                Spacer()
-                                Image(systemName: "chevron.right").font(.caption).foregroundColor(.secondary)
-                            }
-                        }
-                        .sheet(isPresented: $showLocationPicker) {
-                            LocationPickerView { picked in
-                                editViewModel.locationLabel = picked.name
-                                editViewModel.fixedCoordinate = picked.coordinate
-                            }
-                        }
-                    }
+                Section {
+                    EventLocationField(
+                        locationType: $editViewModel.locationType,
+                        locationLabel: $editViewModel.locationLabel,
+                        fixedCoordinate: $editViewModel.fixedCoordinate,
+                        showError: showLocationError
+                    )
                 }
 
                 Section {
@@ -355,37 +343,18 @@ struct UpcomingEventDetailView: View {
             }
         }
     }
-
-    private var durationBinding: Binding<String> {
-        Binding(
-            get: { editViewModel.durationLabel },
-            set: { label in
-                if let option = Event.durationOptions.first(where: { $0.label == label }) {
-                    editViewModel.selectedDurationMinutes = option.minutes
-                    editViewModel.selectedVagueLabel = nil
-                } else {
-                    editViewModel.selectedDurationMinutes = nil
-                    editViewModel.selectedVagueLabel = label
-                }
-            }
-        )
-    }
 }
 
 // MARK: - Active event detail / edit sheet
 
 struct ActiveEventDetailView: View {
     let event: Event
-    @ObservedObject var myEventViewModel: MyActiveEventViewModel
     @StateObject private var editViewModel: EditActiveEventViewModel
-    @State private var showLocationPicker = false
-    @State private var showEmojiPicker = false
     @State private var attemptedSubmitWithoutLocation = false
     @Environment(\.dismiss) private var dismiss
 
-    init(event: Event, viewModel: MyActiveEventViewModel) {
+    init(event: Event) {
         self.event = event
-        self.myEventViewModel = viewModel
         self._editViewModel = StateObject(wrappedValue: EditActiveEventViewModel(event: event))
     }
 
@@ -397,98 +366,37 @@ struct ActiveEventDetailView: View {
         attemptedSubmitWithoutLocation && isFixedLocationMissing
     }
 
-    private var hasImage: Bool {
-        editViewModel.selectedImage != nil || editViewModel.imageURL != nil
-    }
-
     var body: some View {
         NavigationStack {
             Form {
-                Section(Strings.Event.whatAreYouDoingSection) {
-                    TextField(Strings.Event.activityFieldLabel, text: $editViewModel.activity)
-                    EventImagePickerRow(imageURL: $editViewModel.imageURL, selectedImage: $editViewModel.selectedImage)
-                    TextField(Strings.Event.descriptionPlaceholder, text: $editViewModel.description, axis: .vertical)
-                        .lineLimit(3...)
-                    Button(action: { showEmojiPicker = true }) {
-                        HStack {
-                            Text(Strings.Event.emojiFieldLabel)
-                                .foregroundColor(.primary)
-                            Spacer()
-                            if let emoji = editViewModel.emoji {
-                                Text(emoji).font(.title2)
-                            } else {
-                                Text(Strings.Event.noneSelected)
-                                    .foregroundColor(.secondary)
-                            }
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
+                Section {
+                    EventSymbolHeader(
+                        selectedImage: $editViewModel.selectedImage,
+                        emoji: $editViewModel.emoji,
+                        imageURL: $editViewModel.imageURL
+                    )
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField(Strings.Event.activityPlaceholder, text: $editViewModel.activity)
+                        Rectangle()
+                            .fill(Color(.separator))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 1)
                     }
-                    .disabled(hasImage)
-                    .opacity(hasImage ? 0.4 : 1)
-                    .sheet(isPresented: $showEmojiPicker) {
-                        EmojiPickerView(selectedEmoji: $editViewModel.emoji)
-                    }
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 }
 
-                Section(Strings.Event.timeSection) {
-                    HStack {
-                        Text(Strings.Event.started)
-                        Spacer()
-                        Text(event.startTime.dateValue(), style: .time)
-                            .foregroundColor(.secondary)
-                    }
-                    Picker(Strings.Event.durationPickerLabel, selection: durationBinding) {
-                        ForEach(Event.durationOptions, id: \.minutes) { option in
-                            Text(option.label).tag(option.label)
-                        }
-                        ForEach(Event.vagueOptions, id: \.self) { label in
-                            Text(label).tag(label)
-                        }
-                    }
-                    if editViewModel.selectedDurationMinutes != nil {
-                        Button(action: { Task { await myEventViewModel.extend() } }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "plus.circle.fill")
-                                Text(Strings.Event.add30Minutes)
-                            }
-                            .foregroundColor(.accentColor)
-                        }
-                    }
-                }
-
-                Section(Strings.Event.whereSection) {
-                    Picker(Strings.Event.locationTypePickerLabel, selection: $editViewModel.locationType) {
-                        Text(Strings.Event.describeIt).tag(LocationType.text)
-                        Text(Strings.Event.fixedPlace).tag(LocationType.fixed)
-                        Text(Strings.Event.liveLocation).tag(LocationType.live)
-                    }
-                    .pickerStyle(.segmented)
-
-                    if editViewModel.locationType == .text {
-                        TextField(Strings.Event.locationDescriptionPlaceholder, text: $editViewModel.locationLabel)
-                    } else if editViewModel.locationType == .fixed {
-                        Button(action: { showLocationPicker = true }) {
-                            HStack {
-                                Image(systemName: "mappin.circle")
-                                    .foregroundColor(showLocationError ? .red : .accentColor)
-                                if editViewModel.locationLabel.isEmpty {
-                                    Text(Strings.Event.pickLocationOnMap).foregroundColor(showLocationError ? .red : .secondary)
-                                } else {
-                                    Text(editViewModel.locationLabel).foregroundColor(.primary)
-                                }
-                                Spacer()
-                                Image(systemName: "chevron.right").font(.caption).foregroundColor(.secondary)
-                            }
-                        }
-                        .sheet(isPresented: $showLocationPicker) {
-                            LocationPickerView { picked in
-                                editViewModel.locationLabel = picked.name
-                                editViewModel.fixedCoordinate = picked.coordinate
-                            }
-                        }
-                    }
+                Section {
+                    EventLocationField(
+                        locationType: $editViewModel.locationType,
+                        locationLabel: $editViewModel.locationLabel,
+                        fixedCoordinate: $editViewModel.fixedCoordinate,
+                        showError: showLocationError
+                    )
                 }
 
                 Section {
@@ -498,15 +406,6 @@ struct ActiveEventDetailView: View {
                 if let error = editViewModel.errorMessage {
                     Section {
                         Text(error).foregroundColor(.red).font(.caption)
-                    }
-                }
-
-                Section {
-                    Button(Strings.Event.endSignal, role: .destructive) {
-                        Task {
-                            await myEventViewModel.end()
-                            dismiss()
-                        }
                     }
                 }
             }
@@ -537,20 +436,5 @@ struct ActiveEventDetailView: View {
                 }
             }
         }
-    }
-
-    private var durationBinding: Binding<String> {
-        Binding(
-            get: { editViewModel.durationLabel },
-            set: { label in
-                if let option = Event.durationOptions.first(where: { $0.label == label }) {
-                    editViewModel.selectedDurationMinutes = option.minutes
-                    editViewModel.selectedVagueLabel = nil
-                } else {
-                    editViewModel.selectedDurationMinutes = nil
-                    editViewModel.selectedVagueLabel = label
-                }
-            }
-        )
     }
 }

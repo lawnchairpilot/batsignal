@@ -164,6 +164,28 @@ class MyActiveEventViewModel: ObservableObject {
         )
     }
 
+    // Never lets the event end via this button — only usable while at least
+    // 30 minutes remain, so ending is still a deliberate, separate action.
+    var canReduceByThirtyMinutes: Bool {
+        guard let event = activeEvent,
+              event.durationMinutes != nil,
+              let endTime = event.endTime else { return false }
+        return endTime.dateValue().timeIntervalSince(Date()) >= 30 * 60
+    }
+
+    func reduce() async {
+        guard canReduceByThirtyMinutes,
+              let event = activeEvent,
+              let id = event.id,
+              let durationMinutes = event.durationMinutes,
+              let endTime = event.endTime else { return }
+        try? await eventService.reduceEvent(
+            id: id,
+            currentEndTime: endTime.dateValue(),
+            currentDurationMinutes: durationMinutes
+        )
+    }
+
     func end() async {
         locationService.stopLiveSharing()
         guard let id = activeEvent?.id else { return }

@@ -106,7 +106,6 @@
 				0357E52FC0AED168CC42F8E5 /* NotificationService.swift */,
 				EF717F6B23BB35F57CB13837 /* Info.plist */,
 			);
-			name = NotificationServiceExtension;
 			path = NotificationServiceExtension;
 			sourceTree = "<group>";
 		};
