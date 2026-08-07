@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct CreateEventView: View {
     @StateObject private var viewModel = CreateEventViewModel()
@@ -8,6 +9,8 @@ struct CreateEventView: View {
     @State private var dragProgress: CGFloat = 0
 
     private let swipeToSendThreshold: CGFloat = -70
+    private let indicatorLineCount = 5
+    private let activityCharacterLimit = 140
 
     private var canSubmit: Bool {
         !viewModel.activity.isEmpty && !viewModel.isLoading
@@ -16,6 +19,7 @@ struct CreateEventView: View {
     var body: some View {
         NavigationStack {
             cardContent
+                .ignoresSafeArea(.keyboard, edges: .bottom)
         }
         .task {
             await viewModel.loadGroups()
@@ -35,8 +39,15 @@ struct CreateEventView: View {
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
 
-                    VStack(alignment: .leading, spacing: 14) {
-                        TextField(Strings.Event.activityPlaceholder, text: $viewModel.activity)
+                    VStack(alignment: .center, spacing: 14) {
+                        CenteredTextField(text: $viewModel.activity, placeholder: Strings.Event.activityPlaceholder)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 24)
+                            .onChange(of: viewModel.activity) { _, newValue in
+                                if newValue.count > activityCharacterLimit {
+                                    viewModel.activity = String(newValue.prefix(activityCharacterLimit))
+                                }
+                            }
                         Rectangle()
                             .fill(Color(.separator))
                             .frame(maxWidth: .infinity)
@@ -61,6 +72,7 @@ struct CreateEventView: View {
                     }
                 }
             }
+            .scrollDisabled(true)
             .safeAreaInset(edge: .bottom) {
                 Color.clear.frame(height: 200)
             }
@@ -90,14 +102,14 @@ struct CreateEventView: View {
     }
 
     private var swipeToSendIndicator: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: 8) {
             if viewModel.isLoading {
                 ProgressView()
                     .padding(.bottom, 4)
             } else if isDragging {
-                dragTrackingChevrons
+                dragTrackingLines
             } else {
-                ambientChevrons
+                ambientLines
             }
 
             Text(isDragging && dragProgress >= 1 ? Strings.Event.releaseToSend : Strings.Event.swipeUpToSend)
@@ -130,14 +142,14 @@ struct CreateEventView: View {
         )
     }
 
-    private var ambientChevrons: some View {
-        ForEach(0..<3, id: \.self) { index in
-            chevron(for: index)
+    private var ambientLines: some View {
+        ForEach(0..<indicatorLineCount, id: \.self) { index in
+            line(for: index)
                 .opacity(isPulsing ? 1 : 0.25)
                 .animation(
                     .easeInOut(duration: 0.9)
                         .repeatForever(autoreverses: true)
-                        .delay(Double(index) * 0.15),
+                        .delay(Double(index) * 0.1),
                     value: isPulsing
                 )
         }
@@ -147,50 +159,39 @@ struct CreateEventView: View {
         }
     }
 
-    private var dragTrackingChevrons: some View {
-        ForEach(0..<3, id: \.self) { index in
-            chevron(for: index)
-                .opacity(chevronOpacity(for: index))
+    private var dragTrackingLines: some View {
+        ForEach(0..<indicatorLineCount, id: \.self) { index in
+            line(for: index)
+                .opacity(lineOpacity(for: index))
         }
     }
 
-    private func chevron(for index: Int) -> some View {
-        let width = chevronWidth(for: index)
-        return ChevronShape()
-            .stroke(
-                Color.accentColor,
-                style: StrokeStyle(lineWidth: chevronStrokeWidth(for: index), lineCap: .round, lineJoin: .round)
-            )
-            .frame(width: width, height: chevronHeight(for: width))
+    private func line(for index: Int) -> some View {
+        Capsule()
+            .fill(Color.accentColor)
+            .frame(width: lineWidth(for: index), height: lineThickness(for: index))
     }
 
-    private func chevronWidth(for index: Int) -> CGFloat {
-        // Index 0 is the topmost chevron, index 2 sits closest to the label,
-        // so the pyramid tapers up toward the top: bottom is biggest (ratio 3),
-        // top is smallest (ratio 1). The biggest arrow is sized to roughly match
-        // the duration wheel's selection highlight bar.
+    private func lineWidth(for index: Int) -> CGFloat {
+        // Index 0 is the topmost line, the last index sits closest to the
+        // label, so the stack tapers up toward the top: the bottom line is
+        // widest, matching the duration wheel's selection highlight bar.
         let ratio = CGFloat(index + 1)
-        return ratio * 85
+        return ratio * (255 / CGFloat(indicatorLineCount))
     }
 
-    private func chevronHeight(for width: CGFloat) -> CGFloat {
-        // Height grows much more slowly than width, so wider arrows read as
-        // a flatter, more obtuse angle instead of just scaling up uniformly.
-        20 + width * 0.15
+    private func lineThickness(for index: Int) -> CGFloat {
+        // A subtle ramp: the bottom line reads slightly bolder than the top
+        // one, without a jarring difference between them.
+        8 + CGFloat(index)
     }
 
-    private func chevronStrokeWidth(for index: Int) -> CGFloat {
-        // A subtle ramp: the biggest (bottom) arrow reads slightly bolder than
-        // the smallest (top) one, without a jarring difference between them.
-        5 + CGFloat(index)
-    }
-
-    private func chevronOpacity(for index: Int) -> Double {
-        // Index 0 is the topmost chevron, index 2 sits closest to the label,
-        // so the bottom chevron lights up first as the finger moves up.
-        let order = Double(2 - index)
-        let segmentStart = order / 3
-        let local = (Double(dragProgress) - segmentStart) / (1.0 / 3)
+    private func lineOpacity(for index: Int) -> Double {
+        // Index 0 is the topmost line, the last index sits closest to the
+        // label, so the bottom line lights up first as the finger moves up.
+        let order = Double(indicatorLineCount - 1 - index)
+        let segmentStart = order / Double(indicatorLineCount)
+        let local = (Double(dragProgress) - segmentStart) / (1.0 / Double(indicatorLineCount))
         return 0.25 + 0.75 * min(max(local, 0), 1)
     }
 
@@ -249,25 +250,47 @@ struct CreateEventView: View {
     }
 }
 
-private struct ChevronShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let start = CGPoint(x: rect.minX, y: rect.maxY)
-        let peak = CGPoint(x: rect.midX, y: rect.minY)
-        let end = CGPoint(x: rect.maxX, y: rect.maxY)
+// A plain SwiftUI `TextField` with `.multilineTextAlignment(.center)` shows
+// its caret at the leading edge of the (centered) placeholder until the
+// first keystroke, when it snaps to the true center. Setting
+// `textAlignment` on the underlying `UITextField` directly avoids that.
+private struct CenteredTextField: UIViewRepresentable {
+    @Binding var text: String
+    var placeholder: String
 
-        // A single control point at each leg's true midpoint, pushed straight
-        // down, bows the curve symmetrically — like a parenthesis — so the
-        // deepest point sits in the middle of the leg rather than near
-        // either end.
-        let depth = rect.height * 0.18
-        let leftControl = CGPoint(x: (start.x + peak.x) / 2, y: (start.y + peak.y) / 2 + depth)
-        let rightControl = CGPoint(x: (peak.x + end.x) / 2, y: (peak.y + end.y) / 2 + depth)
+    func makeUIView(context: Context) -> UITextField {
+        let textField = UITextField()
+        textField.textAlignment = .center
+        textField.placeholder = placeholder
+        textField.text = text
+        textField.font = .preferredFont(forTextStyle: .body)
+        textField.adjustsFontForContentSizeCategory = true
+        textField.tintColor = UIColor(Color.accentColor)
+        textField.delegate = context.coordinator
+        return textField
+    }
 
-        path.move(to: start)
-        path.addQuadCurve(to: peak, control: leftControl)
-        path.addQuadCurve(to: end, control: rightControl)
-        return path
+    func updateUIView(_ uiView: UITextField, context: Context) {
+        if uiView.text != text {
+            uiView.text = text
+        }
+        uiView.placeholder = placeholder
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        let parent: CenteredTextField
+
+        init(_ parent: CenteredTextField) {
+            self.parent = parent
+        }
+
+        func textFieldDidChangeSelection(_ textField: UITextField) {
+            parent.text = textField.text ?? ""
+        }
     }
 }
 

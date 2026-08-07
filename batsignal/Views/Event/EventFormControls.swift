@@ -11,20 +11,30 @@ struct EventSymbolHeader: View {
     @State private var showEmojiPicker = false
     @State private var showCamera = false
 
-    private let previewSize: CGFloat = 220
+    private let maxPreviewSize: CGFloat = 220
+    private let minPreviewSize: CGFloat = 140
     private let buttonSize: CGFloat = 44
+    private let spacing: CGFloat = 28
 
     private var hasImage: Bool {
         selectedImage != nil || imageURL != nil
     }
 
+    private func previewSize(for availableWidth: CGFloat) -> CGFloat {
+        let reserved = buttonSize * 2 + spacing * 2
+        return min(maxPreviewSize, max(minPreviewSize, availableWidth - reserved))
+    }
+
     var body: some View {
-        HStack(alignment: .bottom, spacing: 28) {
-            imageButton
-            previewCircle
-            emojiButton
+        GeometryReader { geo in
+            HStack(alignment: .bottom, spacing: spacing) {
+                imageButton
+                previewCircle(size: previewSize(for: geo.size.width))
+                emojiButton
+            }
+            .frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: .infinity)
+        .frame(height: maxPreviewSize)
         .padding(.vertical, 12)
         .sheet(isPresented: $showEmojiPicker) {
             EmojiPickerView(selectedEmoji: $emoji)
@@ -44,7 +54,7 @@ struct EventSymbolHeader: View {
         }
     }
 
-    private var previewCircle: some View {
+    private func previewCircle(size: CGFloat) -> some View {
         ZStack {
             Circle().fill(Color.accentColor)
 
@@ -54,27 +64,27 @@ struct EventSymbolHeader: View {
                     .scaledToFill()
             } else if let emoji {
                 Text(emoji)
-                    .font(.system(size: previewSize * 0.45))
+                    .font(.system(size: size * 0.45))
             } else if let imageURL, let url = URL(string: imageURL) {
                 AsyncImage(url: url) { phase in
                     if case .success(let image) = phase {
                         image.resizable().scaledToFill()
                     } else {
-                        fallbackIcon
+                        fallbackIcon(size: size)
                     }
                 }
             } else {
-                fallbackIcon
+                fallbackIcon(size: size)
             }
         }
-        .frame(width: previewSize, height: previewSize)
+        .frame(width: size, height: size)
         .clipShape(Circle())
         .overlay(Circle().stroke(Color(.separator), lineWidth: 1))
     }
 
-    private var fallbackIcon: some View {
+    private func fallbackIcon(size: CGFloat) -> some View {
         Image(systemName: "antenna.radiowaves.left.and.right")
-            .font(.system(size: previewSize * 0.3))
+            .font(.system(size: size * 0.3))
             .foregroundColor(.white.opacity(0.8))
     }
 

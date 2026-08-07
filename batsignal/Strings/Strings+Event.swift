@@ -3,7 +3,7 @@ import Foundation
 extension Strings {
     enum Event {
         // Fields
-        static let activityPlaceholder = "Message"
+        static let activityPlaceholder = "your city needs you..."
         static let durationPickerLabel = "Duration"
         static let locationTypePickerLabel = "Location type"
         static let liveLocation = "Share Location"
