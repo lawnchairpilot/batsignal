@@ -20,6 +20,7 @@ extension Strings {
 
         // Titles & actions
         static let swipeUpToSend = "Swipe up to send"
+        static let releaseToSend = "Release to send"
         static let editSignalTitle = "Edit Signal"
         static let yourSignalTitle = "Your Signal"
         static let cancelEvent = "Cancel Event"

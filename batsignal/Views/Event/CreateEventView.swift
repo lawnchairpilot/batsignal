@@ -3,8 +3,9 @@ import SwiftUI
 struct CreateEventView: View {
     @StateObject private var viewModel = CreateEventViewModel()
     @Environment(\.dismiss) private var dismiss
-    @State private var dragOffset: CGFloat = 0
     @State private var isPulsing = false
+    @State private var isDragging = false
+    @State private var dragProgress: CGFloat = 0
 
     private let swipeToSendThreshold: CGFloat = -70
 
@@ -14,60 +15,64 @@ struct CreateEventView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .bottom) {
-                Form {
-                    Section {
-                        EventSymbolHeader(
-                            selectedImage: $viewModel.selectedImage,
-                            emoji: $viewModel.emoji,
-                            imageURL: .constant(nil)
-                        )
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-
-                        VStack(alignment: .leading, spacing: 14) {
-                            TextField(Strings.Event.activityPlaceholder, text: $viewModel.activity)
-                            Rectangle()
-                                .fill(Color(.separator))
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 1)
-                        }
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-
-                        whoPicker
-
-                        EventDurationWheel(
-                            durationMinutes: $viewModel.selectedDurationMinutes,
-                            vagueLabel: $viewModel.selectedVagueLabel
-                        )
-                        .listRowBackground(Color.clear)
-                    }
-
-                    if let error = viewModel.errorMessage {
-                        Section {
-                            Text(error).foregroundColor(.red).font(.caption)
-                                .listRowBackground(Color.clear)
-                        }
-                    }
-                }
-                .safeAreaInset(edge: .bottom) {
-                    Color.clear.frame(height: 110)
-                }
-
-                swipeToSendIndicator
-            }
-            .overlay(alignment: .topLeading) {
-                cancelButton
-                    .padding(.leading, 24)
-                    .padding(.top, 12)
-            }
-            .toolbar(.hidden, for: .navigationBar)
+            cardContent
         }
         .task {
             await viewModel.loadGroups()
         }
+    }
+
+    private var cardContent: some View {
+        ZStack(alignment: .bottom) {
+            Form {
+                Section {
+                    EventSymbolHeader(
+                        selectedImage: $viewModel.selectedImage,
+                        emoji: $viewModel.emoji,
+                        imageURL: .constant(nil)
+                    )
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+
+                    VStack(alignment: .leading, spacing: 14) {
+                        TextField(Strings.Event.activityPlaceholder, text: $viewModel.activity)
+                        Rectangle()
+                            .fill(Color(.separator))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 1)
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+
+                    whoPicker
+
+                    EventDurationWheel(
+                        durationMinutes: $viewModel.selectedDurationMinutes,
+                        vagueLabel: $viewModel.selectedVagueLabel
+                    )
+                    .listRowBackground(Color.clear)
+                }
+
+                if let error = viewModel.errorMessage {
+                    Section {
+                        Text(error).foregroundColor(.red).font(.caption)
+                            .listRowBackground(Color.clear)
+                    }
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                Color.clear.frame(height: 200)
+            }
+
+            swipeToSendIndicator
+        }
+        .overlay(alignment: .topLeading) {
+            cancelButton
+                .padding(.leading, 24)
+                .padding(.top, 12)
+        }
+        .toolbar(.hidden, for: .navigationBar)
     }
 
     private var cancelButton: some View {
@@ -89,46 +94,104 @@ struct CreateEventView: View {
             if viewModel.isLoading {
                 ProgressView()
                     .padding(.bottom, 4)
+            } else if isDragging {
+                dragTrackingChevrons
             } else {
-                ForEach(0..<3, id: \.self) { index in
-                    Image(systemName: "chevron.up")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.accentColor)
-                        .opacity(isPulsing ? 1 : 0.25)
-                        .animation(
-                            .easeInOut(duration: 0.9)
-                                .repeatForever(autoreverses: true)
-                                .delay(Double(index) * 0.15),
-                            value: isPulsing
-                        )
-                }
+                ambientChevrons
             }
-            Text(Strings.Event.swipeUpToSend)
+
+            Text(isDragging && dragProgress >= 1 ? Strings.Event.releaseToSend : Strings.Event.swipeUpToSend)
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
         .opacity(canSubmit ? 1 : 0.35)
         .padding(.vertical, 16)
-        .frame(width: 160)
+        .frame(width: 280)
         .contentShape(Rectangle())
-        .offset(y: dragOffset)
-        .gesture(
+        .highPriorityGesture(
             DragGesture(minimumDistance: 10)
                 .onChanged { value in
                     guard canSubmit else { return }
-                    dragOffset = min(0, value.translation.height)
+                    isDragging = true
+                    let upwardTranslation = min(0, value.translation.height)
+                    dragProgress = min(1, -upwardTranslation / -swipeToSendThreshold)
                 }
                 .onEnded { value in
                     guard canSubmit else { return }
-                    if value.translation.height < swipeToSendThreshold {
-                        submitEvent()
+                    let shouldSend = value.translation.height < swipeToSendThreshold
+                    withAnimation(.easeOut(duration: 0.15)) {
+                        isDragging = false
+                        dragProgress = 0
                     }
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        dragOffset = 0
+                    if shouldSend {
+                        submitEvent()
                     }
                 }
         )
-        .onAppear { isPulsing = true }
+    }
+
+    private var ambientChevrons: some View {
+        ForEach(0..<3, id: \.self) { index in
+            chevron(for: index)
+                .opacity(isPulsing ? 1 : 0.25)
+                .animation(
+                    .easeInOut(duration: 0.9)
+                        .repeatForever(autoreverses: true)
+                        .delay(Double(index) * 0.15),
+                    value: isPulsing
+                )
+        }
+        .onAppear {
+            isPulsing = false
+            DispatchQueue.main.async { isPulsing = true }
+        }
+    }
+
+    private var dragTrackingChevrons: some View {
+        ForEach(0..<3, id: \.self) { index in
+            chevron(for: index)
+                .opacity(chevronOpacity(for: index))
+        }
+    }
+
+    private func chevron(for index: Int) -> some View {
+        let width = chevronWidth(for: index)
+        return ChevronShape()
+            .stroke(
+                Color.accentColor,
+                style: StrokeStyle(lineWidth: chevronStrokeWidth(for: index), lineCap: .round, lineJoin: .round)
+            )
+            .frame(width: width, height: chevronHeight(for: width))
+    }
+
+    private func chevronWidth(for index: Int) -> CGFloat {
+        // Index 0 is the topmost chevron, index 2 sits closest to the label,
+        // so the pyramid tapers up toward the top: bottom is biggest (ratio 3),
+        // top is smallest (ratio 1). The biggest arrow is sized to roughly match
+        // the duration wheel's selection highlight bar.
+        let ratio = CGFloat(index + 1)
+        return ratio * 85
+    }
+
+    private func chevronHeight(for width: CGFloat) -> CGFloat {
+        // Height grows much more slowly than width, so wider arrows read as
+        // a flatter, more obtuse angle instead of just scaling up uniformly.
+        20 + width * 0.15
+    }
+
+    private func chevronStrokeWidth(for index: Int) -> CGFloat {
+        // A subtle ramp: the biggest (bottom) arrow reads slightly bolder than
+        // the smallest (top) one, without a jarring difference between them.
+        5 + CGFloat(index)
+    }
+
+    private func chevronOpacity(for index: Int) -> Double {
+        // Index 0 is the topmost chevron, index 2 sits closest to the label,
+        // so the bottom chevron lights up first as the finger moves up.
+        let order = Double(2 - index)
+        let segmentStart = order / 3
+        let local = (Double(dragProgress) - segmentStart) / (1.0 / 3)
+        return 0.25 + 0.75 * min(max(local, 0), 1)
     }
 
     private func submitEvent() {
@@ -183,6 +246,28 @@ struct CreateEventView: View {
         } else {
             viewModel.selectedGroupIds.insert(id)
         }
+    }
+}
+
+private struct ChevronShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let start = CGPoint(x: rect.minX, y: rect.maxY)
+        let peak = CGPoint(x: rect.midX, y: rect.minY)
+        let end = CGPoint(x: rect.maxX, y: rect.maxY)
+
+        // A single control point at each leg's true midpoint, pushed straight
+        // down, bows the curve symmetrically — like a parenthesis — so the
+        // deepest point sits in the middle of the leg rather than near
+        // either end.
+        let depth = rect.height * 0.18
+        let leftControl = CGPoint(x: (start.x + peak.x) / 2, y: (start.y + peak.y) / 2 + depth)
+        let rightControl = CGPoint(x: (peak.x + end.x) / 2, y: (peak.y + end.y) / 2 + depth)
+
+        path.move(to: start)
+        path.addQuadCurve(to: peak, control: leftControl)
+        path.addQuadCurve(to: end, control: rightControl)
+        return path
     }
 }
 
