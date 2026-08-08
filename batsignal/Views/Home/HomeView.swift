@@ -11,65 +11,46 @@ struct HomeView: View {
     @State private var focusedCoordinate: CLLocationCoordinate2D?
     @State private var focusedEventId: String?
     @State private var selectedEventForDetail: EventDetailSelection?
+    @State private var selectedCarouselItem: HomeCarouselSelection? = .own
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(spacing: 16) {
 
-                    // Friends' event map, with my event (or a prompt to create one) overlaid on top
-                    ZStack(alignment: .bottom) {
-                        HomeMapView(
-                            annotations: allAnnotations,
-                            focusedCoordinate: focusedCoordinate,
-                            onSelectEvent: { event in openEventDetail(for: event) }
-                        )
+                        // Friends' event map, with my event and friends' current events as cards overlaid on top
+                        ZStack(alignment: .bottom) {
+                            HomeMapView(
+                                annotations: allAnnotations,
+                                focusedCoordinate: focusedCoordinate,
+                                height: mapHeight(for: proxy.size.height),
+                                onSelectEvent: { event in openEventDetail(for: event) }
+                            )
 
-                        Group {
-                            if myEventViewModel.activeEvent != nil || myEventViewModel.upcomingEvent != nil {
-                                MyActiveEventCard(viewModel: myEventViewModel)
-                            } else {
-                                CreateEventPromptCard(action: { showCreateEvent = true })
-                            }
+                            homeCarousel
+                                .padding(.horizontal, 12)
+                                .padding(.bottom, 12)
                         }
-                        .padding(12)
-                        .opacity(0.92)
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
+                        .padding(.horizontal)
+                        .padding(.top, 8)
 
-                    // Friends' active events
-                    if viewModel.isLoading {
-                        ProgressView().padding(.top, 40)
-                    } else if viewModel.events.isEmpty && viewModel.upcomingEvents.isEmpty {
-                        ContentUnavailableView(
-                            Strings.Home.emptyStateTitle,
-                            systemImage: "antenna.radiowaves.left.and.right",
-                            description: Text(Strings.Home.emptyStateDescription)
-                        )
-                        .padding(.top, 40)
-                    } else {
-                        VStack(alignment: .leading, spacing: 12) {
-                            if !viewModel.events.isEmpty {
-                                Text(Strings.Home.whatsHappening)
-                                    .font(.title3).bold()
-                                    .padding(.horizontal)
-                                    .padding(.top, 4)
-                                ForEach(viewModel.events) { event in
-                                    let creator = friendsViewModel.friends.first { $0.id == event.creatorId }
-                                    EventCardView(event: event, creatorName: creator?.displayName, isSelected: event.id != nil && event.id == focusedEventId)
-                                        .padding(.horizontal)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture(count: 2) { openEventDetail(for: event) }
-                                        .onTapGesture(count: 1) { handleSingleTap(on: event) }
-                                }
-                            }
-
-                            if !viewModel.upcomingEvents.isEmpty {
+                        // Friends' upcoming events
+                        if viewModel.isLoading {
+                            ProgressView().padding(.top, 40)
+                        } else if viewModel.events.isEmpty && viewModel.upcomingEvents.isEmpty {
+                            ContentUnavailableView(
+                                Strings.Home.emptyStateTitle,
+                                systemImage: "antenna.radiowaves.left.and.right",
+                                description: Text(Strings.Home.emptyStateDescription)
+                            )
+                            .padding(.top, 40)
+                        } else if !viewModel.upcomingEvents.isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
                                 Text(Strings.Home.comingUp)
                                     .font(.title3).bold()
                                     .padding(.horizontal)
-                                    .padding(.top, viewModel.events.isEmpty ? 4 : 8)
+                                    .padding(.top, 4)
                                 ForEach(viewModel.upcomingEvents) { event in
                                     let creator = friendsViewModel.friends.first { $0.id == event.creatorId }
                                     EventCardView(event: event, creatorName: creator?.displayName, isSelected: event.id != nil && event.id == focusedEventId)
@@ -80,8 +61,8 @@ struct HomeView: View {
                                         .onTapGesture(count: 1) { handleSingleTap(on: event) }
                                 }
                             }
+                            .padding(.bottom, 16)
                         }
-                        .padding(.bottom, 16)
                     }
                 }
             }
@@ -104,6 +85,64 @@ struct HomeView: View {
                     }
                 }
             }
+        }
+    }
+
+    // Lets the map claim the full screen whenever there's no upcoming-events
+    // list that needs room below it, instead of leaving dead space under the
+    // carousel — including the "no signals" empty state, which is small
+    // enough to just sit in whatever space is left. Only the upcoming list
+    // (which can be long) keeps the map pinned to its standard height.
+    private func mapHeight(for availableHeight: CGFloat) -> CGFloat {
+        let standardHeight: CGFloat = 340
+        guard !viewModel.isLoading, viewModel.upcomingEvents.isEmpty else { return standardHeight }
+        return max(standardHeight, availableHeight - 24)
+    }
+
+    private var homeCarousel: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(alignment: .bottom, spacing: 12) {
+                Group {
+                    if myEventViewModel.activeEvent != nil || myEventViewModel.upcomingEvent != nil {
+                        MyActiveEventCard(viewModel: myEventViewModel)
+                    } else {
+                        CreateEventPromptCard(action: { showCreateEvent = true })
+                    }
+                }
+                .opacity(0.92)
+                .containerRelativeFrame(.horizontal) { width, _ in width * 0.82 }
+                .carouselFocusEffect()
+                .id(HomeCarouselSelection.own)
+
+                ForEach(viewModel.events) { event in
+                    let creator = friendsViewModel.friends.first { $0.id == event.creatorId }
+                    EventCardView(event: event, creatorName: creator?.displayName)
+                        .opacity(0.92)
+                        .containerRelativeFrame(.horizontal) { width, _ in width * 0.82 }
+                        .carouselFocusEffect()
+                        .contentShape(Rectangle())
+                        .onTapGesture { openEventDetail(for: event) }
+                        .id(HomeCarouselSelection.event(event.id ?? ""))
+                }
+            }
+            .scrollTargetLayout()
+        }
+        .scrollTargetBehavior(.viewAligned)
+        .scrollPosition(id: $selectedCarouselItem)
+        .fixedSize(horizontal: false, vertical: true)
+        .onChange(of: selectedCarouselItem) { _, newValue in
+            focusMapOnCarouselSelection(newValue)
+        }
+    }
+
+    private func focusMapOnCarouselSelection(_ selection: HomeCarouselSelection?) {
+        switch selection {
+        case .event(let id):
+            guard let event = viewModel.events.first(where: { $0.id == id }) else { return }
+            focusMap(on: event)
+        case .own, .none:
+            focusedCoordinate = nil
+            focusedEventId = nil
         }
     }
 
@@ -190,6 +229,29 @@ struct HomeView: View {
     }
 }
 
+private enum HomeCarouselSelection: Hashable {
+    case own
+    case event(String)
+}
+
+// Shrinks and dims a carousel card the further it drifts from center, so
+// off-focus cards read as physically receding — the same tactile cue the
+// native wheel picker (EventDurationWheel) gives unselected rows for free.
+private extension View {
+    func carouselFocusEffect() -> some View {
+        visualEffect { effect, proxy in
+            let frame = proxy.frame(in: .scrollView)
+            let scrollWidth = proxy.bounds(of: .scrollView)?.width ?? frame.width
+            let distance = abs(frame.midX - scrollWidth / 2)
+            let maxDistance = scrollWidth / 2 + frame.width / 2
+            let fraction = maxDistance > 0 ? min(distance / maxDistance, 1) : 0
+            return effect
+                .scaleEffect(1 - fraction * 0.12)
+                .opacity(1 - fraction * 0.55)
+        }
+    }
+}
+
 private struct EventDetailSelection: Identifiable {
     let id: String
     let event: Event
@@ -202,21 +264,14 @@ private struct CreateEventPromptCard: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
                 Image(systemName: "plus.circle.fill")
-                    .font(.title)
+                    .font(.headline)
                     .foregroundColor(.accentColor)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(Strings.Home.createSignalTitle)
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    Text(Strings.Home.createSignalSubtitle)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                Spacer()
+                FadingHeadline(text: Strings.Home.createSignalTitle, background: Color(.secondarySystemBackground))
             }
             .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(.secondarySystemBackground))
             .cornerRadius(16)
             .overlay(

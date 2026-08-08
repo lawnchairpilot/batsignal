@@ -69,6 +69,7 @@ private final class OneTimeLocationProvider: NSObject, CLLocationManagerDelegate
 struct HomeMapView: View {
     let annotations: [EventAnnotationItem]
     var focusedCoordinate: CLLocationCoordinate2D?
+    var height: CGFloat = 340
     var onSelectEvent: (Event) -> Void = { _ in }
 
     @StateObject private var locationProvider = OneTimeLocationProvider()
@@ -111,7 +112,7 @@ struct HomeMapView: View {
                 Spacer()
             }
         }
-        .frame(height: 340)
+        .frame(height: height)
         .cornerRadius(12)
         .clipped()
         .onAppear { refreshPosition() }

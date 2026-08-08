@@ -121,7 +121,7 @@ class EditUpcomingEventViewModel: ObservableObject {
                 durationVagueLabel: selectedVagueLabel,
                 endTime: endTime,
                 locationType: locationType,
-                locationLabel: locationLabel.isEmpty ? nil : locationLabel,
+                locationLabel: locationType == .fixed && !locationLabel.isEmpty ? locationLabel : nil,
                 locationCoordinate: coordinate,
                 isActive: isActive,
                 commentsEnabled: commentsEnabled,

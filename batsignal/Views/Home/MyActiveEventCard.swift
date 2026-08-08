@@ -51,20 +51,12 @@ struct MyActiveEventCard: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                Text(event.activity)
-                    .font(.headline)
+                FadingHeadline(text: event.activity, background: Color(.secondarySystemBackground))
 
                 if !event.isActive, let eta = viewModel.etaLabel {
                     Text(eta)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                }
-
-                if let locationLabel = event.locationLabel {
-                    Label(locationLabel, systemImage: locationIcon(event))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
                 }
             }
             .padding()
@@ -108,7 +100,7 @@ struct MyActiveEventCard: View {
                 }
             }
 
-            if let locationLabel = event.locationLabel {
+            if event.locationType == .fixed, let locationLabel = event.locationLabel {
                 Label(locationLabel, systemImage: locationIcon(event))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
@@ -194,7 +186,7 @@ struct MyActiveEventCard: View {
                     .foregroundColor(.secondary)
             }
 
-            if let locationLabel = event.locationLabel {
+            if event.locationType == .fixed, let locationLabel = event.locationLabel {
                 Label(locationLabel, systemImage: locationIcon(event))
                     .font(.subheadline)
                     .foregroundColor(.secondary)

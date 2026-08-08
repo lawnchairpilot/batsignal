@@ -2,6 +2,45 @@ import SwiftUI
 import Combine
 import FirebaseCore
 
+// Fades text into the card's own background color at the trailing edge
+// instead of truncating with "…". Only meant to be used as the fallback
+// branch of a ViewThatFits, so it only ever renders when the text actually
+// doesn't fit on one line.
+extension View {
+    func fadingTrailingEdge(background: Color) -> some View {
+        overlay(alignment: .trailing) {
+            LinearGradient(
+                colors: [background.opacity(0), background],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .frame(width: 28)
+            .allowsHitTesting(false)
+        }
+    }
+}
+
+// A single-line headline that renders in full when it fits, and only
+// switches to the clipped/faded fallback once it genuinely overflows —
+// so short titles never show a fade, and long ones never wrap or grow
+// the card's height.
+struct FadingHeadline: View {
+    let text: String
+    let background: Color
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            Text(text)
+                .font(.headline)
+                .fixedSize(horizontal: true, vertical: false)
+            Text(text)
+                .font(.headline)
+                .lineLimit(1)
+                .fadingTrailingEdge(background: background)
+        }
+    }
+}
+
 struct EventCardView: View {
     let event: Event
     var creatorName: String?
@@ -32,8 +71,7 @@ struct EventCardView: View {
                         .foregroundColor(.accentColor)
                         .bold()
                 }
-                Text(event.activity)
-                    .font(.headline)
+                FadingHeadline(text: event.activity, background: Color(.secondarySystemBackground))
 
                 if !event.isActive {
                     HStack(spacing: 4) {
@@ -46,27 +84,16 @@ struct EventCardView: View {
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 }
-
-                if let label = event.locationLabel {
-                    HStack(spacing: 4) {
-                        Image(systemName: locationIcon)
-                        Text(label)
-                    }
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                }
             }
             .padding()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemBackground))
         .cornerRadius(16)
-        .overlay {
-            if isSelected {
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.accentColor, lineWidth: 2)
-            }
-        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(isSelected ? Color.accentColor : Color.accentColor.opacity(0.4), lineWidth: isSelected ? 2 : 1)
+        )
         .onReceive(timer) { _ in now = Date() }
     }
 
@@ -84,14 +111,6 @@ struct EventCardView: View {
             return Strings.Home.tomorrowAt(time)
         }
         return time
-    }
-
-    private var locationIcon: String {
-        switch event.locationType {
-        case .text:   return "mappin"
-        case .fixed:  return "mappin.circle"
-        case .live:   return "location.fill"
-        }
     }
 }
 
