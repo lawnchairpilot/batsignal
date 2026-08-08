@@ -145,6 +145,11 @@ class EventService: ObservableObject {
         durationMinutes: Int?,
         durationVagueLabel: String?,
         endTime: Timestamp?,
+        // The progress bar's new scale, or nil to leave the stored one alone.
+        // Only a form that actually offers a duration picker should pass a
+        // value — otherwise saving an unrelated field (photo, location, ...)
+        // would quietly re-base a bar the +30/-30 buttons had already shifted.
+        baseDurationMinutes: Int?,
         locationType: LocationType,
         locationLabel: String?,
         locationCoordinate: CoordinateUpdate,
@@ -164,6 +169,7 @@ class EventService: ObservableObject {
         data["durationMinutes"]    = durationMinutes    != nil ? durationMinutes!    : FieldValue.delete()
         data["durationVagueLabel"] = durationVagueLabel != nil ? durationVagueLabel! : FieldValue.delete()
         data["endTime"]            = endTime            != nil ? endTime!            : FieldValue.delete()
+        if let baseDurationMinutes { data["baseDurationMinutes"] = baseDurationMinutes }
         data["locationLabel"]      = locationLabel      != nil ? locationLabel!      : FieldValue.delete()
         data["imageURL"]           = imageURL           != nil ? imageURL!           : FieldValue.delete()
 
@@ -176,22 +182,46 @@ class EventService: ObservableObject {
         try await db.collection("events").document(id).updateData(data)
     }
 
-    func extendEvent(id: String, currentEndTime: Date, currentDurationMinutes: Int) async throws {
-        let newDuration = currentDurationMinutes + 30
-        let newEndTime = currentEndTime.addingTimeInterval(30 * 60)
-        try await db.collection("events").document(id).updateData([
-            "durationMinutes": newDuration,
-            "endTime": Timestamp(date: newEndTime)
-        ])
+    // Reads and writes the duration shift inside one transaction so rapid
+    // taps (or just normal listener latency) can't compute the new duration
+    // from a client-side snapshot that's already out of date — each tap
+    // shifts whatever the server currently has, not whatever this device
+    // last saw.
+    func extendEvent(id: String) async throws {
+        try await shiftDuration(id: id, byMinutes: 30)
     }
 
-    func reduceEvent(id: String, currentEndTime: Date, currentDurationMinutes: Int) async throws {
-        let newDuration = currentDurationMinutes - 30
-        let newEndTime = currentEndTime.addingTimeInterval(-30 * 60)
-        try await db.collection("events").document(id).updateData([
-            "durationMinutes": newDuration,
-            "endTime": Timestamp(date: newEndTime)
-        ])
+    func reduceEvent(id: String) async throws {
+        try await shiftDuration(id: id, byMinutes: -30)
+    }
+
+    private func shiftDuration(id: String, byMinutes minutes: Int) async throws {
+        let ref = db.collection("events").document(id)
+        _ = try await db.runTransaction { transaction, errorPointer in
+            let snapshot: DocumentSnapshot
+            do {
+                snapshot = try transaction.getDocument(ref)
+            } catch {
+                errorPointer?.pointee = error as NSError
+                return nil
+            }
+            guard let currentDuration = snapshot.get("durationMinutes") as? Int,
+                  let currentEndTime = snapshot.get("endTime") as? Timestamp else {
+                return nil
+            }
+            let newDuration = currentDuration + minutes
+            let newEndTime = Timestamp(date: currentEndTime.dateValue().addingTimeInterval(Double(minutes) * 60))
+            // Hold the progress bar's scale still so a 30-minute shift is always
+            // the same visual distance, and only stretch it when the event now
+            // runs longer than the scale could otherwise show.
+            let currentBase = snapshot.get("baseDurationMinutes") as? Int ?? currentDuration
+            transaction.updateData([
+                "durationMinutes": newDuration,
+                "endTime": newEndTime,
+                "baseDurationMinutes": max(currentBase, newDuration)
+            ], forDocument: ref)
+            return nil
+        }
     }
 
     func updateLiveLocation(eventId: String, coordinate: GeoPoint) async throws {

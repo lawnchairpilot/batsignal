@@ -120,6 +120,8 @@ class EditUpcomingEventViewModel: ObservableObject {
                 durationMinutes: selectedDurationMinutes,
                 durationVagueLabel: selectedVagueLabel,
                 endTime: endTime,
+                // This form has a duration wheel, so an explicit pick re-bases the bar.
+                baseDurationMinutes: selectedDurationMinutes,
                 locationType: locationType,
                 locationLabel: locationType == .fixed && !locationLabel.isEmpty ? locationLabel : nil,
                 locationCoordinate: coordinate,

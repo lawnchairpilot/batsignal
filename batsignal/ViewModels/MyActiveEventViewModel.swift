@@ -115,8 +115,8 @@ class MyActiveEventViewModel: ObservableObject {
 
     // MARK: - Progress
 
-    var progress: Double? {
-        activeEvent?.progress
+    var remainingFraction: Double? {
+        activeEvent?.remainingFraction
     }
 
     var timeRemainingLabel: String? {
@@ -141,13 +141,8 @@ class MyActiveEventViewModel: ObservableObject {
     func extend() async {
         guard let event = activeEvent,
               let id = event.id,
-              let durationMinutes = event.durationMinutes,
-              let endTime = event.endTime else { return }
-        try? await eventService.extendEvent(
-            id: id,
-            currentEndTime: endTime.dateValue(),
-            currentDurationMinutes: durationMinutes
-        )
+              event.durationMinutes != nil else { return }
+        try? await eventService.extendEvent(id: id)
     }
 
     // Never lets the event end via this button — only usable while at least
@@ -162,14 +157,8 @@ class MyActiveEventViewModel: ObservableObject {
     func reduce() async {
         guard canReduceByThirtyMinutes,
               let event = activeEvent,
-              let id = event.id,
-              let durationMinutes = event.durationMinutes,
-              let endTime = event.endTime else { return }
-        try? await eventService.reduceEvent(
-            id: id,
-            currentEndTime: endTime.dateValue(),
-            currentDurationMinutes: durationMinutes
-        )
+              let id = event.id else { return }
+        try? await eventService.reduceEvent(id: id)
     }
 
     func end() async {

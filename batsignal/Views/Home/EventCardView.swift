@@ -51,14 +51,14 @@ struct EventCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if event.isActive, let progress = event.progress {
+            if event.isActive, let remaining = event.remainingFraction {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         Rectangle()
                             .fill(Color.primary.opacity(0.08))
                         Rectangle()
-                            .fill(progressColor(progress))
-                            .frame(width: geometry.size.width * progress)
+                            .fill(remainingColor(remaining))
+                            .frame(width: geometry.size.width * remaining)
                     }
                 }
                 .frame(height: 4)
@@ -97,9 +97,11 @@ struct EventCardView: View {
         .onReceive(timer) { _ in now = Date() }
     }
 
-    private func progressColor(_ progress: Double) -> Color {
-        if progress > 0.75 { return .red }
-        if progress > 0.5 { return .orange }
+    // Takes time remaining, so the thresholds run the opposite way from a
+    // fill-up bar: the less that's left, the more urgent the color.
+    private func remainingColor(_ remaining: Double) -> Color {
+        if remaining < 0.25 { return .red }
+        if remaining < 0.5 { return .orange }
         return .accentColor
     }
 

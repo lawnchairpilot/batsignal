@@ -43,6 +43,14 @@ struct Event: Identifiable, Codable {
     var durationMinutes: Int?           // nil if vague (e.g. "til dark")
     var durationVagueLabel: String?     // set only when durationMinutes is nil
     var endTime: Timestamp?             // computed from startTime + durationMinutes, or 9 PM start date if vague
+    // The span the progress bar is drawn against, which is deliberately NOT
+    // durationMinutes: +30/-30 shift durationMinutes, and rescaling the bar on
+    // every shift made a fixed 30 minutes cover a different fraction each time.
+    // Holding the scale still means -30 always advances the bar by the same
+    // visual amount. Only extending past the current scale re-bases it (the bar
+    // can't show more than 100%). Missing on documents written before this
+    // existed, which fall back to durationMinutes.
+    var baseDurationMinutes: Int?
     var locationType: LocationType
     var locationLabel: String?          // text description or place name
     var locationCoordinate: GeoPoint?   // fixed coordinate or live-updated
@@ -70,6 +78,7 @@ struct Event: Identifiable, Codable {
         durationMinutes: Int?,
         durationVagueLabel: String?,
         endTime: Timestamp?,
+        baseDurationMinutes: Int? = nil,
         locationType: LocationType,
         locationLabel: String?,
         locationCoordinate: GeoPoint?,
@@ -90,6 +99,8 @@ struct Event: Identifiable, Codable {
         self.durationMinutes = durationMinutes
         self.durationVagueLabel = durationVagueLabel
         self.endTime = endTime
+        // A brand-new event's scale is simply its starting duration.
+        self.baseDurationMinutes = baseDurationMinutes ?? durationMinutes
         self.locationType = locationType
         self.locationLabel = locationLabel
         self.locationCoordinate = locationCoordinate
@@ -138,11 +149,22 @@ struct Event: Identifiable, Codable {
 
     // MARK: - Progress
 
-    var progress: Double? {
-        guard let durationMinutes, let endTime else { return nil }
-        let total = Double(durationMinutes) * 60
-        let elapsed = Date().timeIntervalSince(startTime.dateValue())
-        return min(max(elapsed / total, 0), 1)
+    // How much of the event is left, as a fraction of the bar's scale: starts
+    // at 1 and drains to 0, so the bar counts down rather than filling up.
+    // Derived from endTime rather than elapsed time so that shifting endTime by
+    // 30 minutes moves the bar by exactly 30 minutes' worth of the scale —
+    // elapsed time doesn't change when only the end does.
+    var remainingFraction: Double? {
+        // durationMinutes is what makes this a timed event at all; a vague one
+        // ("til dark") gets no bar even if a stale scale is still on the doc.
+        guard let endTime, let durationMinutes else { return nil }
+        // Never let the scale sit below the real duration, or the bar would
+        // read as over-full for the stretch beyond it.
+        let scaleMinutes = max(baseDurationMinutes ?? durationMinutes, durationMinutes)
+        let total = Double(scaleMinutes) * 60
+        guard total > 0 else { return nil }
+        let remaining = endTime.dateValue().timeIntervalSince(Date())
+        return min(max(remaining / total, 0), 1)
     }
 
     var timeRemainingLabel: String? {

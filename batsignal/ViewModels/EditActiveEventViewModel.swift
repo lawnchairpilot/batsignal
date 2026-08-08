@@ -121,6 +121,8 @@ class EditActiveEventViewModel: ObservableObject {
                 durationMinutes: selectedDurationMinutes,
                 durationVagueLabel: selectedVagueLabel,
                 endTime: endTime,
+                // No duration wheel here — the +30/-30 buttons own the scale.
+                baseDurationMinutes: nil,
                 locationType: locationType,
                 locationLabel: locationType == .fixed && !locationLabel.isEmpty ? locationLabel : nil,
                 locationCoordinate: coordinate,
