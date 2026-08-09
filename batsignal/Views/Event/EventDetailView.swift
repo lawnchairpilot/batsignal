@@ -443,17 +443,25 @@ struct LiveBadge: View {
 struct EventAnnotationView: View {
     var label: String? = nil
     var photoURL: String? = nil
+    var size: CGFloat = EventAnnotationView.defaultSize
+
+    static let defaultSize: CGFloat = 44
+    // The pin keeps its proportions when it's blown up for a focused event, so
+    // callers can work out how tall the whole thing will be before drawing it.
+    static func totalHeight(forIconSize size: CGFloat) -> CGFloat { size * 1.2 }
+
+    private var tailSize: CGFloat { size * 0.2 }
 
     var body: some View {
         VStack(spacing: 0) {
-            EventIconView(photoURL: photoURL, label: label)
-                .overlay(Circle().stroke(Color.white, lineWidth: 2))
+            EventIconView(photoURL: photoURL, label: label, size: size)
+                .overlay(Circle().stroke(Color.white, lineWidth: max(2, size * 0.02)))
                 .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 2)
             Image(systemName: "triangle.fill")
-                .font(.system(size: 9))
+                .font(.system(size: tailSize))
                 .foregroundColor(.accentColor)
                 .rotationEffect(.degrees(180))
-                .offset(y: -3)
+                .offset(y: -tailSize / 3)
         }
     }
 }

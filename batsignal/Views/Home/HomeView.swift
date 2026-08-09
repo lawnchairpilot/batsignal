@@ -17,6 +17,7 @@ struct HomeView: View {
     // Your own card's equivalent. It isn't keyed by event id because the card
     // stands for whichever signal you have — active or upcoming.
     @State private var isOwnCardExpanded = false
+    @State private var carouselHeight: CGFloat = 0
     @State private var selectedCarouselItem: HomeCarouselSelection? = .own
 
     var body: some View {
@@ -31,6 +32,8 @@ struct HomeView: View {
                                 annotations: allAnnotations,
                                 focusedCoordinate: focusedCoordinate,
                                 focusedEventId: focusedEventId,
+                                enlargedEventId: enlargedAnnotationId,
+                                occludedBottomHeight: carouselHeight,
                                 height: mapHeight(for: proxy.size.height),
                                 onSelectEvent: { event in revealCard(for: event) }
                             )
@@ -38,6 +41,9 @@ struct HomeView: View {
                             homeCarousel(availableHeight: proxy.size.height)
                                 .padding(.horizontal, 12)
                                 .padding(.bottom, 12)
+                                // Measured outside the padding, so this is the
+                                // full bite the carousel takes out of the map.
+                                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { carouselHeight = $0 }
                         }
                         .padding(.horizontal)
                         .padding(.top, 8)
@@ -194,6 +200,14 @@ struct HomeView: View {
            selection != .event(expandedEventId) {
             withAnimation(.easeInOut(duration: 0.2)) { self.expandedEventId = nil }
         }
+    }
+
+    // Whichever card is open owns the map: your own signal's pin gets the same
+    // treatment a friend's does.
+    private var enlargedAnnotationId: String? {
+        if let expandedEventId { return expandedEventId }
+        guard isOwnCardExpanded else { return nil }
+        return myEventViewModel.activeEvent?.id ?? myEventViewModel.upcomingEvent?.id
     }
 
     private func isExpanded(_ event: Event) -> Bool {
