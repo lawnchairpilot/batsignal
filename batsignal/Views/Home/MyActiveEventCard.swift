@@ -4,11 +4,11 @@ import FirebaseCore
 
 struct MyActiveEventCard: View {
     @ObservedObject var viewModel: MyActiveEventViewModel
-    @State private var isExpanded = false
+    // Owned by HomeView, which closes this card when the carousel scrolls off
+    // it — the same rule the friends' cards follow.
+    @Binding var isExpanded: Bool
     @State private var showDetail = false
     @State private var showUpcomingDetail = false
-    @State private var showEventPreview = false
-    @State private var showUpcomingEventPreview = false
     @State private var now = Date()
 
     let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
@@ -68,7 +68,7 @@ struct MyActiveEventCard: View {
                 .stroke(Color.accentColor.opacity(0.4), lineWidth: 1)
         )
         .contentShape(Rectangle())
-        .onTapGesture { isExpanded = true }
+        .onTapGesture { withAnimation(.easeInOut(duration: 0.2)) { isExpanded = true } }
     }
 
     @ViewBuilder
@@ -88,7 +88,7 @@ struct MyActiveEventCard: View {
                         .font(.caption.bold())
                         .foregroundColor(.accentColor)
                 }
-                Button(action: { isExpanded = false }) {
+                Button(action: { withAnimation(.easeInOut(duration: 0.2)) { isExpanded = false } }) {
                     Image(systemName: "chevron.down.circle")
                         .font(.title2)
                         .foregroundColor(.accentColor)
@@ -131,22 +131,9 @@ struct MyActiveEventCard: View {
                 .stroke(Color.accentColor.opacity(0.4), lineWidth: 1)
         )
         .opacity(0.7)
-        .contentShape(Rectangle())
-        .onTapGesture { showUpcomingEventPreview = true }
         .onReceive(timer) { _ in now = Date() }
         .sheet(isPresented: $showUpcomingDetail) {
             UpcomingEventDetailView(event: event, viewModel: viewModel)
-        }
-        .sheet(isPresented: $showUpcomingEventPreview) {
-            NavigationStack {
-                EventDetailView(event: event)
-                    .navigationTitle(event.activity)
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button(Strings.Common.done) { showUpcomingEventPreview = false }
-                        }
-                    }
-            }
         }
     }
 
@@ -158,7 +145,7 @@ struct MyActiveEventCard: View {
                 Text(event.activity)
                     .font(.headline)
                 Spacer()
-                Button(action: { isExpanded = false }) {
+                Button(action: { withAnimation(.easeInOut(duration: 0.2)) { isExpanded = false } }) {
                     Image(systemName: "chevron.down.circle")
                         .font(.title2)
                         .foregroundColor(.accentColor)
@@ -254,22 +241,9 @@ struct MyActiveEventCard: View {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(Color.accentColor.opacity(0.4), lineWidth: 1)
         )
-        .contentShape(Rectangle())
-        .onTapGesture { showEventPreview = true }
         .onReceive(timer) { _ in now = Date() }
         .sheet(isPresented: $showDetail) {
             ActiveEventDetailView(event: event)
-        }
-        .sheet(isPresented: $showEventPreview) {
-            NavigationStack {
-                EventDetailView(event: event)
-                    .navigationTitle(event.activity)
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button(Strings.Common.done) { showEventPreview = false }
-                        }
-                    }
-            }
         }
     }
 

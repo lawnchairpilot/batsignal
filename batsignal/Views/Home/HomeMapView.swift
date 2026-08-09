@@ -149,7 +149,6 @@ struct HomeFullMapView: View {
     let initialPosition: MapCameraPosition
 
     @State private var position: MapCameraPosition
-    @State private var selectedItem: EventAnnotationItem?
     @Environment(\.dismiss) private var dismiss
 
     private var hasLiveEvent: Bool { annotations.contains { $0.isLive } }
@@ -163,13 +162,12 @@ struct HomeFullMapView: View {
     var body: some View {
         NavigationStack {
             ZStack {
+                // Pins here are just markers: details live on the cards back on
+                // the home map, which this view has none of.
                 Map(position: $position) {
                     ForEach(annotations) { item in
                         Annotation("", coordinate: item.coordinate) {
-                            Button { selectedItem = item } label: {
-                                EventAnnotationView(label: item.label, photoURL: item.creatorPhotoURL)
-                            }
-                            .buttonStyle(.plain)
+                            EventAnnotationView(label: item.label, photoURL: item.creatorPhotoURL)
                         }
                     }
                     UserAnnotation()
@@ -192,21 +190,6 @@ struct HomeFullMapView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(Strings.Common.done) { dismiss() }
-                }
-            }
-            .sheet(item: $selectedItem) { item in
-                NavigationStack {
-                    EventDetailView(
-                        event: item.event,
-                        creatorName: item.creatorName,
-                        creatorPhotoURL: item.creatorPhotoURL
-                    )
-                    .navigationTitle(item.event.activity)
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button(Strings.Common.done) { selectedItem = nil }
-                        }
-                    }
                 }
             }
         }

@@ -43,13 +43,50 @@ struct FadingHeadline: View {
 
 struct EventCardView: View {
     let event: Event
+    @Binding var isExpanded: Bool
     var creatorName: String?
     var isSelected: Bool = false
+    // Ceiling on the expanded card, for hosts with only so much room to give it
+    // (the carousel sits over a fixed-height map). nil lets it size naturally.
+    var expandedMaxContentHeight: CGFloat?
+    // Answers whether a tap on the collapsed card should expand it. The
+    // upcoming-events list spends the first tap pointing the map at the event
+    // instead, so it says no until the card is already the focused one.
+    var onCompactTap: () -> Bool
 
     @State private var now = Date()
     private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
+    init(
+        event: Event,
+        isExpanded: Binding<Bool>,
+        creatorName: String? = nil,
+        isSelected: Bool = false,
+        expandedMaxContentHeight: CGFloat? = nil,
+        onCompactTap: @escaping () -> Bool = { true }
+    ) {
+        self.event = event
+        self._isExpanded = isExpanded
+        self.creatorName = creatorName
+        self.isSelected = isSelected
+        self.expandedMaxContentHeight = expandedMaxContentHeight
+        self.onCompactTap = onCompactTap
+    }
+
     var body: some View {
+        if isExpanded {
+            ExpandedEventCardView(
+                event: event,
+                creatorName: creatorName,
+                maxContentHeight: expandedMaxContentHeight,
+                onCollapse: { withAnimation(.easeInOut(duration: 0.2)) { isExpanded = false } }
+            )
+        } else {
+            compactCard
+        }
+    }
+
+    private var compactCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             if event.isActive, let remaining = event.remainingFraction {
                 GeometryReader { geometry in
@@ -95,6 +132,11 @@ struct EventCardView: View {
                 .stroke(isSelected ? Color.accentColor : Color.accentColor.opacity(0.4), lineWidth: isSelected ? 2 : 1)
         )
         .onReceive(timer) { _ in now = Date() }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard onCompactTap() else { return }
+            withAnimation(.easeInOut(duration: 0.2)) { isExpanded = true }
+        }
     }
 
     // Takes time remaining, so the thresholds run the opposite way from a

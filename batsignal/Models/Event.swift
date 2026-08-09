@@ -180,6 +180,21 @@ struct Event: Identifiable, Codable {
         return "\(minutes)m left"
     }
 
+    // Countdown to an event that hasn't started yet — the mirror image of
+    // timeRemainingLabel, shared by the carousel's own-signal card and a
+    // friend's expanded card so both phrase the wait identically.
+    var startsInLabel: String? {
+        let remaining = startTime.dateValue().timeIntervalSince(Date())
+        guard remaining > 0 else { return "Starting soon..." }
+        let minutes = Int(remaining) / 60
+        let hours = minutes / 60
+        if hours > 0 {
+            let mins = minutes % 60
+            return mins > 0 ? "Starts in \(hours)h \(mins)m" : "Starts in \(hours)h"
+        }
+        return "Starts in \(minutes)m"
+    }
+
     // MARK: - Expiry (client-side for MVP)
 
     var isExpired: Bool {

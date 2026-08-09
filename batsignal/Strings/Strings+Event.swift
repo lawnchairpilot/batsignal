@@ -30,6 +30,7 @@ extension Strings {
         static let timeLabel = "Time"
         static let locationLabel = "Location"
         static let waitingForLocation = "Waiting for location…"
+        static let liveLocationLabel = "Live location"
         static let live = "LIVE"
         static let openInMaps = "Open in Maps"
         static let eventEnded = "Event ended"

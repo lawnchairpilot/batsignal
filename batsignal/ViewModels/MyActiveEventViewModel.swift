@@ -124,16 +124,7 @@ class MyActiveEventViewModel: ObservableObject {
     }
 
     var etaLabel: String? {
-        guard let event = upcomingEvent else { return nil }
-        let remaining = event.startTime.dateValue().timeIntervalSince(Date())
-        guard remaining > 0 else { return "Starting soon..." }
-        let minutes = Int(remaining) / 60
-        let hours = minutes / 60
-        if hours > 0 {
-            let mins = minutes % 60
-            return mins > 0 ? "Starts in \(hours)h \(mins)m" : "Starts in \(hours)h"
-        }
-        return "Starts in \(minutes)m"
+        upcomingEvent?.startsInLabel
     }
 
     // MARK: - Actions

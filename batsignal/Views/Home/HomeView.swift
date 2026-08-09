@@ -10,7 +10,13 @@ struct HomeView: View {
     @State private var showCreateEvent = false
     @State private var focusedCoordinate: CLLocationCoordinate2D?
     @State private var focusedEventId: String?
-    @State private var selectedEventForDetail: EventDetailSelection?
+    // Which card is showing its details. Held here rather than inside
+    // EventCardView so only one can be open at a time, and so it survives the
+    // carousel's LazyHStack recycling cards as they scroll off-screen.
+    @State private var expandedEventId: String?
+    // Your own card's equivalent. It isn't keyed by event id because the card
+    // stands for whichever signal you have — active or upcoming.
+    @State private var isOwnCardExpanded = false
     @State private var selectedCarouselItem: HomeCarouselSelection? = .own
 
     var body: some View {
@@ -26,10 +32,10 @@ struct HomeView: View {
                                 focusedCoordinate: focusedCoordinate,
                                 focusedEventId: focusedEventId,
                                 height: mapHeight(for: proxy.size.height),
-                                onSelectEvent: { event in openEventDetail(for: event) }
+                                onSelectEvent: { event in revealCard(for: event) }
                             )
 
-                            homeCarousel
+                            homeCarousel(availableHeight: proxy.size.height)
                                 .padding(.horizontal, 12)
                                 .padding(.bottom, 12)
                         }
@@ -54,37 +60,31 @@ struct HomeView: View {
                                     .padding(.top, 4)
                                 ForEach(viewModel.upcomingEvents) { event in
                                     let creator = friendsViewModel.friends.first { $0.id == event.creatorId }
-                                    EventCardView(event: event, creatorName: creator?.displayName, isSelected: event.id != nil && event.id == focusedEventId)
-                                        .padding(.horizontal)
-                                        .opacity(0.6)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture(count: 2) { openEventDetail(for: event) }
-                                        .onTapGesture(count: 1) { handleSingleTap(on: event) }
+                                    EventCardView(
+                                        event: event,
+                                        isExpanded: expansionBinding(for: event),
+                                        creatorName: creator?.displayName,
+                                        isSelected: event.id != nil && event.id == focusedEventId,
+                                        onCompactTap: { handleSingleTap(on: event) }
+                                    )
+                                    .padding(.horizontal)
+                                    .opacity(isExpanded(event) ? 1 : 0.6)
                                 }
                             }
                             .padding(.bottom, 16)
                         }
                     }
                 }
+                // The map sits flush against the navigation bar, so everything
+                // in the top band of the page — including an expanded card that
+                // has grown up off the map's bottom edge — gets iOS's scroll
+                // edge effect painted over it and fades out. The map is opaque
+                // enough to carry the title on its own, so turn it off.
+                .scrollEdgeEffectHidden(true, for: .top)
             }
             .navigationTitle(Strings.Common.appName)
             .sheet(isPresented: $showCreateEvent) {
                 CreateEventView()
-            }
-            .sheet(item: $selectedEventForDetail) { selection in
-                NavigationStack {
-                    EventDetailView(
-                        event: selection.event,
-                        creatorName: selection.creatorName,
-                        creatorPhotoURL: selection.creatorPhotoURL
-                    )
-                    .navigationTitle(selection.event.activity)
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button(Strings.Common.done) { selectedEventForDetail = nil }
-                        }
-                    }
-                }
             }
         }
     }
@@ -100,12 +100,26 @@ struct HomeView: View {
         return max(standardHeight, availableHeight - 24)
     }
 
-    private var homeCarousel: some View {
+    // What's left of the map for an expanded card, once its own 16pt padding,
+    // the carousel's bottom inset and a little clearance from the map's top
+    // edge are taken out. Cards that need more than this scroll internally
+    // rather than growing up under the navigation bar.
+    private func expandedCardMaxContentHeight(for availableHeight: CGFloat) -> CGFloat {
+        max(mapHeight(for: availableHeight) - 76, 180)
+    }
+
+    private func homeCarousel(availableHeight: CGFloat) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(alignment: .bottom, spacing: 12) {
+            // Deliberately not a LazyHStack. The carousel is sized by
+            // fixedSize(vertical:), which asks the scroll view for its ideal
+            // height — and a lazy stack answers that from the cards it has
+            // realized, i.e. your own. Every other card then got clipped to
+            // your card's height, at the top, because the stack is bottom
+            // aligned. A handful of friends' events don't need laziness anyway.
+            HStack(alignment: .bottom, spacing: 12) {
                 Group {
                     if myEventViewModel.activeEvent != nil || myEventViewModel.upcomingEvent != nil {
-                        MyActiveEventCard(viewModel: myEventViewModel)
+                        MyActiveEventCard(viewModel: myEventViewModel, isExpanded: $isOwnCardExpanded)
                     } else {
                         CreateEventPromptCard(action: { showCreateEvent = true })
                     }
@@ -117,19 +131,25 @@ struct HomeView: View {
 
                 ForEach(viewModel.events) { event in
                     let creator = friendsViewModel.friends.first { $0.id == event.creatorId }
-                    EventCardView(event: event, creatorName: creator?.displayName)
-                        .opacity(0.92)
-                        .containerRelativeFrame(.horizontal) { width, _ in width * 0.82 }
-                        .carouselFocusEffect()
-                        .contentShape(Rectangle())
-                        .onTapGesture { openEventDetail(for: event) }
-                        .id(HomeCarouselSelection.event(event.id ?? ""))
+                    EventCardView(
+                        event: event,
+                        isExpanded: expansionBinding(for: event),
+                        creatorName: creator?.displayName,
+                        expandedMaxContentHeight: expandedCardMaxContentHeight(for: availableHeight)
+                    )
+                    .opacity(0.92)
+                    .containerRelativeFrame(.horizontal) { width, _ in width * 0.82 }
+                    .carouselFocusEffect()
+                    .id(HomeCarouselSelection.event(event.id ?? ""))
                 }
             }
             .scrollTargetLayout()
         }
         .scrollTargetBehavior(.viewAligned)
         .scrollPosition(id: $selectedCarouselItem)
+        // carouselFocusEffect already recedes the off-centre cards; the system
+        // edge effect on top of that just smears them into the map.
+        .scrollEdgeEffectHidden()
         .fixedSize(horizontal: false, vertical: true)
         .onChange(of: selectedCarouselItem) { _, newValue in
             focusMapOnCarouselSelection(newValue)
@@ -137,6 +157,12 @@ struct HomeView: View {
     }
 
     private func focusMapOnCarouselSelection(_ selection: HomeCarouselSelection?) {
+        // Swiping past an open card closes it, so the carousel only ever has one
+        // expanded card and it's the one you're looking at. Written as "collapse
+        // anything that isn't the new selection" rather than "collapse, then
+        // expand", so revealCard(for:) setting both in one update can't lose.
+        collapseCards(unless: selection)
+
         switch selection {
         case .event(let id):
             guard let event = viewModel.events.first(where: { $0.id == id }) else { return }
@@ -157,12 +183,37 @@ struct HomeView: View {
         }
     }
 
-    private func handleSingleTap(on event: Event) {
-        if event.id != nil && event.id == focusedEventId {
-            openEventDetail(for: event)
-        } else {
-            focusMap(on: event)
+    // Only touches carousel cards: a card expanded down in the upcoming list
+    // isn't in the carousel at all, so scrolling the carousel shouldn't shut it.
+    private func collapseCards(unless selection: HomeCarouselSelection?) {
+        if isOwnCardExpanded, selection != .own {
+            withAnimation(.easeInOut(duration: 0.2)) { isOwnCardExpanded = false }
         }
+        if let expandedEventId,
+           viewModel.events.contains(where: { $0.id == expandedEventId }),
+           selection != .event(expandedEventId) {
+            withAnimation(.easeInOut(duration: 0.2)) { self.expandedEventId = nil }
+        }
+    }
+
+    private func isExpanded(_ event: Event) -> Bool {
+        expandedEventId != nil && expandedEventId == event.id
+    }
+
+    private func expansionBinding(for event: Event) -> Binding<Bool> {
+        Binding(
+            get: { isExpanded(event) },
+            set: { expandedEventId = $0 ? event.id : nil }
+        )
+    }
+
+    // A card down in the upcoming list is far enough from the map that tapping
+    // it once is more likely to mean "where is that?" than "tell me more", so
+    // the first tap only points the map at it and the second one opens it.
+    private func handleSingleTap(on event: Event) -> Bool {
+        if event.id != nil && event.id == focusedEventId { return true }
+        focusMap(on: event)
+        return false
     }
 
     private func focusMap(on event: Event) {
@@ -171,15 +222,21 @@ struct HomeView: View {
         focusedEventId = event.id
     }
 
-    private func openEventDetail(for event: Event) {
+    // Tapping a pin brings you to that event's card rather than a sheet: scroll
+    // the carousel to it and open it. Setting the selection first lets its
+    // onChange close whatever else was open before this opens the new one.
+    private func revealCard(for event: Event) {
         guard let id = event.id else { return }
-        let creator = friendsViewModel.friends.first { $0.id == event.creatorId }
-        selectedEventForDetail = EventDetailSelection(
-            id: id,
-            event: event,
-            creatorName: creator?.displayName,
-            creatorPhotoURL: creator?.profilePhotoURL
-        )
+        focusMap(on: event)
+        if myEventViewModel.activeEvent?.id == id || myEventViewModel.upcomingEvent?.id == id {
+            selectedCarouselItem = .own
+            withAnimation(.easeInOut(duration: 0.2)) { isOwnCardExpanded = true }
+            return
+        }
+        if viewModel.events.contains(where: { $0.id == id }) {
+            selectedCarouselItem = .event(id)
+        }
+        withAnimation(.easeInOut(duration: 0.2)) { expandedEventId = id }
     }
 
     private var allAnnotations: [EventAnnotationItem] {
@@ -264,13 +321,6 @@ private extension View {
                 .opacity(1 - fraction * 0.55)
         }
     }
-}
-
-private struct EventDetailSelection: Identifiable {
-    let id: String
-    let event: Event
-    let creatorName: String?
-    let creatorPhotoURL: String?
 }
 
 private struct CreateEventPromptCard: View {
