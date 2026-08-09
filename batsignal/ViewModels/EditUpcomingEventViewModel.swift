@@ -49,7 +49,10 @@ class EditUpcomingEventViewModel: ObservableObject {
             self.selectedVagueLabel = event.durationVagueLabel
         }
 
-        if let coord = event.locationCoordinate {
+        // Only a fixed event's coordinate is a pin the user actually chose, so
+        // switching to Drop a Pin starts empty and has to be filled in rather
+        // than silently reusing a coordinate left over from another mode.
+        if event.locationType == .fixed, let coord = event.locationCoordinate {
             self.fixedCoordinate = CLLocationCoordinate2D(latitude: coord.latitude, longitude: coord.longitude)
         }
     }

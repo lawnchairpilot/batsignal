@@ -51,7 +51,12 @@ class EditActiveEventViewModel: ObservableObject {
             self.selectedVagueLabel = event.durationVagueLabel
         }
 
-        if let coord = event.locationCoordinate {
+        // Only a fixed event's coordinate is a pin the user actually chose. A
+        // live event's is wherever LocationService last tracked them, and
+        // inheriting that would pre-satisfy the "pick a location" requirement
+        // the instant they switch to Drop a Pin — saving whatever spot they
+        // happened to be standing in as the pin, without ever asking.
+        if event.locationType == .fixed, let coord = event.locationCoordinate {
             self.fixedCoordinate = CLLocationCoordinate2D(latitude: coord.latitude, longitude: coord.longitude)
         }
     }
