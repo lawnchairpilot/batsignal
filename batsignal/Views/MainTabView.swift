@@ -13,11 +13,6 @@ struct MainTabView: View {
                     Label(Strings.TabBar.home, systemImage: "antenna.radiowaves.left.and.right")
                 }
 
-            FriendsView()
-                .tabItem {
-                    Label(Strings.TabBar.friends, systemImage: "person.2")
-                }
-
             ProfileView()
                 .tabItem {
                     Label(Strings.TabBar.profile, systemImage: "person.circle")

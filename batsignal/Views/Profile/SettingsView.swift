@@ -3,14 +3,15 @@ import PhotosUI
 import FirebaseFirestore
 import FirebaseAuth
 
-struct EditProfileView: View {
+struct SettingsView: View {
     @EnvironmentObject var authService: AuthService
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var isNameFocused: Bool
 
     @State private var displayName = ""
     @State private var selectedItem: PhotosPickerItem?
     @State private var previewImage: UIImage?
-    @State private var isLoading = false
+    @State private var isUploadingPhoto = false
     @State private var errorMessage: String?
 
     var body: some View {
@@ -35,6 +36,14 @@ struct EditProfileView: View {
                             }
                             .frame(width: 80, height: 80)
                             .clipShape(Circle())
+                            .overlay {
+                                if isUploadingPhoto {
+                                    ZStack {
+                                        Circle().fill(.black.opacity(0.4))
+                                        ProgressView().tint(.white)
+                                    }
+                                }
+                            }
 
                             PhotosPicker(selection: $selectedItem, matching: .images) {
                                 Image(systemName: "camera.circle.fill")
@@ -43,6 +52,7 @@ struct EditProfileView: View {
                                     .background(Color(.systemBackground))
                                     .clipShape(Circle())
                             }
+                            .disabled(isUploadingPhoto)
                         }
                         Spacer()
                     }
@@ -53,6 +63,9 @@ struct EditProfileView: View {
                 Section(Strings.Profile.displayNameSection) {
                     TextField(Strings.Profile.displayNamePlaceholder, text: $displayName)
                         .textContentType(.name)
+                        .focused($isNameFocused)
+                        .submitLabel(.done)
+                        .onSubmit { commitDisplayName() }
                 }
 
                 if let error = errorMessage {
@@ -60,29 +73,37 @@ struct EditProfileView: View {
                         Text(error).foregroundColor(.red).font(.caption)
                     }
                 }
+
+                Section {
+                    // Dismissing first lets the sheet animate away on its own
+                    // terms; signing out swaps the whole root view out from
+                    // under it, presenter included.
+                    Button(Strings.Profile.signOut, role: .destructive) {
+                        dismiss()
+                        try? authService.signOut()
+                    }
+                }
             }
-            .navigationTitle(Strings.Profile.editProfileTitle)
+            .navigationTitle(Strings.Profile.settingsTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(Strings.Common.cancel) { dismiss() }
-                }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(action: save) {
-                        if isLoading { ProgressView() } else { Text(Strings.Common.save) }
+                    Button(Strings.Common.done) {
+                        commitDisplayName()
+                        dismiss()
                     }
-                    .disabled(displayName.isEmpty || isLoading)
                 }
             }
             .onAppear {
                 displayName = authService.currentUser?.displayName ?? ""
             }
+            // Tapping out of the field counts as committing it, so the name
+            // doesn't need the return key to stick.
+            .onChange(of: isNameFocused) { _, focused in
+                if !focused { commitDisplayName() }
+            }
             .onChange(of: selectedItem) { _, item in
-                Task {
-                    guard let data = try? await item?.loadTransferable(type: Data.self),
-                          let image = UIImage(data: data) else { return }
-                    previewImage = image
-                }
+                Task { await uploadPickedPhoto(item) }
             }
         }
     }
@@ -93,36 +114,47 @@ struct EditProfileView: View {
         return parts.isEmpty ? nil : parts.uppercased()
     }
 
-    private func save() {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
-        isLoading = true
+    // Writes only when the name actually changed, so a tap through the field or
+    // a Done on an untouched sheet doesn't cost a Firestore write. An empty
+    // field isn't a name — it snaps back to what's saved.
+    private func commitDisplayName() {
+        let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let current = authService.currentUser?.displayName ?? ""
+        guard !trimmed.isEmpty else {
+            displayName = current
+            return
+        }
+        displayName = trimmed
+        guard trimmed != current else { return }
+        save(["displayName": trimmed])
+    }
+
+    private func uploadPickedPhoto(_ item: PhotosPickerItem?) async {
+        guard let data = try? await item?.loadTransferable(type: Data.self),
+              let image = UIImage(data: data) else { return }
+        previewImage = image
+        isUploadingPhoto = true
         errorMessage = nil
+        do {
+            let url = try await PhotoStorageService().uploadProfilePhoto(image)
+            save(["profilePhotoURL": url])
+        } catch {
+            // Drop the preview so the avatar goes back to showing what's
+            // actually stored rather than a photo that never landed.
+            previewImage = nil
+            errorMessage = Strings.Profile.photoUploadFailed(error.localizedDescription)
+        }
+        isUploadingPhoto = false
+    }
 
+    private func save(_ updates: [String: Any]) {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        errorMessage = nil
         Task {
-            var photoURL: String? = nil
-            if let image = previewImage {
-                do {
-                    photoURL = try await PhotoStorageService().uploadProfilePhoto(image)
-                } catch {
-                    errorMessage = Strings.Profile.photoUploadFailed(error.localizedDescription)
-                    isLoading = false
-                    return
-                }
-            }
-
-            var updates: [String: Any] = [
-                "displayName": displayName
-            ]
-            if let url = photoURL {
-                updates["profilePhotoURL"] = url
-            }
-
             do {
                 try await Firestore.firestore().collection("users").document(uid).updateData(updates)
-                dismiss()
             } catch {
                 errorMessage = error.localizedDescription
-                isLoading = false
             }
         }
     }
