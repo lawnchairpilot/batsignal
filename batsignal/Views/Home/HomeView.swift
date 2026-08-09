@@ -24,6 +24,7 @@ struct HomeView: View {
                             HomeMapView(
                                 annotations: allAnnotations,
                                 focusedCoordinate: focusedCoordinate,
+                                focusedEventId: focusedEventId,
                                 height: mapHeight(for: proxy.size.height),
                                 onSelectEvent: { event in openEventDetail(for: event) }
                             )
@@ -141,8 +142,18 @@ struct HomeView: View {
             guard let event = viewModel.events.first(where: { $0.id == id }) else { return }
             focusMap(on: event)
         case .own, .none:
-            focusedCoordinate = nil
-            focusedEventId = nil
+            // Swiping back to your own card points the map at your signal, the
+            // same way swiping to a friend's card points it at theirs. With no
+            // signal yet (the create prompt), or one whose location hasn't
+            // landed, clearing the focus hands the map back to its default —
+            // your current location.
+            if let event = myEventViewModel.activeEvent ?? myEventViewModel.upcomingEvent,
+               event.locationCoordinate != nil {
+                focusMap(on: event)
+            } else {
+                focusedCoordinate = nil
+                focusedEventId = nil
+            }
         }
     }
 
@@ -175,6 +186,9 @@ struct HomeView: View {
         // recipientIds never contains the creator themself, so listenToVisibleEvents
         // (which viewModel.events/upcomingEvents come from) never surfaces this
         // user's own event — without this it fell back to the plain blue user dot.
+        // Declaration order does NOT control stacking here — MapKit re-sorts
+        // annotation views itself, so raising the focused pin is done through
+        // the map's selection binding instead (see HomeMapView).
         (ownEventAnnotation.map { [$0] } ?? []) +
         makeAnnotationItems(from: viewModel.events, isActive: true) +
         makeAnnotationItems(from: viewModel.upcomingEvents, isActive: false)

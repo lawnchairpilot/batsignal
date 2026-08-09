@@ -266,6 +266,7 @@ private struct CenteredTextField: UIViewRepresentable {
         textField.font = .preferredFont(forTextStyle: .body)
         textField.adjustsFontForContentSizeCategory = true
         textField.tintColor = UIColor(Color.accentColor)
+        textField.returnKeyType = .done
         textField.delegate = context.coordinator
         return textField
     }
@@ -290,6 +291,14 @@ private struct CenteredTextField: UIViewRepresentable {
 
         func textFieldDidChangeSelection(_ textField: UITextField) {
             parent.text = textField.text ?? ""
+        }
+
+        // A UITextField does nothing on return unless its delegate resigns it,
+        // which is why this field alone couldn't be dismissed with the keyboard's
+        // return key the way SwiftUI's own TextField can.
+        func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+            textField.resignFirstResponder()
+            return true
         }
     }
 }

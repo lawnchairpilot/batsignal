@@ -16,6 +16,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Must come after FirebaseApp.configure() so swizzling is active before
         // didRegisterForRemoteNotificationsWithDeviceToken fires.
         application.registerForRemoteNotifications()
+        KeyboardDismissGesture.shared.installWhenWindowAvailable()
         return true
     }
 

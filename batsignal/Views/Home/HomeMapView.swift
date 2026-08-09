@@ -69,18 +69,23 @@ private final class OneTimeLocationProvider: NSObject, CLLocationManagerDelegate
 struct HomeMapView: View {
     let annotations: [EventAnnotationItem]
     var focusedCoordinate: CLLocationCoordinate2D?
+    var focusedEventId: String?
     var height: CGFloat = 340
     var onSelectEvent: (Event) -> Void = { _ in }
 
     @StateObject private var locationProvider = OneTimeLocationProvider()
     @State private var position: MapCameraPosition = .automatic
     @State private var showFullMap = false
+    // Marking the focused pin as the map's selection is the only lever SwiftUI
+    // gives over stacking: MapKit raises the selected annotation view above the
+    // unselected ones, so a pin sharing the same spot can't bury it.
+    @State private var selectedAnnotationId: String?
 
     private var hasLiveEvent: Bool { annotations.contains { $0.isLive } }
 
     var body: some View {
         ZStack {
-            Map(position: $position, interactionModes: [.pan, .zoom]) {
+            Map(position: $position, interactionModes: [.pan, .zoom], selection: $selectedAnnotationId) {
                 ForEach(annotations) { item in
                     Annotation("", coordinate: item.coordinate) {
                         Button {
@@ -90,6 +95,7 @@ struct HomeMapView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                    .tag(item.id)
                 }
                 UserAnnotation()
             }
@@ -115,9 +121,13 @@ struct HomeMapView: View {
         .frame(height: height)
         .cornerRadius(12)
         .clipped()
-        .onAppear { refreshPosition() }
+        .onAppear {
+            refreshPosition()
+            selectedAnnotationId = focusedEventId
+        }
         .onChange(of: locationProvider.coordinate) { _, _ in refreshPosition() }
         .onChange(of: focusedCoordinate) { _, _ in refreshPosition() }
+        .onChange(of: focusedEventId) { _, newValue in selectedAnnotationId = newValue }
         .sheet(isPresented: $showFullMap) {
             HomeFullMapView(annotations: annotations, initialPosition: position)
         }
