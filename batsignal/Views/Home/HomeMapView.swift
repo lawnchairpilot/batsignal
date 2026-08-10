@@ -67,7 +67,7 @@ private final class OneTimeLocationProvider: NSObject, CLLocationManagerDelegate
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}
 }
 
-// MARK: - Thumbnail (pan/zoom in place, with a button to expand full-screen)
+// MARK: - The home screen's full-bleed map
 
 struct HomeMapView: View {
     let annotations: [EventAnnotationItem]
@@ -81,65 +81,42 @@ struct HomeMapView: View {
     // can be centred in the strip that's actually visible rather than in the
     // map's own middle — which an expanded card sits right on top of.
     var occludedBottomHeight: CGFloat = 0
+    // The height the map is actually laid out at. Not applied as a frame — the
+    // map fills whatever it's given — it's the yardstick the hero framing
+    // measures its camera shift against.
     var height: CGFloat = 340
     var onSelectEvent: (Event) -> Void = { _ in }
 
     @StateObject private var locationProvider = OneTimeLocationProvider()
     @State private var position: MapCameraPosition = .automatic
-    @State private var showFullMap = false
     // Marking the focused pin as the map's selection is the only lever SwiftUI
     // gives over stacking: MapKit raises the selected annotation view above the
     // unselected ones, so a pin sharing the same spot can't bury it.
     @State private var selectedAnnotationId: String?
 
-    private var hasLiveEvent: Bool { annotations.contains { $0.isLive } }
-
     var body: some View {
-        ZStack {
-            Map(position: $position, interactionModes: [.pan, .zoom], selection: $selectedAnnotationId) {
-                ForEach(annotations) { item in
-                    // Anchored at the bottom so the tail tip marks the actual
-                    // coordinate. With .center the pin only pointed at its
-                    // location by accident of its size, which stops being true
-                    // the moment one of them is five times bigger than the rest.
-                    Annotation("", coordinate: item.coordinate, anchor: .bottom) {
-                        Button {
-                            onSelectEvent(item.event)
-                        } label: {
-                            EventAnnotationView(
-                                label: item.label,
-                                photoURL: item.creatorPhotoURL,
-                                size: item.id == enlargedEventId ? heroIconSize : EventAnnotationView.defaultSize
-                            )
-                        }
-                        .buttonStyle(.plain)
+        Map(position: $position, interactionModes: [.pan, .zoom], selection: $selectedAnnotationId) {
+            ForEach(annotations) { item in
+                // Anchored at the bottom so the tail tip marks the actual
+                // coordinate. With .center the pin only pointed at its
+                // location by accident of its size, which stops being true
+                // the moment one of them is five times bigger than the rest.
+                Annotation("", coordinate: item.coordinate, anchor: .bottom) {
+                    Button {
+                        onSelectEvent(item.event)
+                    } label: {
+                        EventAnnotationView(
+                            label: item.label,
+                            photoURL: item.creatorPhotoURL,
+                            size: item.id == enlargedEventId ? heroIconSize : EventAnnotationView.defaultSize
+                        )
                     }
-                    .tag(item.id)
+                    .buttonStyle(.plain)
                 }
-                UserAnnotation()
+                .tag(item.id)
             }
-
-            VStack {
-                HStack {
-                    if hasLiveEvent {
-                        LiveBadge().padding(8)
-                    }
-                    Spacer()
-                    Button(action: { showFullMap = true }) {
-                        Image(systemName: "arrow.up.left.and.arrow.down.right")
-                            .font(.subheadline.bold())
-                            .foregroundColor(.primary)
-                            .padding(8)
-                            .background(.thinMaterial, in: Circle())
-                    }
-                    .padding(8)
-                }
-                Spacer()
-            }
+            UserAnnotation()
         }
-        .frame(height: height)
-        .cornerRadius(12)
-        .clipped()
         .onAppear {
             refreshPosition()
             selectedAnnotationId = focusedEventId
@@ -154,9 +131,6 @@ struct HomeMapView: View {
             refreshPosition()
         }
         .onChange(of: focusedEventId) { _, newValue in selectedAnnotationId = newValue }
-        .sheet(isPresented: $showFullMap) {
-            HomeFullMapView(annotations: annotations, initialPosition: position)
-        }
     }
 
     private func refreshPosition() {
@@ -216,57 +190,3 @@ struct HomeMapView: View {
 private let heroIconMaxSize: CGFloat = 220  // EventSymbolHeader's preview circle
 private let heroTopMargin: CGFloat = 16
 private let heroCardGap: CGFloat = 12
-
-// MARK: - Full-screen interactive map
-
-struct HomeFullMapView: View {
-    let annotations: [EventAnnotationItem]
-    let initialPosition: MapCameraPosition
-
-    @State private var position: MapCameraPosition
-    @Environment(\.dismiss) private var dismiss
-
-    private var hasLiveEvent: Bool { annotations.contains { $0.isLive } }
-
-    init(annotations: [EventAnnotationItem], initialPosition: MapCameraPosition) {
-        self.annotations = annotations
-        self.initialPosition = initialPosition
-        self._position = State(initialValue: initialPosition)
-    }
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                // Pins here are just markers: details live on the cards back on
-                // the home map, which this view has none of.
-                Map(position: $position) {
-                    ForEach(annotations) { item in
-                        Annotation("", coordinate: item.coordinate, anchor: .bottom) {
-                            EventAnnotationView(label: item.label, photoURL: item.creatorPhotoURL)
-                        }
-                    }
-                    UserAnnotation()
-                }
-                .ignoresSafeArea()
-
-                if hasLiveEvent {
-                    VStack {
-                        HStack {
-                            Spacer()
-                            LiveBadge()
-                                .padding(.trailing, 16)
-                                .padding(.top, 8)
-                        }
-                        Spacer()
-                    }
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(Strings.Common.done) { dismiss() }
-                }
-            }
-        }
-    }
-}

@@ -40,8 +40,7 @@ struct EventSymbolHeader: View {
             EmojiPickerView(selectedEmoji: $emoji)
         }
         .fullScreenCover(isPresented: $showCamera) {
-            CameraPickerView(image: $selectedImage)
-                .ignoresSafeArea()
+            CameraCaptureFlow { image in selectedImage = image }
         }
         .onChange(of: selectedImage) { _, newImage in
             if newImage != nil { emoji = nil }

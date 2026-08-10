@@ -6,6 +6,8 @@ extension Strings {
         static let eventRadiusFilter = "Bool radius"
         static let signOut = "Sign Out"
         static let settingsTitle = "Settings"
+        static let cropTitle = "Move and Scale"
+        static let choosePhoto = "Choose"
         static let displayNameSection = "Display Name"
         static let displayNamePlaceholder = "Display name"
         static let radiusTitle = "Bool Radius"

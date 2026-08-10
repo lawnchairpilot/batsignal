@@ -82,6 +82,9 @@ struct ProfileView: View {
                 groupsSection
             }
         }
+        // Grouped lists reserve room between sections for headers that most of
+        // these no longer have, which left gaps where the labels used to be.
+        .listSectionSpacing(.compact)
         .navigationTitle(Strings.Profile.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

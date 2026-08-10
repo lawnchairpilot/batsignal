@@ -11,6 +11,7 @@ struct SettingsView: View {
 
     @State private var displayName = ""
     @State private var selectedItem: PhotosPickerItem?
+    @State private var cropCandidate: CropCandidate?
     @State private var previewImage: UIImage?
     @State private var isUploadingPhoto = false
     @State private var errorMessage: String?
@@ -94,7 +95,18 @@ struct SettingsView: View {
         // always unfocus first.
         .onDisappear { commitDisplayName() }
         .onChange(of: selectedItem) { _, item in
-            Task { await uploadPickedPhoto(item) }
+            Task { await loadForCropping(item) }
+        }
+        .fullScreenCover(item: $cropCandidate) { candidate in
+            CircleCropView(
+                image: candidate.image,
+                onCancel: { cropCandidate = nil },
+                onConfirm: { cropped in
+                    cropCandidate = nil
+                    previewImage = cropped
+                    Task { await uploadPhoto(cropped) }
+                }
+            )
         }
     }
 
@@ -119,10 +131,18 @@ struct SettingsView: View {
         save(["displayName": trimmed])
     }
 
-    private func uploadPickedPhoto(_ item: PhotosPickerItem?) async {
+    // Nothing is uploaded straight off the picker — the photo goes to the crop
+    // screen first, and only what comes back from there is saved.
+    private func loadForCropping(_ item: PhotosPickerItem?) async {
         guard let data = try? await item?.loadTransferable(type: Data.self),
               let image = UIImage(data: data) else { return }
-        previewImage = image
+        // Cleared so that picking the same photo again still counts as a change
+        // and reopens the crop screen.
+        selectedItem = nil
+        cropCandidate = CropCandidate(image: image)
+    }
+
+    private func uploadPhoto(_ image: UIImage) async {
         isUploadingPhoto = true
         errorMessage = nil
         do {
@@ -148,4 +168,12 @@ struct SettingsView: View {
             }
         }
     }
+}
+
+// A picked photo waiting to be framed. Wrapped because fullScreenCover(item:)
+// wants something identifiable, and a fresh id per pick is what reopens the
+// crop screen for the same photo twice.
+private struct CropCandidate: Identifiable {
+    let id = UUID()
+    let image: UIImage
 }

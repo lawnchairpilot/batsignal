@@ -23,120 +23,117 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             GeometryReader { proxy in
-                ScrollView {
-                    VStack(spacing: 16) {
+                // The map runs edge to edge under the status bar and home
+                // indicator, so its own idea of its height — what the hero
+                // framing does its arithmetic against — is the safe area plus
+                // both insets. The header and carousel stay inside the safe
+                // area, laid out over the top of it.
+                let mapHeight = proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
 
-                        // Friends' event map, with my event and friends' current events as cards overlaid on top
-                        ZStack(alignment: .bottom) {
-                            HomeMapView(
-                                annotations: allAnnotations,
-                                focusedCoordinate: focusedCoordinate,
-                                focusedEventId: focusedEventId,
-                                enlargedEventId: enlargedAnnotationId,
-                                occludedBottomHeight: carouselHeight,
-                                height: mapHeight(for: proxy.size.height),
-                                onSelectEvent: { event in revealCard(for: event) }
-                            )
+                ZStack(alignment: .top) {
+                    HomeMapView(
+                        annotations: allAnnotations,
+                        focusedCoordinate: focusedCoordinate,
+                        focusedEventId: focusedEventId,
+                        enlargedEventId: enlargedAnnotationId,
+                        occludedBottomHeight: carouselHeight + proxy.safeAreaInsets.bottom,
+                        height: mapHeight,
+                        onSelectEvent: { event in revealCard(for: event) }
+                    )
+                    .ignoresSafeArea()
 
-                            homeCarousel(availableHeight: proxy.size.height)
-                                .padding(.horizontal, 12)
-                                .padding(.bottom, 12)
-                                // Measured outside the padding, so this is the
-                                // full bite the carousel takes out of the map.
-                                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { carouselHeight = $0 }
-                        }
-                        .padding(.horizontal)
-                        .padding(.top, 8)
+                    VStack(spacing: 0) {
+                        header
 
-                        // Friends' upcoming events
-                        if viewModel.isLoading {
-                            ProgressView().padding(.top, 40)
-                        } else if viewModel.events.isEmpty && viewModel.upcomingEvents.isEmpty {
-                            ContentUnavailableView(
-                                Strings.Home.emptyStateTitle,
-                                systemImage: "antenna.radiowaves.left.and.right",
-                                description: Text(Strings.Home.emptyStateDescription)
-                            )
-                            .padding(.top, 40)
-                        } else if !viewModel.upcomingEvents.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text(Strings.Home.comingUp)
-                                    .font(.title3).bold()
-                                    .padding(.horizontal)
-                                    .padding(.top, 4)
-                                ForEach(viewModel.upcomingEvents) { event in
-                                    let creator = friendsViewModel.friends.first { $0.id == event.creatorId }
-                                    EventCardView(
-                                        event: event,
-                                        isExpanded: expansionBinding(for: event),
-                                        creatorName: creator?.displayName,
-                                        isSelected: event.id != nil && event.id == focusedEventId,
-                                        onCompactTap: { handleSingleTap(on: event) }
-                                    )
-                                    .padding(.horizontal)
-                                    .opacity(isExpanded(event) ? 1 : 0.6)
-                                }
-                            }
-                            .padding(.bottom, 16)
-                        }
-                    }
-                }
-                // The map sits flush against the navigation bar, so everything
-                // in the top band of the page — including an expanded card that
-                // has grown up off the map's bottom edge — gets iOS's scroll
-                // edge effect painted over it and fades out. The map is opaque
-                // enough to carry the title on its own, so turn it off.
-                .scrollEdgeEffectHidden(true, for: .top)
-            }
-            .navigationTitle(Strings.Common.appName)
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    NavigationLink {
-                        ProfileView()
-                    } label: {
-                        EventIconView(
-                            photoURL: authService.currentUser?.profilePhotoURL,
-                            label: authService.currentUser?.initials,
-                            size: 30
+                        Spacer(minLength: 0)
+
+                        // No horizontal padding: a scroll view clips to its
+                        // bounds, and insetting it chopped the peeking cards
+                        // off in mid-air short of the screen edge. The inset
+                        // lives inside the scroll view instead.
+                        homeCarousel(
+                            availableHeight: proxy.size.height,
+                            containerWidth: proxy.size.width
                         )
+                            .padding(.bottom, 12)
+                            // Measured outside the padding, so this is the
+                            // full bite the carousel takes out of the map.
+                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { carouselHeight = $0 }
                     }
-                    .accessibilityLabel(Strings.Profile.title)
                 }
             }
+            // The title and profile button ride on the map instead.
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showCreateEvent) {
                 CreateEventView()
             }
         }
     }
 
-    // Lets the map claim the full screen whenever there's no upcoming-events
-    // list that needs room below it, instead of leaving dead space under the
-    // carousel — including the "no signals" empty state, which is small
-    // enough to just sit in whatever space is left. Only the upcoming list
-    // (which can be long) keeps the map pinned to its standard height.
-    private func mapHeight(for availableHeight: CGFloat) -> CGFloat {
-        let standardHeight: CGFloat = 340
-        guard !viewModel.isLoading, viewModel.upcomingEvents.isEmpty else { return standardHeight }
-        return max(standardHeight, availableHeight - 24)
+    // Sits on the map rather than in a navigation bar, so both pieces carry a
+    // material backing of their own to stay legible over whatever is beneath.
+    private var header: some View {
+        HStack(spacing: 8) {
+            Text(Strings.Common.appName)
+                .font(.title2.bold())
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(.thinMaterial, in: Capsule())
+
+            Spacer()
+
+            if hasLiveEvent {
+                LiveBadge()
+            }
+
+            NavigationLink {
+                ProfileView()
+            } label: {
+                EventIconView(
+                    photoURL: authService.currentUser?.profilePhotoURL,
+                    label: authService.currentUser?.initials,
+                    size: 34
+                )
+                .padding(3)
+                .background(.thinMaterial, in: Circle())
+            }
+            .accessibilityLabel(Strings.Profile.title)
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 4)
     }
 
-    // What's left of the map for an expanded card, once its own 16pt padding,
-    // the carousel's bottom inset and a little clearance from the map's top
-    // edge are taken out. Cards that need more than this scroll internally
-    // rather than growing up under the navigation bar.
+    private var hasLiveEvent: Bool {
+        allAnnotations.contains { $0.isLive }
+    }
+
+    // What's left for an expanded card once the header row at the top of the
+    // map, the carousel's bottom inset and the card's own chrome are taken out.
+    // Cards that need more than this scroll internally rather than growing up
+    // under the header.
     private func expandedCardMaxContentHeight(for availableHeight: CGFloat) -> CGFloat {
-        max(mapHeight(for: availableHeight) - 76, 180)
+        max(availableHeight - 140, 180)
     }
 
-    private func homeCarousel(availableHeight: CGFloat) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+    private func homeCarousel(availableHeight: CGFloat, containerWidth: CGFloat) -> some View {
+        // Sized here rather than with containerRelativeFrame because the inset
+        // below depends on the card width, and the card width would in turn
+        // depend on the inset if it were measured against the scroll view.
+        let cardWidth = containerWidth * 0.82
+        // Half the leftover width at each end, so the first and last cards can
+        // come to rest dead centre instead of against an edge. What's left over
+        // after the gap is how far their neighbours peek in from the screen
+        // edges — which is why the gap is tight.
+        let sideInset = max((containerWidth - cardWidth) / 2, 0)
+
+        return ScrollView(.horizontal, showsIndicators: false) {
             // Deliberately not a LazyHStack. The carousel is sized by
             // fixedSize(vertical:), which asks the scroll view for its ideal
             // height — and a lazy stack answers that from the cards it has
             // realized, i.e. your own. Every other card then got clipped to
             // your card's height, at the top, because the stack is bottom
             // aligned. A handful of friends' events don't need laziness anyway.
-            HStack(alignment: .bottom, spacing: 12) {
+            HStack(alignment: .bottom, spacing: 8) {
                 Group {
                     if myEventViewModel.activeEvent != nil || myEventViewModel.upcomingEvent != nil {
                         MyActiveEventCard(viewModel: myEventViewModel, isExpanded: $isOwnCardExpanded)
@@ -145,7 +142,7 @@ struct HomeView: View {
                     }
                 }
                 .opacity(0.92)
-                .containerRelativeFrame(.horizontal) { width, _ in width * 0.82 }
+                .frame(width: cardWidth)
                 .carouselFocusEffect()
                 .id(HomeCarouselSelection.own)
 
@@ -158,13 +155,14 @@ struct HomeView: View {
                         expandedMaxContentHeight: expandedCardMaxContentHeight(for: availableHeight)
                     )
                     .opacity(0.92)
-                    .containerRelativeFrame(.horizontal) { width, _ in width * 0.82 }
+                    .frame(width: cardWidth)
                     .carouselFocusEffect()
                     .id(HomeCarouselSelection.event(event.id ?? ""))
                 }
             }
             .scrollTargetLayout()
         }
+        .safeAreaPadding(.horizontal, sideInset)
         .scrollTargetBehavior(.viewAligned)
         .scrollPosition(id: $selectedCarouselItem)
         // carouselFocusEffect already recedes the off-centre cards; the system
@@ -233,15 +231,6 @@ struct HomeView: View {
             get: { isExpanded(event) },
             set: { expandedEventId = $0 ? event.id : nil }
         )
-    }
-
-    // A card down in the upcoming list is far enough from the map that tapping
-    // it once is more likely to mean "where is that?" than "tell me more", so
-    // the first tap only points the map at it and the second one opens it.
-    private func handleSingleTap(on event: Event) -> Bool {
-        if event.id != nil && event.id == focusedEventId { return true }
-        focusMap(on: event)
-        return false
     }
 
     private func focusMap(on event: Event) {
