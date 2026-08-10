@@ -3,9 +3,10 @@ import PhotosUI
 import FirebaseFirestore
 import FirebaseAuth
 
+// Pushed from the profile screen's gear button, so like ProfileView it borrows
+// the home screen's navigation stack instead of starting one of its own.
 struct SettingsView: View {
     @EnvironmentObject var authService: AuthService
-    @Environment(\.dismiss) private var dismiss
     @FocusState private var isNameFocused: Bool
 
     @State private var displayName = ""
@@ -15,96 +16,85 @@ struct SettingsView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    HStack {
-                        Spacer()
-                        ZStack(alignment: .bottomTrailing) {
-                            Group {
-                                if let previewImage {
-                                    Image(uiImage: previewImage)
-                                        .resizable()
-                                        .scaledToFill()
-                                } else {
-                                    EventIconView(
-                                        photoURL: authService.currentUser?.profilePhotoURL,
-                                        label: initials,
-                                        size: 80
-                                    )
-                                }
+        Form {
+            Section {
+                HStack {
+                    Spacer()
+                    ZStack(alignment: .bottomTrailing) {
+                        Group {
+                            if let previewImage {
+                                Image(uiImage: previewImage)
+                                    .resizable()
+                                    .scaledToFill()
+                            } else {
+                                EventIconView(
+                                    photoURL: authService.currentUser?.profilePhotoURL,
+                                    label: initials,
+                                    size: 80
+                                )
                             }
-                            .frame(width: 80, height: 80)
-                            .clipShape(Circle())
-                            .overlay {
-                                if isUploadingPhoto {
-                                    ZStack {
-                                        Circle().fill(.black.opacity(0.4))
-                                        ProgressView().tint(.white)
-                                    }
-                                }
-                            }
-
-                            PhotosPicker(selection: $selectedItem, matching: .images) {
-                                Image(systemName: "camera.circle.fill")
-                                    .font(.title2)
-                                    .foregroundStyle(.white, Color.accentColor)
-                                    .background(Color(.systemBackground))
-                                    .clipShape(Circle())
-                            }
-                            .disabled(isUploadingPhoto)
                         }
-                        Spacer()
+                        .frame(width: 80, height: 80)
+                        .clipShape(Circle())
+                        .overlay {
+                            if isUploadingPhoto {
+                                ZStack {
+                                    Circle().fill(.black.opacity(0.4))
+                                    ProgressView().tint(.white)
+                                }
+                            }
+                        }
+
+                        PhotosPicker(selection: $selectedItem, matching: .images) {
+                            Image(systemName: "camera.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(.white, Color.accentColor)
+                                .background(Color(.systemBackground))
+                                .clipShape(Circle())
+                        }
+                        .disabled(isUploadingPhoto)
                     }
-                    .listRowBackground(Color.clear)
-                    .padding(.vertical, 8)
+                    Spacer()
                 }
+                .listRowBackground(Color.clear)
+                .padding(.vertical, 8)
+            }
 
-                Section(Strings.Profile.displayNameSection) {
-                    TextField(Strings.Profile.displayNamePlaceholder, text: $displayName)
-                        .textContentType(.name)
-                        .focused($isNameFocused)
-                        .submitLabel(.done)
-                        .onSubmit { commitDisplayName() }
-                }
+            Section(Strings.Profile.displayNameSection) {
+                TextField(Strings.Profile.displayNamePlaceholder, text: $displayName)
+                    .textContentType(.name)
+                    .focused($isNameFocused)
+                    .submitLabel(.done)
+                    .onSubmit { commitDisplayName() }
+            }
 
-                if let error = errorMessage {
-                    Section {
-                        Text(error).foregroundColor(.red).font(.caption)
-                    }
-                }
-
+            if let error = errorMessage {
                 Section {
-                    // Dismissing first lets the sheet animate away on its own
-                    // terms; signing out swaps the whole root view out from
-                    // under it, presenter included.
-                    Button(Strings.Profile.signOut, role: .destructive) {
-                        dismiss()
-                        try? authService.signOut()
-                    }
+                    Text(error).foregroundColor(.red).font(.caption)
                 }
             }
-            .navigationTitle(Strings.Profile.settingsTitle)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(Strings.Common.done) {
-                        commitDisplayName()
-                        dismiss()
-                    }
+
+            Section {
+                Button(Strings.Profile.signOut, role: .destructive) {
+                    try? authService.signOut()
                 }
             }
-            .onAppear {
-                displayName = authService.currentUser?.displayName ?? ""
-            }
-            // Tapping out of the field counts as committing it, so the name
-            // doesn't need the return key to stick.
-            .onChange(of: isNameFocused) { _, focused in
-                if !focused { commitDisplayName() }
-            }
-            .onChange(of: selectedItem) { _, item in
-                Task { await uploadPickedPhoto(item) }
-            }
+        }
+        .navigationTitle(Strings.Profile.settingsTitle)
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            displayName = authService.currentUser?.displayName ?? ""
+        }
+        // Tapping out of the field counts as committing it, so the name
+        // doesn't need the return key to stick.
+        .onChange(of: isNameFocused) { _, focused in
+            if !focused { commitDisplayName() }
+        }
+        // Backing out is the other way to leave the field, and that doesn't
+        // always unfocus first.
+        .onDisappear { commitDisplayName() }
+        .onChange(of: selectedItem) { _, item in
+            Task { await uploadPickedPhoto(item) }
         }
     }
 

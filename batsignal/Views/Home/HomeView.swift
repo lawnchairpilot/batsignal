@@ -89,6 +89,20 @@ struct HomeView: View {
                 .scrollEdgeEffectHidden(true, for: .top)
             }
             .navigationTitle(Strings.Common.appName)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    NavigationLink {
+                        ProfileView()
+                    } label: {
+                        EventIconView(
+                            photoURL: authService.currentUser?.profilePhotoURL,
+                            label: authService.currentUser?.initials,
+                            size: 30
+                        )
+                    }
+                    .accessibilityLabel(Strings.Profile.title)
+                }
+            }
             .sheet(isPresented: $showCreateEvent) {
                 CreateEventView()
             }
@@ -271,12 +285,7 @@ struct HomeView: View {
               let geoPoint = event.locationCoordinate else { return nil }
         let coordinate = CLLocationCoordinate2D(latitude: geoPoint.latitude, longitude: geoPoint.longitude)
         let name = authService.currentUser?.displayName
-        let label: String? = {
-            if let emoji = event.emoji { return emoji }
-            guard let name, !name.isEmpty else { return nil }
-            let parts = name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
-            return parts.isEmpty ? nil : parts.uppercased()
-        }()
+        let label = event.emoji ?? authService.currentUser?.initials
         return EventAnnotationItem(
             id: id,
             coordinate: coordinate,
@@ -294,12 +303,7 @@ struct HomeView: View {
             guard let id = event.id, let geoPoint = event.locationCoordinate else { return nil }
             let coordinate = CLLocationCoordinate2D(latitude: geoPoint.latitude, longitude: geoPoint.longitude)
             let creator = friendsViewModel.friends.first { $0.id == event.creatorId }
-            let label: String? = {
-                if let emoji = event.emoji { return emoji }
-                guard let name = creator?.displayName, !name.isEmpty else { return nil }
-                let parts = name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
-                return parts.isEmpty ? nil : parts.uppercased()
-            }()
+            let label = event.emoji ?? creator?.initials
             return EventAnnotationItem(
                 id: id,
                 coordinate: coordinate,

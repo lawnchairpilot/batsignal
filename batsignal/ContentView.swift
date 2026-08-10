@@ -6,4 +6,4 @@
 //
 
 // ContentView.swift is no longer used.
-// Entry point logic lives in batsignalApp.swift → MainTabView / AuthFlowView.
+// Entry point logic lives in batsignalApp.swift → RootView / AuthFlowView.

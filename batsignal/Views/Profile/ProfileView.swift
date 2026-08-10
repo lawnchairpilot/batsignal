@@ -4,116 +4,115 @@ enum FriendsTab {
     case friends, groups
 }
 
+// Pushed from the home screen's profile button, so it leans on that
+// navigation stack rather than starting one of its own.
 struct ProfileView: View {
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject private var friendsViewModel: FriendsViewModel
     @StateObject private var groupsViewModel = GroupsViewModel()
     @State private var selectedTab: FriendsTab = .friends
-    @State private var showSettings = false
     @State private var showAddFriend = false
     @State private var showCreateGroup = false
     @State private var editingGroup: FriendGroup?
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    HStack(spacing: 16) {
-                        EventIconView(
-                            photoURL: authService.currentUser?.profilePhotoURL,
-                            label: initials,
-                            size: 60
-                        )
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(authService.currentUser?.displayName ?? "")
-                                .font(.headline)
-                            Text(authService.currentUser?.phoneNumber ?? "")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .padding(.vertical, 8)
-                }
-
-                Section {
-                    NavigationLink(Strings.Profile.eventRadiusFilter) {
-                        RadiusSettingView()
+        List {
+            Section {
+                HStack(spacing: 16) {
+                    EventIconView(
+                        photoURL: authService.currentUser?.profilePhotoURL,
+                        label: authService.currentUser?.initials,
+                        size: 60
+                    )
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(authService.currentUser?.displayName ?? "")
+                            .font(.headline)
+                        Text(authService.currentUser?.phoneNumber ?? "")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                     }
                 }
+                .padding(.vertical, 8)
+            }
 
-                peopleSelector
+            Section {
+                NavigationLink(Strings.Profile.eventRadiusFilter) {
+                    RadiusSettingView()
+                }
+            }
 
-                switch selectedTab {
-                case .friends:
-                    // Incoming requests
-                    if !friendsViewModel.incomingRequests.isEmpty {
-                        Section(Strings.Friends.requestsSectionHeader) {
-                            ForEach(friendsViewModel.incomingRequests) { request in
-                                IncomingRequestRow(
-                                    request: request,
-                                    senderName: friendsViewModel.senderNames[request.fromUserId]
-                                ) { accept in
-                                    Task { await friendsViewModel.respond(to: request, accept: accept) }
-                                }
+            peopleSelector
+
+            switch selectedTab {
+            case .friends:
+                // Incoming requests
+                if !friendsViewModel.incomingRequests.isEmpty {
+                    Section(Strings.Friends.requestsSectionHeader) {
+                        ForEach(friendsViewModel.incomingRequests) { request in
+                            IncomingRequestRow(
+                                request: request,
+                                senderName: friendsViewModel.senderNames[request.fromUserId]
+                            ) { accept in
+                                Task { await friendsViewModel.respond(to: request, accept: accept) }
                             }
                         }
                     }
+                }
 
-                    // Outgoing pending requests
-                    if !friendsViewModel.outgoingRequests.isEmpty {
-                        Section(Strings.Friends.pendingSectionHeader) {
-                            ForEach(friendsViewModel.outgoingRequests) { request in
-                                HStack {
-                                    Image(systemName: "clock")
-                                        .foregroundColor(.secondary)
-                                    Text(friendsViewModel.recipientNames[request.toUserId] ?? Strings.Friends.pendingEllipsis)
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    Text(Strings.Friends.requestSent)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
+                // Outgoing pending requests
+                if !friendsViewModel.outgoingRequests.isEmpty {
+                    Section(Strings.Friends.pendingSectionHeader) {
+                        ForEach(friendsViewModel.outgoingRequests) { request in
+                            HStack {
+                                Image(systemName: "clock")
+                                    .foregroundColor(.secondary)
+                                Text(friendsViewModel.recipientNames[request.toUserId] ?? Strings.Friends.pendingEllipsis)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Text(Strings.Friends.requestSent)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
                         }
                     }
+                }
 
-                    friendsSection
-                case .groups:
-                    groupsSection
+                friendsSection
+            case .groups:
+                groupsSection
+            }
+        }
+        .navigationTitle(Strings.Profile.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                NavigationLink {
+                    SettingsView()
+                } label: {
+                    Image(systemName: "gearshape")
                 }
+                .accessibilityLabel(Strings.Profile.settingsTitle)
             }
-            .navigationTitle(Strings.Profile.title)
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showSettings = true }) {
-                        Image(systemName: "gearshape")
-                    }
-                    .accessibilityLabel(Strings.Profile.settingsTitle)
-                }
-            }
-            .sheet(isPresented: $showSettings) {
-                SettingsView()
-            }
-            .sheet(isPresented: $showAddFriend) {
-                AddFriendView(viewModel: friendsViewModel)
-            }
-            .sheet(isPresented: $showCreateGroup) {
-                GroupFormView(mode: .create, friends: friendsViewModel.friends, groupsViewModel: groupsViewModel)
-            }
-            .sheet(item: $editingGroup) { group in
-                GroupFormView(mode: .edit(group), friends: friendsViewModel.friends, groupsViewModel: groupsViewModel)
-            }
-            .onAppear {
-                groupsViewModel.startListening(ownerId: authService.currentUser?.id ?? "")
-            }
-            // The user document can land after this view first appears, so pick
-            // the listener back up once there's an id to own the groups.
-            .onChange(of: authService.currentUser?.id) { _, newId in
-                groupsViewModel.startListening(ownerId: newId ?? "")
-            }
-            .onDisappear {
-                groupsViewModel.stopListening()
-            }
+        }
+        .sheet(isPresented: $showAddFriend) {
+            AddFriendView(viewModel: friendsViewModel)
+        }
+        .sheet(isPresented: $showCreateGroup) {
+            GroupFormView(mode: .create, friends: friendsViewModel.friends, groupsViewModel: groupsViewModel)
+        }
+        .sheet(item: $editingGroup) { group in
+            GroupFormView(mode: .edit(group), friends: friendsViewModel.friends, groupsViewModel: groupsViewModel)
+        }
+        .onAppear {
+            groupsViewModel.startListening(ownerId: authService.currentUser?.id ?? "")
+        }
+        // The user document can land after this view first appears, so pick
+        // the listener back up once there's an id to own the groups.
+        .onChange(of: authService.currentUser?.id) { _, newId in
+            groupsViewModel.startListening(ownerId: newId ?? "")
+        }
+        .onDisappear {
+            groupsViewModel.stopListening()
         }
     }
 
@@ -215,12 +214,6 @@ struct ProfileView: View {
                 }
             }
         }
-    }
-
-    private var initials: String? {
-        guard let name = authService.currentUser?.displayName, !name.isEmpty else { return nil }
-        let parts = name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
-        return parts.isEmpty ? nil : parts.uppercased()
     }
 }
 

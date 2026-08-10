@@ -26,7 +26,7 @@ struct batsignalApp: App {
                     ProfileSetupView()
                         .environmentObject(authService)
                 } else {
-                    MainTabView()
+                    RootView()
                         .environmentObject(authService)
                 }
             }
