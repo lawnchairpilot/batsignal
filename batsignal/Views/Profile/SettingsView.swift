@@ -15,12 +15,18 @@ struct SettingsView: View {
     @State private var previewImage: UIImage?
     @State private var isUploadingPhoto = false
     @State private var errorMessage: String?
+    @State private var showDeleteConfirmation = false
+    @State private var isDeletingAccount = false
+
+    // Matches the event form's preview circle so the two photo pickers read as
+    // the same control.
+    private let photoSize: CGFloat = 220
+    private let pencilWidth: CGFloat = 14
 
     var body: some View {
         Form {
             Section {
-                HStack {
-                    Spacer()
+                VStack(spacing: 12) {
                     ZStack(alignment: .bottomTrailing) {
                         Group {
                             if let previewImage {
@@ -31,11 +37,11 @@ struct SettingsView: View {
                                 EventIconView(
                                     photoURL: authService.currentUser?.profilePhotoURL,
                                     label: initials,
-                                    size: 80
+                                    size: photoSize
                                 )
                             }
                         }
-                        .frame(width: 80, height: 80)
+                        .frame(width: photoSize, height: photoSize)
                         .clipShape(Circle())
                         .overlay {
                             if isUploadingPhoto {
@@ -48,25 +54,28 @@ struct SettingsView: View {
 
                         PhotosPicker(selection: $selectedItem, matching: .images) {
                             Image(systemName: "camera.circle.fill")
-                                .font(.title2)
+                                .font(.largeTitle)
                                 .foregroundStyle(.white, Color.accentColor)
                                 .background(Color(.systemBackground))
                                 .clipShape(Circle())
                         }
                         .disabled(isUploadingPhoto)
+                        // The corner of the frame is off the circle at this
+                        // size, so the badge gets pulled back onto its edge.
+                        .offset(x: -photoSize * 0.07, y: -photoSize * 0.07)
                     }
-                    Spacer()
+
+                    nameField
                 }
+                .frame(maxWidth: .infinity)
                 .listRowBackground(Color.clear)
                 .padding(.vertical, 8)
             }
 
-            Section(Strings.Profile.displayNameSection) {
-                TextField(Strings.Profile.displayNamePlaceholder, text: $displayName)
-                    .textContentType(.name)
-                    .focused($isNameFocused)
-                    .submitLabel(.done)
-                    .onSubmit { commitDisplayName() }
+            Section {
+                NavigationLink(Strings.Profile.eventRadiusFilter) {
+                    RadiusSettingView()
+                }
             }
 
             if let error = errorMessage {
@@ -79,7 +88,31 @@ struct SettingsView: View {
                 Button(Strings.Profile.signOut, role: .destructive) {
                     try? authService.signOut()
                 }
+                .disabled(isDeletingAccount)
+
+                Button(role: .destructive) {
+                    showDeleteConfirmation = true
+                } label: {
+                    HStack {
+                        Text(Strings.Profile.deleteAccount)
+                        if isDeletingAccount {
+                            Spacer()
+                            ProgressView()
+                        }
+                    }
+                }
+                .disabled(isDeletingAccount)
             }
+        }
+        // Deleting is irreversible, so it takes a deliberate second tap, and the
+        // alert spells out what goes with the account.
+        .alert(Strings.Profile.deleteAccountTitle, isPresented: $showDeleteConfirmation) {
+            Button(Strings.Common.cancel, role: .cancel) {}
+            Button(Strings.Profile.deleteAccountConfirm, role: .destructive) {
+                Task { await deleteAccount() }
+            }
+        } message: {
+            Text(Strings.Profile.deleteAccountMessage)
         }
         .navigationTitle(Strings.Profile.settingsTitle)
         .navigationBarTitleDisplayMode(.inline)
@@ -108,6 +141,36 @@ struct SettingsView: View {
                 }
             )
         }
+    }
+
+    // Sits under the photo as the heading for the screen rather than in a row
+    // of its own, so the pencil is what says it's editable. The field hugs its
+    // text to keep the two together as the name changes length.
+    private var nameField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "pencil")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(width: pencilWidth)
+
+            TextField(Strings.Profile.displayNamePlaceholder, text: $displayName)
+                .font(.title2).bold()
+                .multilineTextAlignment(.center)
+                .lineLimit(1)
+                .fixedSize()
+                .textContentType(.name)
+                .focused($isNameFocused)
+                .submitLabel(.done)
+                .onSubmit { commitDisplayName() }
+
+            // Balances the pencil so what's centered under the photo is the
+            // name itself, with the pencil hanging off its side.
+            Color.clear.frame(width: pencilWidth, height: 1)
+        }
+        // The pencil is a label, not a button, so the whole pairing takes the
+        // tap and hands it to the field.
+        .contentShape(Rectangle())
+        .onTapGesture { isNameFocused = true }
     }
 
     private var initials: String? {
@@ -155,6 +218,19 @@ struct SettingsView: View {
             errorMessage = Strings.Profile.photoUploadFailed(error.localizedDescription)
         }
         isUploadingPhoto = false
+    }
+
+    // On success the auth state changes out from under this screen and the app
+    // returns to the sign-in flow, so there's nothing to reset afterwards.
+    private func deleteAccount() async {
+        isDeletingAccount = true
+        errorMessage = nil
+        do {
+            try await authService.deleteAccount()
+        } catch {
+            errorMessage = Strings.Profile.accountDeletionFailed(error.localizedDescription)
+            isDeletingAccount = false
+        }
     }
 
     private func save(_ updates: [String: Any]) {

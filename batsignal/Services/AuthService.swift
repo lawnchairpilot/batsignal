@@ -89,6 +89,30 @@ class AuthService: ObservableObject {
         try Auth.auth().signOut()
     }
 
+    // Deleting the user document is the whole trigger: the onUserDocumentDeleted
+    // function (functions/src/index.ts) tears down everything the account leaves
+    // behind — the events, groups, requests, photos, other people's friend lists
+    // — and deletes the Firebase Auth user itself.
+    //
+    // The auth user is deleted server-side rather than here on purpose. A
+    // client-side Auth.currentUser.delete() only works within a few minutes of
+    // signing in, so a normal user would hit requiresRecentLogin and have to
+    // re-verify their phone number just to leave.
+    func deleteAccount() async throws {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            throw NSError(
+                domain: "batsignal.auth", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "You're not signed in."]
+            )
+        }
+        // Dropped first so the deletion doesn't momentarily read as a signed-in
+        // user with no profile, which is what sends people to profile setup.
+        userListener?.remove()
+        userListener = nil
+        try await db.collection("users").document(uid).delete()
+        try Auth.auth().signOut()
+    }
+
     // MARK: - User Document
 
     func createUserDocument(displayName: String) async throws {

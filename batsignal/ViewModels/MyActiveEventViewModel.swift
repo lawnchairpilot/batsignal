@@ -13,7 +13,7 @@ class MyActiveEventViewModel: ObservableObject {
     private var recoveryListener: ListenerRegistration?
     private var expiryTimer: Timer?
 
-    func startListening(activeEventId: String?) {
+    func stopListening() {
         listener?.remove()
         listener = nil
         recoveryListener?.remove()
@@ -23,6 +23,10 @@ class MyActiveEventViewModel: ObservableObject {
         upcomingEvent = nil
         expiryTimer?.invalidate()
         expiryTimer = nil
+    }
+
+    func startListening(activeEventId: String?) {
+        stopListening()
 
         guard let eventId = activeEventId else {
             startRecoveryListening()

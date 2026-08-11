@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.notifyOnFriendRequestAccept = exports.backfillEventVisibilityOnFriendAccept = exports.notifyOnFriendRequestCreate = exports.notifyHostOnCommentCreate = exports.notifyHostOnEventJoin = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
+exports.cleanupOnUserDelete = exports.notifyOnFriendRequestAccept = exports.backfillEventVisibilityOnFriendAccept = exports.notifyOnFriendRequestCreate = exports.notifyHostOnCommentCreate = exports.notifyHostOnEventJoin = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
 const admin = require("firebase-admin");
 const functions = require("firebase-functions/v2");
 const firestore_1 = require("firebase-functions/v2/firestore");
@@ -252,5 +252,116 @@ exports.notifyOnFriendRequestAccept = (0, firestore_1.onDocumentUpdated)("friend
         apns: { payload: { aps: { sound: "default" } } },
         data: { requestId: event.params.requestId, type: "friend_request_accepted" },
     }, "friend_request_accepted");
+});
+// MARK: - Account deletion
+/**
+ * Deletes every document matched by a query, in batches. Safe to re-run: a
+ * retry after a partial failure simply finds fewer documents left to delete.
+ */
+async function deleteQueryResults(query, label) {
+    const snapshot = await query.get();
+    if (snapshot.empty)
+        return;
+    // Firestore caps a batch at 500 writes.
+    for (let i = 0; i < snapshot.docs.length; i += 400) {
+        const batch = db.batch();
+        snapshot.docs.slice(i, i + 400).forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+    }
+    console.log(`[deleteAccount] Deleted ${snapshot.size} from ${label}.`);
+}
+/**
+ * Strips a user id out of an array field wherever it appears.
+ */
+async function removeFromArrayField(collection, field, uid) {
+    const snapshot = await db.collection(collection).where(field, "array-contains", uid).get();
+    if (snapshot.empty)
+        return;
+    for (let i = 0; i < snapshot.docs.length; i += 400) {
+        const batch = db.batch();
+        snapshot.docs.slice(i, i + 400).forEach((doc) => batch.update(doc.ref, { [field]: admin.firestore.FieldValue.arrayRemove(uid) }));
+        await batch.commit();
+    }
+    console.log(`[deleteAccount] Removed ${uid} from ${snapshot.size} ${collection}.${field}.`);
+}
+/**
+ * Turns a Storage download URL back into the object path it points at, so an
+ * event's photo can be deleted alongside the event. Returns undefined for
+ * anything that isn't one of our own download URLs.
+ */
+function storagePathFromDownloadURL(url) {
+    if (!url)
+        return undefined;
+    const match = /\/o\/([^?]+)/.exec(url);
+    return match ? decodeURIComponent(match[1]) : undefined;
+}
+async function deleteStorageObject(path) {
+    try {
+        await admin.storage().bucket().file(path).delete();
+    }
+    catch (error) {
+        // Already gone is the expected case on a retry, and a photo that outlives
+        // its event isn't worth failing the rest of the cleanup over.
+        console.warn(`[deleteAccount] Could not delete ${path}: ${error.message}`);
+    }
+}
+/**
+ * Deleting the user document is how the client asks for its account to go away
+ * — see AuthService.deleteAccount. Everything the account leaves behind is torn
+ * down here rather than on the client for two reasons: most of it lives in
+ * other people's documents, which the client has no right to write to, and the
+ * Firebase Auth user itself can only be deleted client-side within a few
+ * minutes of signing in, which would force a phone re-verification just to quit.
+ *
+ * Every step is idempotent, so the retry re-runs whatever didn't finish.
+ */
+exports.cleanupOnUserDelete = (0, firestore_1.onDocumentDeleted)({ document: "users/{uid}", retry: true }, async (event) => {
+    const uid = event.params.uid;
+    console.log(`[deleteAccount] Cleaning up after ${uid}.`);
+    // The user's own events, with their comments and photos.
+    const ownedEvents = await db.collection("events").where("creatorId", "==", uid).get();
+    for (const doc of ownedEvents.docs) {
+        await deleteQueryResults(doc.ref.collection("comments"), `events/${doc.id}/comments`);
+        const photoPath = storagePathFromDownloadURL(doc.data().imageURL);
+        if (photoPath)
+            await deleteStorageObject(photoPath);
+        await doc.ref.delete();
+    }
+    console.log(`[deleteAccount] Deleted ${ownedEvents.size} owned events.`);
+    await Promise.all([
+        // Groups they own, and their membership in anyone else's.
+        deleteQueryResults(db.collection("groups").where("ownerId", "==", uid), "owned groups"),
+        removeFromArrayField("groups", "memberIds", uid),
+        // Friend requests in either direction.
+        deleteQueryResults(db.collection("friendRequests").where("fromUserId", "==", uid), "sent friend requests"),
+        deleteQueryResults(db.collection("friendRequests").where("toUserId", "==", uid), "received friend requests"),
+        // Their place in other people's friend lists and events.
+        removeFromArrayField("users", "friends", uid),
+        removeFromArrayField("events", "recipientIds", uid),
+        removeFromArrayField("events", "joinedUserIds", uid),
+        // Profile photos live under a folder of their own.
+        admin.storage().bucket().deleteFiles({ prefix: `profile-photos/${uid}/` }).catch((error) => {
+            console.warn(`[deleteAccount] Could not delete profile photos: ${error.message}`);
+        }),
+    ]);
+    // Comments they left on other people's events. A collection group query
+    // needs an index Firestore won't create on its own, so a missing one is
+    // logged rather than allowed to strand the rest of the cleanup.
+    try {
+        await deleteQueryResults(db.collectionGroup("comments").where("authorId", "==", uid), "authored comments");
+    }
+    catch (error) {
+        console.error(`[deleteAccount] Comment cleanup failed: ${error.message}`);
+    }
+    // Last, so a failure above still leaves an account that can sign in and retry.
+    try {
+        await admin.auth().deleteUser(uid);
+        console.log(`[deleteAccount] Deleted auth user ${uid}.`);
+    }
+    catch (error) {
+        const code = error.code;
+        if (code !== "auth/user-not-found")
+            throw error;
+    }
 });
 //# sourceMappingURL=index.js.map

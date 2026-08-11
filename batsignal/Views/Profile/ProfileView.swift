@@ -18,27 +18,26 @@ struct ProfileView: View {
     var body: some View {
         List {
             Section {
-                HStack(spacing: 16) {
+                VStack(spacing: 12) {
                     EventIconView(
                         photoURL: authService.currentUser?.profilePhotoURL,
                         label: authService.currentUser?.initials,
-                        size: 60
+                        size: 140
                     )
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(spacing: 4) {
                         Text(authService.currentUser?.displayName ?? "")
-                            .font(.headline)
+                            .font(.title3).bold()
                         Text(authService.currentUser?.phoneNumber ?? "")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
                 }
+                .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
-            }
-
-            Section {
-                NavigationLink(Strings.Profile.eventRadiusFilter) {
-                    RadiusSettingView()
-                }
+                // Reads as the page's header rather than another row, so it
+                // drops the row's card behind it.
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
 
             peopleSelector
@@ -55,6 +54,7 @@ struct ProfileView: View {
                             ) { accept in
                                 Task { await friendsViewModel.respond(to: request, accept: accept) }
                             }
+                            .profileCard()
                         }
                     }
                 }
@@ -73,6 +73,7 @@ struct ProfileView: View {
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
+                            .profileCard()
                         }
                     }
                 }
@@ -119,10 +120,10 @@ struct ProfileView: View {
         }
     }
 
-    // The old friends tab's segmented control, kept as a floating strip rather
-    // than a list row so it reads as a switch between the two lists below it
-    // instead of another setting. The add button rides along with it because
-    // what it adds depends on which side is showing.
+    // The old friends tab's segmented control, on a card of its own like the
+    // rows it switches between, so it reads as a switch over those lists rather
+    // than another setting. The add button rides along with it because what it
+    // adds depends on which side is showing.
     private var peopleSelector: some View {
         Section {
             HStack(spacing: 12) {
@@ -138,8 +139,7 @@ struct ProfileView: View {
                 }
                 .buttonStyle(.borderless)
             }
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+            .profileCard()
         }
     }
 
@@ -154,15 +154,21 @@ struct ProfileView: View {
         Section {
             if friendsViewModel.isLoading {
                 ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .listRowBackground(Color.clear)
             } else if friendsViewModel.friends.isEmpty {
                 Text(Strings.Friends.noFriendsYet)
                     .foregroundColor(.secondary)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             } else {
                 ForEach(friendsViewModel.friends) { friend in
                     HStack(spacing: 12) {
-                        Image(systemName: "person.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.secondary)
+                        EventIconView(
+                            photoURL: friend.profilePhotoURL,
+                            label: friend.initials,
+                            size: 36
+                        )
                         VStack(alignment: .leading, spacing: 2) {
                             Text(friend.displayName)
                                 .font(.subheadline).bold()
@@ -173,7 +179,7 @@ struct ProfileView: View {
                             }
                         }
                     }
-                    .padding(.vertical, 4)
+                    .profileCard()
                 }
             }
         }
@@ -184,6 +190,8 @@ struct ProfileView: View {
             if groupsViewModel.groups.isEmpty {
                 Text(Strings.Groups.noGroupsYet)
                     .foregroundColor(.secondary)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             } else {
                 ForEach(groupsViewModel.groups) { group in
                     Button(action: { editingGroup = group }) {
@@ -204,8 +212,10 @@ struct ProfileView: View {
                                     .foregroundColor(.secondary)
                             }
                         }
-                        .padding(.vertical, 4)
+                        .cardSurface()
                     }
+                    .buttonStyle(.plain)
+                    .cardRow()
                 }
                 .onDelete { offsets in
                     for index in offsets {
@@ -217,6 +227,39 @@ struct ProfileView: View {
                 }
             }
         }
+    }
+}
+
+// Each row on this screen stands alone as its own card rather than joining one
+// continuous block, so the row gives up the list's shared background and
+// carries its own, and the insets supply the gap between cards.
+private extension View {
+    // The card itself. Kept separate from the row chrome because a row that's a
+    // button needs the padding and background inside its label, so the whole
+    // card takes the tap rather than just the text on it.
+    func cardSurface() -> some View {
+        self
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(RoundedRectangle(cornerRadius: 12))
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.secondarySystemGroupedBackground))
+            )
+    }
+
+    // Clears the list's own background and separators so the cards are what's
+    // visible, and spaces them apart.
+    func cardRow() -> some View {
+        self
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+    }
+
+    func profileCard() -> some View {
+        cardSurface().cardRow()
     }
 }
 
