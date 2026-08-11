@@ -19,6 +19,8 @@ struct HomeView: View {
     @State private var isOwnCardExpanded = false
     @State private var carouselHeight: CGFloat = 0
     @State private var selectedCarouselItem: HomeCarouselSelection? = .own
+    // Drives the recurring "there's more over here" tug, below.
+    @State private var nudgeOffset: CGFloat = 0
 
     var body: some View {
         NavigationStack {
@@ -161,6 +163,7 @@ struct HomeView: View {
                 }
             }
             .scrollTargetLayout()
+            .offset(x: nudgeOffset)
         }
         .safeAreaPadding(.horizontal, sideInset)
         .scrollTargetBehavior(.viewAligned)
@@ -169,9 +172,47 @@ struct HomeView: View {
         // edge effect on top of that just smears them into the map.
         .scrollEdgeEffectHidden()
         .fixedSize(horizontal: false, vertical: true)
+        .task { await runCarouselHint() }
         .onChange(of: selectedCarouselItem) { _, newValue in
             focusMapOnCarouselSelection(newValue)
         }
+    }
+
+    // Repeats for as long as the hint still applies — parked on your own card
+    // with someone else's sitting just off screen. Swipe away and it falls
+    // silent, come back and it picks up again, because the conditions are
+    // re-read each time round rather than latched at launch.
+    private func runCarouselHint() async {
+        // Long enough for the map and cards to settle, so the first movement
+        // isn't lost in everything else appearing at once.
+        try? await Task.sleep(for: .milliseconds(1500))
+
+        while !Task.isCancelled {
+            if shouldHintCarousel {
+                await nudgeCarousel()
+            }
+            try? await Task.sleep(for: .seconds(6))
+        }
+    }
+
+    private var shouldHintCarousel: Bool {
+        // An expanded card or an open sheet means the swipe isn't what you're
+        // being asked to think about, so the carousel holds still.
+        !viewModel.events.isEmpty
+            && selectedCarouselItem == .own
+            && !isOwnCardExpanded
+            && !showCreateEvent
+    }
+
+    // Tugs the carousel a little to the left and lets it spring back, the way
+    // it would if you started a swipe and lifted your finger — the peeking card
+    // alone doesn't say clearly enough that there's something to swipe to.
+    private func nudgeCarousel() async {
+        withAnimation(.easeOut(duration: 0.3)) { nudgeOffset = -40 }
+        try? await Task.sleep(for: .milliseconds(300))
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.72)) { nudgeOffset = 0 }
+        // Lets the spring land before the gap to the next tug is counted.
+        try? await Task.sleep(for: .milliseconds(500))
     }
 
     private func focusMapOnCarouselSelection(_ selection: HomeCarouselSelection?) {

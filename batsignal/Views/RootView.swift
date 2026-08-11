@@ -4,6 +4,7 @@ import SwiftUI
 // to own the view models and their listeners above whatever is on screen.
 struct RootView: View {
     @EnvironmentObject var authService: AuthService
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var myEventViewModel = MyActiveEventViewModel()
     @StateObject private var homeViewModel = HomeViewModel()
     @StateObject private var friendsViewModel = FriendsViewModel()
@@ -19,6 +20,11 @@ struct RootView: View {
             // Fires once the user document loads from Firestore — handles auth timing race
             .onChange(of: authService.currentUser?.id) { _, _ in
                 startAllListeners()
+            }
+            // Timers don't run while backgrounded, so what's on the map is as
+            // stale as the time spent away until this re-derives it.
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { homeViewModel.refreshNow() }
             }
             // Update active event listener when user's activeEventId changes
             .onChange(of: authService.currentUser?.activeEventId) { _, newId in

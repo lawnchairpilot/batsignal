@@ -8,13 +8,17 @@ class EventService: ObservableObject {
 
     // MARK: - Fetch
 
+    // Hands back every event addressed to this user, expired ones included.
+    // Sorting them into live/upcoming/over is deliberately the caller's job:
+    // that answer changes with the clock, and this only fires when a document
+    // does. A caller that filtered here would show an event as live until some
+    // unrelated write happened to touch the query.
     func listenToVisibleEvents(
         userId: String,
-        onActive: @escaping ([Event]) -> Void,
-        onUpcoming: @escaping ([Event]) -> Void
+        onChange: @escaping ([Event]) -> Void
     ) -> ListenerRegistration? {
         guard !userId.isEmpty else {
-            onActive([]); onUpcoming([])
+            onChange([])
             return nil
         }
         return db.collection("events")
@@ -24,16 +28,7 @@ class EventService: ObservableObject {
                     print("listenToVisibleEvents error: \(error.localizedDescription)")
                     return
                 }
-                let all = snapshot?.documents.compactMap { try? $0.data(as: Event.self) } ?? []
-                let now = Date()
-                let active = all
-                    .filter { $0.isActive && !$0.isExpired }
-                    .sorted { $0.startTime.dateValue() < $1.startTime.dateValue() }
-                let upcoming = all
-                    .filter { !$0.isActive && !$0.isExpired }
-                    .sorted { $0.startTime.dateValue() < $1.startTime.dateValue() }
-                onActive(active)
-                onUpcoming(upcoming)
+                onChange(snapshot?.documents.compactMap { try? $0.data(as: Event.self) } ?? [])
             }
     }
 
