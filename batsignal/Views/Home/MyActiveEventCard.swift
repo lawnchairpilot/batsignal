@@ -10,6 +10,8 @@ struct MyActiveEventCard: View {
     @State private var showDetail = false
     @State private var showUpcomingDetail = false
     @State private var now = Date()
+    @State private var joinedUsers: [User] = []
+    @State private var isBoolersExpanded = false
 
     let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -122,6 +124,8 @@ struct MyActiveEventCard: View {
                 .foregroundColor(.red)
                 .cornerRadius(20)
             }
+
+            joinedBoolers(event: event)
         }
         .padding()
         .background(Color(.secondarySystemBackground))
@@ -131,6 +135,9 @@ struct MyActiveEventCard: View {
                 .stroke(Color.accentColor.opacity(0.4), lineWidth: 1)
         )
         .opacity(0.7)
+        .task(id: event.joinedUserIds ?? []) {
+            await loadJoinedUsers(ids: event.joinedUserIds ?? [])
+        }
         .onReceive(timer) { _ in now = Date() }
         .sheet(isPresented: $showUpcomingDetail) {
             UpcomingEventDetailView(event: event, viewModel: viewModel)
@@ -233,6 +240,8 @@ struct MyActiveEventCard: View {
                     }
                 }
             }
+
+            joinedBoolers(event: event)
         }
         .padding()
         .background(Color(.secondarySystemBackground))
@@ -241,10 +250,49 @@ struct MyActiveEventCard: View {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(Color.accentColor.opacity(0.4), lineWidth: 1)
         )
+        .task(id: event.joinedUserIds ?? []) {
+            await loadJoinedUsers(ids: event.joinedUserIds ?? [])
+        }
         .onReceive(timer) { _ in now = Date() }
         .sheet(isPresented: $showDetail) {
             ActiveEventDetailView(event: event)
         }
+    }
+
+    // MARK: - Who's in
+
+    // The same faces a friend's expanded card shows, minus the join button —
+    // it's your own signal, so there's nothing here to join. Collapsed it's a
+    // stack of avatars; tapping opens it into names and closes it again.
+    @ViewBuilder
+    private func joinedBoolers(event: Event) -> some View {
+        if !joinedUsers.isEmpty {
+            if isBoolersExpanded {
+                JoinedBoolersRow(users: joinedUsers) {
+                    withAnimation(.easeInOut(duration: 0.25)) { isBoolersExpanded = false }
+                }
+            } else {
+                HStack {
+                    JoinedAvatarStack(users: joinedUsers)
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.25)) { isBoolersExpanded = true }
+                }
+            }
+        }
+    }
+
+    // Keyed on the ids so the faces follow the view model's listener as people
+    // join and leave, rather than being fetched once when the card opens.
+    private func loadJoinedUsers(ids: [String]) async {
+        guard !ids.isEmpty else {
+            joinedUsers = []
+            return
+        }
+        guard let users = try? await FriendService().fetchFriends(ids: ids) else { return }
+        joinedUsers = users
     }
 
     // Takes time remaining, so the thresholds run the opposite way from a
@@ -300,8 +348,20 @@ struct UpcomingEventDetailView: View {
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        TextField(Strings.Event.activityPlaceholder, text: $editViewModel.activity)
+                    // Drawn the way the create form draws it, so editing a
+                    // signal looks like writing one.
+                    VStack(alignment: .center, spacing: 14) {
+                        CenteredTextField(
+                            text: $editViewModel.activity,
+                            placeholder: Strings.Event.activityPlaceholder
+                        )
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 24)
+                        .onChange(of: editViewModel.activity) { _, newValue in
+                            if newValue.count > Event.activityCharacterLimit {
+                                editViewModel.activity = String(newValue.prefix(Event.activityCharacterLimit))
+                            }
+                        }
                         Rectangle()
                             .fill(Color(.separator))
                             .frame(maxWidth: .infinity)
@@ -326,10 +386,6 @@ struct UpcomingEventDetailView: View {
                         fixedCoordinate: $editViewModel.fixedCoordinate,
                         showError: showLocationError
                     )
-                }
-
-                Section {
-                    Toggle(Strings.Event.commentsToggleLabel, isOn: $editViewModel.commentsEnabled)
                 }
 
                 if let error = editViewModel.errorMessage {
@@ -411,8 +467,20 @@ struct ActiveEventDetailView: View {
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        TextField(Strings.Event.activityPlaceholder, text: $editViewModel.activity)
+                    // Drawn the way the create form draws it, so editing a
+                    // signal looks like writing one.
+                    VStack(alignment: .center, spacing: 14) {
+                        CenteredTextField(
+                            text: $editViewModel.activity,
+                            placeholder: Strings.Event.activityPlaceholder
+                        )
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 24)
+                        .onChange(of: editViewModel.activity) { _, newValue in
+                            if newValue.count > Event.activityCharacterLimit {
+                                editViewModel.activity = String(newValue.prefix(Event.activityCharacterLimit))
+                            }
+                        }
                         Rectangle()
                             .fill(Color(.separator))
                             .frame(maxWidth: .infinity)
@@ -429,10 +497,6 @@ struct ActiveEventDetailView: View {
                         fixedCoordinate: $editViewModel.fixedCoordinate,
                         showError: showLocationError
                     )
-                }
-
-                Section {
-                    Toggle(Strings.Event.commentsToggleLabel, isOn: $editViewModel.commentsEnabled)
                 }
 
                 if let error = editViewModel.errorMessage {

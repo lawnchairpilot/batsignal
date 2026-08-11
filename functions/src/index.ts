@@ -146,6 +146,87 @@ export const notifyFriendsOnEventCreate = onDocumentCreated(
   }
 );
 
+const DEBOUNCE_COLLECTION = "eventNotifyDebounce";
+const DEBOUNCE_MS = 10_000;
+
+// Just the signal's text. The old version of this watched location, duration
+// and timing too, which meant every +30 tap or move of the pin was an "updated"
+// notification; rewording the signal is the only edit that sends one now.
+const MESSAGE_FIELDS = ["activity", "description"];
+
+// Tells everyone who joined a signal when its host rewords it. Only joiners are
+// notified — this used to go to every friend, which is why it was turned off —
+// and never the host, who is the one doing the editing.
+//
+// Debounced 10 s: the edit sheet writes on every save and a joiner should get
+// one "updated" notification for a round of changes rather than one per write.
+// Each run writes a token, sleeps, and only sends if it's still the newest
+// writer, so a later edit cancels the earlier one's notification.
+export const notifyJoinersOnEventUpdate = onDocumentUpdated(
+  { document: "events/{eventId}", timeoutSeconds: 30 },
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!before || !after) return;
+
+    const messageChanged = MESSAGE_FIELDS.some((field) => before[field] !== after[field]);
+    if (!messageChanged) return;
+
+    // Nobody to tell. Checked before the sleep so an untouched signal doesn't
+    // hold a function open for ten seconds on every edit.
+    const joinedAtEdit: string[] = after.joinedUserIds || [];
+    if (joinedAtEdit.filter((id) => id !== after.creatorId).length === 0) return;
+
+    const eventId = event.params.eventId;
+    const token = `${Date.now()}-${Math.random()}`;
+    const debounceRef = db.collection(DEBOUNCE_COLLECTION).doc(eventId);
+
+    await debounceRef.set({ token, creatorId: after.creatorId });
+    await new Promise((resolve) => setTimeout(resolve, DEBOUNCE_MS));
+
+    const [debounceSnap, eventSnap] = await Promise.all([
+      debounceRef.get(),
+      db.collection("events").doc(eventId).get(),
+    ]);
+    if (!debounceSnap.exists || debounceSnap.data()?.token !== token) return; // a later edit won
+    if (!eventSnap.exists) return; // event was deleted while the debounce slept
+
+    await debounceRef.delete();
+
+    // Read off the settled event rather than the update that triggered this, so
+    // the notification describes what the signal actually says now, and reaches
+    // whoever is in it now.
+    const settled = eventSnap.data();
+    if (!settled) return;
+
+    const joinerIds: string[] = (settled.joinedUserIds || []).filter(
+      (id: string) => id !== settled.creatorId
+    );
+    const targets = await getTokenTargets(joinerIds);
+    if (targets.length === 0) return;
+
+    const creatorDoc = await db.collection("users").doc(settled.creatorId).get();
+    const creatorName: string = creatorDoc.data()?.displayName || Strings.common.someone;
+
+    await sendMulticast(
+      targets,
+      {
+        notification: {
+          title: Strings.event.updatedTitle(creatorName),
+          body: Strings.event.body(settled.activity, settled.emoji),
+        },
+        apns: { payload: { aps: { sound: "default", mutableContent: true } } },
+        data: {
+          eventId,
+          type: "event_updated",
+          ...eventIconData(settled.imageURL),
+        },
+      },
+      "event_updated"
+    );
+  }
+);
+
 // Notifies the host when a friend joins their event
 export const notifyHostOnEventJoin = onDocumentUpdated(
   "events/{eventId}",

@@ -10,7 +10,6 @@ struct CreateEventView: View {
 
     private let swipeToSendThreshold: CGFloat = -70
     private let indicatorLineCount = 5
-    private let activityCharacterLimit = 140
 
     private var canSubmit: Bool {
         !viewModel.activity.isEmpty && !viewModel.isLoading
@@ -44,8 +43,8 @@ struct CreateEventView: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: 24)
                             .onChange(of: viewModel.activity) { _, newValue in
-                                if newValue.count > activityCharacterLimit {
-                                    viewModel.activity = String(newValue.prefix(activityCharacterLimit))
+                                if newValue.count > Event.activityCharacterLimit {
+                                    viewModel.activity = String(newValue.prefix(Event.activityCharacterLimit))
                                 }
                             }
                         Rectangle()
@@ -254,55 +253,6 @@ struct CreateEventView: View {
 // its caret at the leading edge of the (centered) placeholder until the
 // first keystroke, when it snaps to the true center. Setting
 // `textAlignment` on the underlying `UITextField` directly avoids that.
-private struct CenteredTextField: UIViewRepresentable {
-    @Binding var text: String
-    var placeholder: String
-
-    func makeUIView(context: Context) -> UITextField {
-        let textField = UITextField()
-        textField.textAlignment = .center
-        textField.placeholder = placeholder
-        textField.text = text
-        textField.font = .preferredFont(forTextStyle: .body)
-        textField.adjustsFontForContentSizeCategory = true
-        textField.tintColor = UIColor(Color.accentColor)
-        textField.returnKeyType = .done
-        textField.delegate = context.coordinator
-        return textField
-    }
-
-    func updateUIView(_ uiView: UITextField, context: Context) {
-        if uiView.text != text {
-            uiView.text = text
-        }
-        uiView.placeholder = placeholder
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    final class Coordinator: NSObject, UITextFieldDelegate {
-        let parent: CenteredTextField
-
-        init(_ parent: CenteredTextField) {
-            self.parent = parent
-        }
-
-        func textFieldDidChangeSelection(_ textField: UITextField) {
-            parent.text = textField.text ?? ""
-        }
-
-        // A UITextField does nothing on return unless its delegate resigns it,
-        // which is why this field alone couldn't be dismissed with the keyboard's
-        // return key the way SwiftUI's own TextField can.
-        func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-            textField.resignFirstResponder()
-            return true
-        }
-    }
-}
-
 private struct AudienceCard: View {
     let title: String
     let emoji: String?

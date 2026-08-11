@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import CoreLocation
 
 // Large circular preview of how the event's icon will appear on the map, with
@@ -223,6 +224,58 @@ struct EventLocationField: View {
                 locationLabel = picked.name
                 fixedCoordinate = picked.coordinate
             }
+        }
+    }
+}
+
+// The activity field on every event form. A UITextField rather than SwiftUI's
+// TextField because the placeholder and the text both have to sit centered,
+// which SwiftUI's own field won't do for the placeholder.
+struct CenteredTextField: UIViewRepresentable {
+    @Binding var text: String
+    var placeholder: String
+
+    func makeUIView(context: Context) -> UITextField {
+        let textField = UITextField()
+        textField.textAlignment = .center
+        textField.placeholder = placeholder
+        textField.text = text
+        textField.font = .preferredFont(forTextStyle: .body)
+        textField.adjustsFontForContentSizeCategory = true
+        textField.tintColor = UIColor(Color.accentColor)
+        textField.returnKeyType = .done
+        textField.delegate = context.coordinator
+        return textField
+    }
+
+    func updateUIView(_ uiView: UITextField, context: Context) {
+        if uiView.text != text {
+            uiView.text = text
+        }
+        uiView.placeholder = placeholder
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        let parent: CenteredTextField
+
+        init(_ parent: CenteredTextField) {
+            self.parent = parent
+        }
+
+        func textFieldDidChangeSelection(_ textField: UITextField) {
+            parent.text = textField.text ?? ""
+        }
+
+        // A UITextField does nothing on return unless its delegate resigns it,
+        // which is why this field alone couldn't be dismissed with the keyboard's
+        // return key the way SwiftUI's own TextField can.
+        func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+            textField.resignFirstResponder()
+            return true
         }
     }
 }

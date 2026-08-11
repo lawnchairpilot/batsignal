@@ -228,11 +228,35 @@ struct ExpandedEventCardView: View {
 
     @ViewBuilder
     private var locationRow: some View {
-        if let label = locationText {
-            Label(label, systemImage: locationIcon)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .lineLimit(1)
+        if locationText != nil || eventCoordinate != nil {
+            HStack(spacing: 8) {
+                if let label = locationText {
+                    Label(label, systemImage: locationIcon)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
+
+                // Only a pinned or live event has somewhere to send Maps — a
+                // location typed as free text is just a name.
+                if eventCoordinate != nil {
+                    Button(action: openInMaps) {
+                        Label(Strings.Event.openInMaps, systemImage: "map.fill")
+                            .font(.caption.bold())
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Color.accentColor.opacity(0.15))
+                            .foregroundColor(.accentColor)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    // Holds the pill at its natural width so a long location
+                    // label truncates instead of squeezing the button.
+                    .fixedSize()
+                }
+            }
         }
     }
 
@@ -272,63 +296,25 @@ struct ExpandedEventCardView: View {
     @ViewBuilder
     private var avatarStack: some View {
         if !joinedUsers.isEmpty, !isAttendeeListExpanded {
-            HStack(spacing: -8) {
-                ForEach(joinedUsers.prefix(5)) { user in
-                    EventIconView(photoURL: user.profilePhotoURL, label: initials(for: user.displayName), size: 26)
-                        .overlay(Circle().stroke(Color(.secondarySystemBackground), lineWidth: 2))
+            JoinedAvatarStack(users: joinedUsers)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.25)) { isAttendeeListExpanded = true }
                 }
-                if joinedUsers.count > 5 {
-                    Text("+\(joinedUsers.count - 5)")
-                        .font(.caption2.bold())
-                        .foregroundStyle(.white)
-                        .frame(width: 26, height: 26)
-                        .background(Color(.systemGray3))
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(Color(.secondarySystemBackground), lineWidth: 2))
-                }
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                withAnimation(.easeInOut(duration: 0.25)) { isAttendeeListExpanded = true }
-            }
         }
     }
 
     // The stacked avatars in joinRow open this; tapping a face closes it again.
-    // The gesture sits on the row rather than the scroll view so it doesn't
-    // fight the horizontal scroll when the list is long.
     @ViewBuilder
     private var boolersSection: some View {
         if !joinedUsers.isEmpty, isAttendeeListExpanded {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: 12) {
-                    ForEach(joinedUsers) { user in
-                        VStack(spacing: 4) {
-                            EventIconView(photoURL: user.profilePhotoURL, label: initials(for: user.displayName), size: 44)
-                            Text(user.displayName)
-                                .font(.caption2)
-                                .foregroundColor(.primary)
-                                .lineLimit(1)
-                                .frame(width: 52)
-                        }
-                    }
-                }
-                .padding(.vertical, 2)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.25)) { isAttendeeListExpanded = false }
-                }
+            JoinedBoolersRow(users: joinedUsers) {
+                withAnimation(.easeInOut(duration: 0.25)) { isAttendeeListExpanded = false }
             }
-            .scrollEdgeEffectHidden()
         }
     }
 
     // MARK: - Joining
-
-    private func initials(for name: String) -> String? {
-        let initials = name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
-        return initials.isEmpty ? nil : initials.uppercased()
-    }
 
     private func loadJoinedUsers() async {
         guard let users = try? await FriendService().fetchFriends(ids: joinedUserIds) else { return }
@@ -397,6 +383,20 @@ struct ExpandedEventCardView: View {
     private var locationText: String? {
         if let label = displayEvent.locationLabel, !label.isEmpty { return label }
         return displayEvent.locationType == .live ? Strings.Event.liveLocationLabel : nil
+    }
+
+    // Reads off displayEvent rather than the event passed in, so a live event
+    // hands Maps where the creator is now instead of where they started.
+    private var eventCoordinate: CLLocationCoordinate2D? {
+        guard let geoPoint = displayEvent.locationCoordinate else { return nil }
+        return CLLocationCoordinate2D(latitude: geoPoint.latitude, longitude: geoPoint.longitude)
+    }
+
+    private func openInMaps() {
+        guard let coordinate = eventCoordinate else { return }
+        let mapItem = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
+        mapItem.name = locationText ?? displayEvent.activity
+        mapItem.openInMaps()
     }
 
     private var locationIcon: String {

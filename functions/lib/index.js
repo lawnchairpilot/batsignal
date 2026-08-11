@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cleanupOnUserDelete = exports.notifyOnFriendRequestAccept = exports.backfillEventVisibilityOnFriendAccept = exports.notifyOnFriendRequestCreate = exports.notifyHostOnCommentCreate = exports.notifyHostOnEventJoin = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
+exports.cleanupOnUserDelete = exports.notifyOnFriendRequestAccept = exports.backfillEventVisibilityOnFriendAccept = exports.notifyOnFriendRequestCreate = exports.notifyHostOnCommentCreate = exports.notifyHostOnEventJoin = exports.notifyJoinersOnEventUpdate = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
 const admin = require("firebase-admin");
 const functions = require("firebase-functions/v2");
 const firestore_1 = require("firebase-functions/v2/firestore");
@@ -102,6 +102,69 @@ exports.notifyFriendsOnEventCreate = (0, firestore_1.onDocumentCreated)("events/
         apns: { payload: { aps: { sound: "default", mutableContent: true } } },
         data: Object.assign({ eventId: event.params.eventId, type: "event_created" }, eventIconData(data.imageURL)),
     }, "event_created");
+});
+const DEBOUNCE_COLLECTION = "eventNotifyDebounce";
+const DEBOUNCE_MS = 10000;
+// Just the signal's text. The old version of this watched location, duration
+// and timing too, which meant every +30 tap or move of the pin was an "updated"
+// notification; rewording the signal is the only edit that sends one now.
+const MESSAGE_FIELDS = ["activity", "description"];
+// Tells everyone who joined a signal when its host rewords it. Only joiners are
+// notified — this used to go to every friend, which is why it was turned off —
+// and never the host, who is the one doing the editing.
+//
+// Debounced 10 s: the edit sheet writes on every save and a joiner should get
+// one "updated" notification for a round of changes rather than one per write.
+// Each run writes a token, sleeps, and only sends if it's still the newest
+// writer, so a later edit cancels the earlier one's notification.
+exports.notifyJoinersOnEventUpdate = (0, firestore_1.onDocumentUpdated)({ document: "events/{eventId}", timeoutSeconds: 30 }, async (event) => {
+    var _a, _b, _c, _d;
+    const before = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before.data();
+    const after = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after.data();
+    if (!before || !after)
+        return;
+    const messageChanged = MESSAGE_FIELDS.some((field) => before[field] !== after[field]);
+    if (!messageChanged)
+        return;
+    // Nobody to tell. Checked before the sleep so an untouched signal doesn't
+    // hold a function open for ten seconds on every edit.
+    const joinedAtEdit = after.joinedUserIds || [];
+    if (joinedAtEdit.filter((id) => id !== after.creatorId).length === 0)
+        return;
+    const eventId = event.params.eventId;
+    const token = `${Date.now()}-${Math.random()}`;
+    const debounceRef = db.collection(DEBOUNCE_COLLECTION).doc(eventId);
+    await debounceRef.set({ token, creatorId: after.creatorId });
+    await new Promise((resolve) => setTimeout(resolve, DEBOUNCE_MS));
+    const [debounceSnap, eventSnap] = await Promise.all([
+        debounceRef.get(),
+        db.collection("events").doc(eventId).get(),
+    ]);
+    if (!debounceSnap.exists || ((_c = debounceSnap.data()) === null || _c === void 0 ? void 0 : _c.token) !== token)
+        return; // a later edit won
+    if (!eventSnap.exists)
+        return; // event was deleted while the debounce slept
+    await debounceRef.delete();
+    // Read off the settled event rather than the update that triggered this, so
+    // the notification describes what the signal actually says now, and reaches
+    // whoever is in it now.
+    const settled = eventSnap.data();
+    if (!settled)
+        return;
+    const joinerIds = (settled.joinedUserIds || []).filter((id) => id !== settled.creatorId);
+    const targets = await getTokenTargets(joinerIds);
+    if (targets.length === 0)
+        return;
+    const creatorDoc = await db.collection("users").doc(settled.creatorId).get();
+    const creatorName = ((_d = creatorDoc.data()) === null || _d === void 0 ? void 0 : _d.displayName) || strings_1.Strings.common.someone;
+    await sendMulticast(targets, {
+        notification: {
+            title: strings_1.Strings.event.updatedTitle(creatorName),
+            body: strings_1.Strings.event.body(settled.activity, settled.emoji),
+        },
+        apns: { payload: { aps: { sound: "default", mutableContent: true } } },
+        data: Object.assign({ eventId, type: "event_updated" }, eventIconData(settled.imageURL)),
+    }, "event_updated");
 });
 // Notifies the host when a friend joins their event
 exports.notifyHostOnEventJoin = (0, firestore_1.onDocumentUpdated)("events/{eventId}", async (event) => {

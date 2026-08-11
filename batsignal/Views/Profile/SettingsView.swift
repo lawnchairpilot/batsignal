@@ -15,6 +15,7 @@ struct SettingsView: View {
     @State private var previewImage: UIImage?
     @State private var isUploadingPhoto = false
     @State private var errorMessage: String?
+    @State private var showRadiusSetting = false
     @State private var showDeleteConfirmation = false
     @State private var isDeletingAccount = false
 
@@ -73,22 +74,43 @@ struct SettingsView: View {
             }
 
             Section {
-                NavigationLink(Strings.Profile.eventRadiusFilter) {
-                    RadiusSettingView()
+                // A button rather than a NavigationLink because a link in a
+                // list draws its own chevron at the row's edge, outside the
+                // card; this keeps the disclosure on the card where it belongs.
+                Button {
+                    showRadiusSetting = true
+                } label: {
+                    HStack {
+                        Text(Strings.Profile.eventRadiusFilter)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .cardSurface()
                 }
+                .buttonStyle(.plain)
+                .cardRow()
             }
 
             if let error = errorMessage {
                 Section {
-                    Text(error).foregroundColor(.red).font(.caption)
+                    Text(error)
+                        .foregroundColor(.red)
+                        .font(.caption)
+                        .profileCard()
                 }
             }
 
             Section {
-                Button(Strings.Profile.signOut, role: .destructive) {
+                Button(role: .destructive) {
                     try? authService.signOut()
+                } label: {
+                    Text(Strings.Profile.signOut).cardSurface()
                 }
                 .disabled(isDeletingAccount)
+                .cardRow()
 
                 Button(role: .destructive) {
                     showDeleteConfirmation = true
@@ -100,8 +122,10 @@ struct SettingsView: View {
                             ProgressView()
                         }
                     }
+                    .cardSurface()
                 }
                 .disabled(isDeletingAccount)
+                .cardRow()
             }
         }
         // Deleting is irreversible, so it takes a deliberate second tap, and the
@@ -114,6 +138,12 @@ struct SettingsView: View {
         } message: {
             Text(Strings.Profile.deleteAccountMessage)
         }
+        .navigationDestination(isPresented: $showRadiusSetting) {
+            RadiusSettingView()
+        }
+        // The cards carry their own spacing, so the gaps a grouped list leaves
+        // for section headers would read as holes between them.
+        .listSectionSpacing(.compact)
         .navigationTitle(Strings.Profile.settingsTitle)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {

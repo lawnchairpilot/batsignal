@@ -113,6 +113,10 @@ struct Event: Identifiable, Codable {
         self.audienceIsAllFriends = audienceIsAllFriends
     }
 
+    // What the activity field accepts, on the create form and the edit sheets
+    // alike — the same ceiling a comment gets.
+    static let activityCharacterLimit = 140
+
     // MARK: - Duration display
 
     static let durationOptions: [(minutes: Int, label: String)] = [
