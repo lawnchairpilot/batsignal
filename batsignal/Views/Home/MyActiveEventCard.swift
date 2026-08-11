@@ -187,6 +187,12 @@ struct MyActiveEventCard: View {
                     .lineLimit(1)
             }
 
+            // Only a live signal depends on background location, so a pinned or
+            // text event never raises this.
+            if event.locationType == .live {
+                LocationPermissionBanner(status: viewModel.locationAuthorization)
+            }
+
             HStack {
                 Button(role: .destructive, action: {
                     Task { await viewModel.end() }

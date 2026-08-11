@@ -1,17 +1,25 @@
 import Foundation
 import Combine
+import CoreLocation
 import FirebaseFirestore
 
 @MainActor
 class MyActiveEventViewModel: ObservableObject {
     @Published var activeEvent: Event? = nil
     @Published var upcomingEvent: Event? = nil
+    // Republished from the location service, because a nested ObservableObject's
+    // changes don't reach a view observing the one that holds it.
+    @Published private(set) var locationAuthorization: CLAuthorizationStatus = .notDetermined
 
     private let eventService = EventService()
     private let locationService = LocationService()
     private var listener: ListenerRegistration?
     private var recoveryListener: ListenerRegistration?
     private var expiryTimer: Timer?
+
+    init() {
+        locationService.$authorizationStatus.assign(to: &$locationAuthorization)
+    }
 
     func stopListening() {
         listener?.remove()

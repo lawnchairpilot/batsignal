@@ -94,6 +94,28 @@ struct SettingsView: View {
                 .cardRow()
             }
 
+            // Not a warning and not conditional — somewhere calm to read what
+            // the app does with your location, and a way back to Settings for
+            // anyone who declined and has since changed their mind.
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(Strings.Profile.locationSharingTitle)
+                        .font(.subheadline.bold())
+                    Text(Strings.Profile.locationSharingExplainer)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(Strings.Home.openSettings) {
+                        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+                        UIApplication.shared.open(url)
+                    }
+                    .font(.caption.bold())
+                    .buttonStyle(.plain)
+                    .foregroundColor(.accentColor)
+                }
+                .profileCard()
+            }
+
             if let error = errorMessage {
                 Section {
                     Text(error)

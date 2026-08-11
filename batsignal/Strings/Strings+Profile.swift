@@ -13,6 +13,13 @@ extension Strings {
         static let radiusTitle = "Bool Radius"
         static let noLimit = "No limit"
 
+        static let locationSharingTitle = "Location Sharing"
+        static let locationSharingExplainer = """
+            Bool Signal shares your location only while one of your signals is \
+            live, and stops the moment it ends. Allowing "Always" lets your pin \
+            keep up while the app is closed, so you can put your phone away.
+            """
+
         static let deleteAccount = "Delete Account"
         static let deleteAccountTitle = "Delete Account?"
         static let deleteAccountMessage = """

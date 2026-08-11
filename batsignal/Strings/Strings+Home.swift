@@ -10,6 +10,17 @@ extension Strings {
         static let openEnded = "Open-ended"
         static let extend30Min = "30"
 
+        static let locationWhenInUseWarning = """
+            Your pin stops updating when you close the app. Allow location \
+            "Always" and friends can follow your signal with your phone in your \
+            pocket — Bool Signal only shares your location while a signal is live.
+            """
+        static let locationDeniedWarning = """
+            Location is off, so your signal can't show friends where you are. \
+            Bool Signal only shares your location while a signal is live.
+            """
+        static let openSettings = "Open Settings"
+
         static func tomorrowAt(_ time: String) -> String {
             "Tomorrow · \(time)"
         }
