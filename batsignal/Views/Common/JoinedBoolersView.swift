@@ -5,7 +5,7 @@ import SwiftUI
 // a friend's card and your own count the same heads the same way.
 
 struct JoinedAvatarStack: View {
-    let users: [User]
+    let users: [PublicProfile]
     // Matches whatever card the faces sit on, since the ring between them is
     // the card showing through rather than a color of its own.
     var background: Color = Color(.secondarySystemBackground)
@@ -33,7 +33,7 @@ struct JoinedAvatarStack: View {
 }
 
 struct JoinedBoolersRow: View {
-    let users: [User]
+    let users: [PublicProfile]
     let onTap: () -> Void
 
     var body: some View {
@@ -56,6 +56,6 @@ struct JoinedBoolersRow: View {
             .contentShape(Rectangle())
             .onTapGesture(perform: onTap)
         }
-        .scrollEdgeEffectHidden()
+        .hidingScrollEdgeEffect()
     }
 }

@@ -31,7 +31,7 @@ struct ExpandedEventCardView: View {
     @State private var liveEvent: Event?
     @State private var liveListener: ListenerRegistration?
     @State private var joinedUserIds: [String]
-    @State private var joinedUsers: [User] = []
+    @State private var joinedUsers: [PublicProfile] = []
     @State private var isJoining = false
     @State private var isAttendeeListExpanded = false
     @State private var contentHeight: CGFloat?
@@ -119,7 +119,7 @@ struct ExpandedEventCardView: View {
             .scrollBounceBehavior(.basedOnSize)
             // Nothing overlaps this scroll view, so its edge effect would only
             // fade the card's own header against the card's own background.
-            .scrollEdgeEffectHidden()
+            .hidingScrollEdgeEffect()
             .frame(height: maxContentHeight)
         } else {
             measuredSections
@@ -316,8 +316,12 @@ struct ExpandedEventCardView: View {
 
     // MARK: - Joining
 
+    // Scoped to the event because the people on someone else's signal aren't
+    // necessarily this user's friends, and so aren't readable directly.
     private func loadJoinedUsers() async {
-        guard let users = try? await FriendService().fetchFriends(ids: joinedUserIds) else { return }
+        guard let eventId = event.id,
+              let users = try? await FriendService().fetchProfiles(ids: joinedUserIds, eventId: eventId)
+        else { return }
         await MainActor.run { joinedUsers = users }
     }
 
@@ -331,7 +335,7 @@ struct ExpandedEventCardView: View {
         } else {
             joinedUserIds.append(uid)
             if let me = AuthService.shared.currentUser {
-                joinedUsers.append(me)
+                joinedUsers.append(me.publicProfile)
             }
         }
         Task {
@@ -346,7 +350,7 @@ struct ExpandedEventCardView: View {
                     if wasJoined {
                         joinedUserIds.append(uid)
                         if let me = AuthService.shared.currentUser {
-                            joinedUsers.append(me)
+                            joinedUsers.append(me.publicProfile)
                         }
                     } else {
                         joinedUserIds.removeAll { $0 == uid }

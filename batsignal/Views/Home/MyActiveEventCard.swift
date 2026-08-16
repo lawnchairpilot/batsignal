@@ -10,7 +10,7 @@ struct MyActiveEventCard: View {
     @State private var showDetail = false
     @State private var showUpcomingDetail = false
     @State private var now = Date()
-    @State private var joinedUsers: [User] = []
+    @State private var joinedUsers: [PublicProfile] = []
     @State private var isBoolersExpanded = false
 
     let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
@@ -136,7 +136,7 @@ struct MyActiveEventCard: View {
         )
         .opacity(0.7)
         .task(id: event.joinedUserIds ?? []) {
-            await loadJoinedUsers(ids: event.joinedUserIds ?? [])
+            await loadJoinedUsers(ids: event.joinedUserIds ?? [], eventId: event.id)
         }
         .onReceive(timer) { _ in now = Date() }
         .sheet(isPresented: $showUpcomingDetail) {
@@ -257,7 +257,7 @@ struct MyActiveEventCard: View {
                 .stroke(Color.accentColor.opacity(0.4), lineWidth: 1)
         )
         .task(id: event.joinedUserIds ?? []) {
-            await loadJoinedUsers(ids: event.joinedUserIds ?? [])
+            await loadJoinedUsers(ids: event.joinedUserIds ?? [], eventId: event.id)
         }
         .onReceive(timer) { _ in now = Date() }
         .sheet(isPresented: $showDetail) {
@@ -292,12 +292,14 @@ struct MyActiveEventCard: View {
 
     // Keyed on the ids so the faces follow the view model's listener as people
     // join and leave, rather than being fetched once when the card opens.
-    private func loadJoinedUsers(ids: [String]) async {
+    private func loadJoinedUsers(ids: [String], eventId: String?) async {
         guard !ids.isEmpty else {
             joinedUsers = []
             return
         }
-        guard let users = try? await FriendService().fetchFriends(ids: ids) else { return }
+        guard let eventId,
+              let users = try? await FriendService().fetchProfiles(ids: ids, eventId: eventId)
+        else { return }
         joinedUsers = users
     }
 

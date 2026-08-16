@@ -1,0 +1,41 @@
+rules_version = '2';
+
+// Paths come from batsignal/Services/PhotoStorageService.swift. Note that the
+// download URLs the app stores in Firestore carry an access token and bypass
+// these rules by design, so the read rules here govern SDK access only.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Uploads are JPEGs re-encoded at 0.8 quality by the client; the ceiling is
+    // here to stop the bucket being used as free storage for something else.
+    function isImageUnder(megabytes) {
+      return request.resource.contentType.matches('image/.*')
+        && request.resource.size < megabytes * 1024 * 1024;
+    }
+
+    match /profile-photos/{userId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn()
+        && request.auth.uid == userId
+        && isImageUnder(10);
+    }
+
+    // The filename is a UUID with no owner in it, so ownership can't be checked
+    // on write-over or delete — both are refused instead. Cleanup after account
+    // deletion runs as admin.
+    match /event-photos/{fileName} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isImageUnder(10);
+      allow update, delete: if false;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

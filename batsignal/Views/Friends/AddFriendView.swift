@@ -81,10 +81,7 @@ struct AddFriendView: View {
                     friends: viewModel.friends,
                     outgoingRequests: viewModel.outgoingRequests
                 ) {
-                    Task {
-                        guard let id = user.id else { return }
-                        await viewModel.sendRequest(toUserId: id)
-                    }
+                    Task { await viewModel.sendRequest(toUserId: user.id) }
                 }
             }
 
@@ -121,10 +118,7 @@ struct AddFriendView: View {
                     friends: viewModel.friends,
                     outgoingRequests: viewModel.outgoingRequests
                 ) {
-                    Task {
-                        guard let id = match.user.id else { return }
-                        await viewModel.sendRequest(toUserId: id)
-                    }
+                    Task { await viewModel.sendRequest(toUserId: match.user.id) }
                 }
             }
             .listStyle(.plain)
@@ -136,8 +130,9 @@ struct AddFriendView: View {
 
 private struct ContactResultRow: View {
     let name: String
-    let phone: String
-    let userId: String?
+    // Absent for a contact match the server didn't echo a number back for.
+    let phone: String?
+    let userId: String
     let friends: [User]
     let outgoingRequests: [FriendRequest]
     let onAdd: () -> Void
@@ -147,15 +142,16 @@ private struct ContactResultRow: View {
     }
 
     private var pendingRequest: Bool {
-        guard let id = userId else { return false }
-        return outgoingRequests.contains { $0.toUserId == id }
+        outgoingRequests.contains { $0.toUserId == userId }
     }
 
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(name).font(.headline)
-                Text(phone).font(.caption).foregroundColor(.secondary)
+                if let phone {
+                    Text(phone).font(.caption).foregroundColor(.secondary)
+                }
             }
             Spacer()
             if alreadyFriend {

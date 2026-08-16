@@ -170,7 +170,7 @@ struct HomeView: View {
         .scrollPosition(id: $selectedCarouselItem)
         // carouselFocusEffect already recedes the off-centre cards; the system
         // edge effect on top of that just smears them into the map.
-        .scrollEdgeEffectHidden()
+        .hidingScrollEdgeEffect()
         .fixedSize(horizontal: false, vertical: true)
         .task { await runCarouselHint() }
         .onChange(of: selectedCarouselItem) { _, newValue in

@@ -1,0 +1,232 @@
+rules_version = '2';
+
+// Written against the access patterns in batsignal/Services/*.swift. Cloud
+// Functions use the Admin SDK and bypass everything here, so fields that only
+// the server should own (isActive flips from the activation scheduler,
+// recipientIds backfills on friend accept) are still writable by their owner
+// below where the client also writes them.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Keys this write adds, removes, or modifies. Update rules only — `resource`
+    // is null on create.
+    function changed() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // Set arithmetic on a list field that may be absent on documents written
+    // before the field existed.
+    function added(field) {
+      return request.resource.data.get(field, []).toSet()
+        .difference(resource.data.get(field, []).toSet());
+    }
+
+    function removed(field) {
+      return resource.data.get(field, []).toSet()
+        .difference(request.resource.data.get(field, []).toSet());
+    }
+
+    // ---------------------------------------------------------------- users
+
+    match /users/{userId} {
+      // Yourself, and the people who have you on their friends list — which is
+      // mutual, so in practice: yourself and your friends. Everyone else's
+      // profile comes through the getProfiles / findUsersByPhoneNumbers
+      // callables in functions/src/index.ts, which hand back a name and a photo
+      // and never an fcmToken or a friends list. This is what keeps a phone
+      // number from being walked through to a full user document.
+      allow read: if isSelf(userId)
+        || (isSignedIn() && request.auth.uid in resource.data.get('friends', []));
+
+      // The shape AuthService.createUserDocument writes.
+      function isValidNewProfile() {
+        return request.resource.data.keys().hasOnly([
+                 'phoneNumber', 'displayName', 'profilePhotoURL', 'friends',
+                 'maxEventRadius', 'activeEventId', 'fcmToken', 'createdAt'
+               ])
+          // The phone number on the profile has to be the one that was
+          // verified, otherwise contact matching could be pointed at someone
+          // else's number. PhoneNumber.normalize produces the same E.164 form
+          // the token carries.
+          && request.resource.data.phoneNumber == request.auth.token.phone_number
+          && request.resource.data.friends == []
+          && request.resource.data.displayName is string
+          && request.resource.data.displayName.size() > 0
+          && request.resource.data.displayName.size() <= 50;
+      }
+
+      allow create: if isSelf(userId) && isValidNewProfile();
+
+      // Setup writes the whole document rather than merging into it, so
+      // finishing setup on a profile that already half-exists arrives as an
+      // update carrying a fresh createdAt. Only a document that never got a
+      // verified phone number on it can be replaced this way, which is exactly
+      // the never-completed case.
+      allow update: if isSelf(userId)
+        && !('phoneNumber' in resource.data)
+        && isValidNewProfile();
+
+      // Your own profile, and nobody else's. `friends` is absent from the list
+      // along with phoneNumber and createdAt: friendships are written only by
+      // linkFriendsOnRequestAccept (functions/src/index.ts), because a client
+      // can't prove to these rules that a request was really accepted.
+      allow update: if isSelf(userId)
+        && changed().hasOnly([
+             'displayName', 'profilePhotoURL', 'maxEventRadius',
+             'activeEventId', 'fcmToken'
+           ])
+        && (!('displayName' in request.resource.data) || (
+             request.resource.data.displayName is string
+             && request.resource.data.displayName.size() > 0
+             && request.resource.data.displayName.size() <= 50
+           ));
+
+      // Deleting the profile is what triggers cleanupOnUserDelete, which tears
+      // down the rest of the account.
+      allow delete: if isSelf(userId);
+    }
+
+    // --------------------------------------------------------------- events
+
+    match /events/{eventId} {
+
+      function isCreator() {
+        return isSignedIn() && resource.data.creatorId == request.auth.uid;
+      }
+
+      function isRecipient() {
+        return isSignedIn() && request.auth.uid in resource.data.get('recipientIds', []);
+      }
+
+      // Matches all three client queries: recipientIds array-contains uid,
+      // creatorId == uid, and direct document gets.
+      allow read: if isCreator() || isRecipient();
+
+      allow create: if isSignedIn()
+        && request.resource.data.creatorId == request.auth.uid
+        && request.resource.data.activity is string
+        && request.resource.data.activity.size() > 0
+        && request.resource.data.activity.size() <= 140
+        && request.resource.data.recipientIds is list
+        && request.resource.data.recipientIds.size() <= 1000;
+
+      // The creator owns the event and edits it freely, but can't hand it off
+      // or grow the activity past what the form allows.
+      allow update: if isCreator()
+        && request.resource.data.creatorId == resource.data.creatorId
+        && request.resource.data.activity is string
+        && request.resource.data.activity.size() <= 140;
+
+      // Everyone else on the invite list can only put themselves on or take
+      // themselves off the joined list.
+      allow update: if isRecipient()
+        && changed().hasOnly(['joinedUserIds'])
+        && added('joinedUserIds').difference([request.auth.uid].toSet()).size() == 0
+        && removed('joinedUserIds').difference([request.auth.uid].toSet()).size() == 0;
+
+      allow delete: if isCreator();
+
+      // ------------------------------------------------------- comments
+
+      match /comments/{commentId} {
+
+        function event() {
+          return get(/databases/$(database)/documents/events/$(eventId)).data;
+        }
+
+        function canSeeEvent() {
+          return isSignedIn() && (
+            event().creatorId == request.auth.uid
+            || request.auth.uid in event().get('recipientIds', [])
+          );
+        }
+
+        allow read: if canSeeEvent();
+
+        allow create: if canSeeEvent()
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 140
+          // Missing on events created before the toggle existed, which were
+          // all open to comments.
+          && event().get('commentsEnabled', true) == true;
+
+        // Nothing in the app edits or removes a comment yet. Deleting one as
+        // part of account cleanup runs as admin. Moderation will need a rule
+        // here once report/delete exists.
+        allow update, delete: if false;
+      }
+    }
+
+    // -------------------------------------------------------- friendRequests
+
+    match /friendRequests/{requestId} {
+      allow read: if isSignedIn() && (
+        resource.data.fromUserId == request.auth.uid
+        || resource.data.toUserId == request.auth.uid
+      );
+
+      allow create: if isSignedIn()
+        && request.resource.data.fromUserId == request.auth.uid
+        && request.resource.data.toUserId is string
+        && request.resource.data.toUserId != request.auth.uid
+        && request.resource.data.status == 'pending';
+
+      // Only the person being asked answers, only the status moves, and only
+      // out of pending — so an accepted request can't be replayed later to
+      // re-trigger the accept-side functions.
+      allow update: if isSignedIn()
+        && resource.data.toUserId == request.auth.uid
+        && changed().hasOnly(['status'])
+        && resource.data.status == 'pending'
+        && request.resource.data.status in ['accepted', 'declined'];
+
+      allow delete: if false;
+    }
+
+    // --------------------------------------------------------------- groups
+
+    // Private to their owner: a group is just one person's saved selection of
+    // who to send to, and members are never told they're in one.
+    match /groups/{groupId} {
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+
+      allow create: if isSignedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 50
+        && request.resource.data.memberIds is list;
+
+      allow update: if isSignedIn()
+        && resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 50;
+
+      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
+    // Server-side bookkeeping for the event-update notification debounce.
+    // Written only by functions, which bypass rules.
+    match /eventNotifyDebounce/{eventId} {
+      allow read, write: if false;
+    }
+
+    // Anything not named above.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

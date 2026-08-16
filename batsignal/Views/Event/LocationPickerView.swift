@@ -175,7 +175,7 @@ struct LocationPickerView: View {
 
     private func searchResultRow(item: MKMapItem) -> some View {
         let name = item.name ?? Strings.Event.unknownPlaceName
-        let subtitle = item.addressRepresentations?.fullAddress(includingRegion: false, singleLine: true)
+        let subtitle = item.singleLineAddress
         return Button(action: { selectSearchResult(item) }) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(name)
@@ -196,7 +196,7 @@ struct LocationPickerView: View {
     // MARK: - Actions
 
     private func selectSearchResult(_ item: MKMapItem) {
-        let coord = item.location.coordinate
+        let coord = item.pinCoordinate
         droppedPin = coord
         droppedPinName = item.name ?? Strings.Event.selectedPlace
         position = .camera(MapCamera(centerCoordinate: coord, distance: 1000))
@@ -238,6 +238,30 @@ struct LocationPickerView: View {
 }
 
 // MARK: - Supporting types
+
+// `location` and `addressRepresentations` are iOS 26; `placemark` is what came
+// before and is deprecated there. Both branches are kept so search results read
+// the same on either version, rather than picking one and losing the address
+// line or the coordinate on the other.
+private extension MKMapItem {
+    var pinCoordinate: CLLocationCoordinate2D {
+        if #available(iOS 26.0, *) {
+            return location.coordinate
+        } else {
+            return placemark.coordinate
+        }
+    }
+
+    // MKPlacemark's title is already the formatted address, which is what the
+    // iOS 26 call is asked for too.
+    var singleLineAddress: String? {
+        if #available(iOS 26.0, *) {
+            return addressRepresentations?.fullAddress(includingRegion: false, singleLine: true)
+        } else {
+            return placemark.title
+        }
+    }
+}
 
 class LocationSearchModel: ObservableObject {
     @Published var searchText = ""

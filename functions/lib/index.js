@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cleanupOnUserDelete = exports.notifyOnFriendRequestAccept = exports.backfillEventVisibilityOnFriendAccept = exports.notifyOnFriendRequestCreate = exports.notifyHostOnCommentCreate = exports.notifyHostOnEventJoin = exports.notifyJoinersOnEventUpdate = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
+exports.cleanupOnUserDelete = exports.findUsersByPhoneNumbers = exports.getProfiles = exports.notifyOnFriendRequestAccept = exports.backfillEventVisibilityOnFriendAccept = exports.linkFriendsOnRequestAccept = exports.notifyOnFriendRequestCreate = exports.notifyHostOnCommentCreate = exports.notifyHostOnEventJoin = exports.notifyJoinersOnEventUpdate = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
 const admin = require("firebase-admin");
 const functions = require("firebase-functions/v2");
 const firestore_1 = require("firebase-functions/v2/firestore");
+const https_1 = require("firebase-functions/v2/https");
 const strings_1 = require("./strings");
 admin.initializeApp();
 const db = admin.firestore();
@@ -244,6 +245,47 @@ exports.notifyOnFriendRequestCreate = (0, firestore_1.onDocumentCreated)("friend
         data: { requestId: event.params.requestId, type: "friend_request" },
     }, "friend_request");
 });
+// Writes both halves of a new friendship.
+//
+// This used to run on the client (FriendService.addMutualFriendship), which
+// meant a phone had to be trusted to edit someone else's friends list. Rules
+// can't check that trust: verifying "you really did accept a request from this
+// person" means finding the request document, and rules can only look a
+// document up by id, never search for one. So the write moves here, and rules
+// now refuse `friends` writes from clients entirely.
+//
+// arrayUnion is idempotent, so a retry — or an older build still writing its
+// own half — settles on the same result.
+exports.linkFriendsOnRequestAccept = (0, firestore_1.onDocumentUpdated)("friendRequests/{requestId}", async (event) => {
+    var _a, _b;
+    const before = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before.data();
+    const after = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after.data();
+    if (!before || !after)
+        return;
+    if (before.status === after.status || after.status !== "accepted")
+        return;
+    const fromUserId = after.fromUserId;
+    const toUserId = after.toUserId;
+    if (!fromUserId || !toUserId || fromUserId === toUserId)
+        return;
+    const batch = db.batch();
+    batch.update(db.collection("users").doc(fromUserId), {
+        friends: admin.firestore.FieldValue.arrayUnion(toUserId),
+    });
+    batch.update(db.collection("users").doc(toUserId), {
+        friends: admin.firestore.FieldValue.arrayUnion(fromUserId),
+    });
+    try {
+        await batch.commit();
+        console.log(`[friends] Linked ${fromUserId} <-> ${toUserId}.`);
+    }
+    catch (error) {
+        // An update to a document that no longer exists fails the whole batch,
+        // which is the right outcome: if either side deleted their account
+        // between the accept and this running, there is no friendship to record.
+        console.error(`[friends] Could not link ${fromUserId} <-> ${toUserId}: ${error.message}`);
+    }
+});
 // Backfills recipientIds on each user's still-visible events when a friend request
 // is accepted, so a newly-added friend can immediately see events created before
 // the friendship existed. recipientIds is otherwise a snapshot frozen at event
@@ -315,6 +357,129 @@ exports.notifyOnFriendRequestAccept = (0, firestore_1.onDocumentUpdated)("friend
         apns: { payload: { aps: { sound: "default" } } },
         data: { requestId: event.params.requestId, type: "friend_request_accepted" },
     }, "friend_request_accepted");
+});
+/**
+ * The fields anyone is allowed to see. Notably absent: fcmToken, which is a
+ * push-notification credential, and friends, which is nobody else's business.
+ */
+function toPublicProfile(doc, includePhoneNumber = false) {
+    const data = doc.data();
+    if (!data)
+        return undefined;
+    const profile = {
+        id: doc.id,
+        displayName: data.displayName || "",
+    };
+    if (data.profilePhotoURL)
+        profile.profilePhotoURL = data.profilePhotoURL;
+    if (includePhoneNumber && data.phoneNumber)
+        profile.phoneNumber = data.phoneNumber;
+    return profile;
+}
+const MAX_PHONE_LOOKUP = 2000;
+const PHONE_QUERY_CHUNK = 30; // Firestore caps an `in` filter at 30 values.
+const MAX_PROFILE_LOOKUP = 200;
+/**
+ * Which users this caller is entitled to see, as a set of ids: themselves,
+ * their friends, anyone they have a friend request open with in either
+ * direction, and — when the caller names a signal they can actually see — its
+ * host and whoever has joined it.
+ */
+async function visibleUserIds(uid, eventId) {
+    var _a;
+    const visible = new Set([uid]);
+    const [selfDoc, sent, received] = await Promise.all([
+        db.collection("users").doc(uid).get(),
+        db.collection("friendRequests").where("fromUserId", "==", uid).get(),
+        db.collection("friendRequests").where("toUserId", "==", uid).get(),
+    ]);
+    (((_a = selfDoc.data()) === null || _a === void 0 ? void 0 : _a.friends) || []).forEach((id) => visible.add(id));
+    sent.docs.forEach((doc) => visible.add(doc.data().toUserId));
+    received.docs.forEach((doc) => visible.add(doc.data().fromUserId));
+    if (eventId) {
+        const eventDoc = await db.collection("events").doc(eventId).get();
+        const data = eventDoc.data();
+        const recipientIds = (data === null || data === void 0 ? void 0 : data.recipientIds) || [];
+        // Only someone the signal was sent to gets to see who else is on it. The
+        // rest of the invite list stays private — being sent the same signal isn't
+        // reason enough to be handed a stranger's profile.
+        if (data && (data.creatorId === uid || recipientIds.includes(uid))) {
+            visible.add(data.creatorId);
+            (data.joinedUserIds || []).forEach((id) => visible.add(id));
+        }
+    }
+    return visible;
+}
+/**
+ * Profiles for a list of user ids, filtered down to the ones the caller is
+ * allowed to see. Ids that don't survive that filter are dropped silently
+ * rather than reported, so this can't be used to probe who exists.
+ */
+exports.getProfiles = (0, https_1.onCall)(async (request) => {
+    var _a, _b, _c;
+    const uid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
+    if (!uid)
+        throw new https_1.HttpsError("unauthenticated", "Sign in first.");
+    const raw = (_b = request.data) === null || _b === void 0 ? void 0 : _b.userIds;
+    if (!Array.isArray(raw)) {
+        throw new https_1.HttpsError("invalid-argument", "userIds must be an array.");
+    }
+    const userIds = Array.from(new Set(raw.filter((v) => typeof v === "string" && v.length > 0)));
+    if (userIds.length === 0)
+        return { profiles: [] };
+    if (userIds.length > MAX_PROFILE_LOOKUP) {
+        throw new https_1.HttpsError("invalid-argument", `At most ${MAX_PROFILE_LOOKUP} ids per call.`);
+    }
+    const eventId = typeof ((_c = request.data) === null || _c === void 0 ? void 0 : _c.eventId) === "string" ? request.data.eventId : undefined;
+    const visible = await visibleUserIds(uid, eventId);
+    const allowed = userIds.filter((id) => visible.has(id));
+    if (allowed.length === 0)
+        return { profiles: [] };
+    const docs = await db.getAll(...allowed.map((id) => db.collection("users").doc(id)));
+    return {
+        profiles: docs
+            .map((doc) => toPublicProfile(doc))
+            .filter((p) => p !== undefined),
+    };
+});
+/**
+ * Which of these phone numbers have accounts. Backs both contact matching and
+ * the add-by-number field.
+ *
+ * This is the one lookup that has to accept numbers the caller has no prior
+ * relationship with — that's what contact matching is. So it can still be used
+ * to test whether a given number is on the app. What it no longer does is hand
+ * back the whole user document: a match returns a name and a photo, never an
+ * fcmToken or a friends list. Turning on App Check is what would stop the
+ * lookup being called from anything but the real app.
+ */
+exports.findUsersByPhoneNumbers = (0, https_1.onCall)(async (request) => {
+    var _a, _b;
+    const uid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
+    if (!uid)
+        throw new https_1.HttpsError("unauthenticated", "Sign in first.");
+    const raw = (_b = request.data) === null || _b === void 0 ? void 0 : _b.phoneNumbers;
+    if (!Array.isArray(raw)) {
+        throw new https_1.HttpsError("invalid-argument", "phoneNumbers must be an array.");
+    }
+    const phoneNumbers = Array.from(new Set(raw.filter((v) => typeof v === "string" && v.length > 0)));
+    if (phoneNumbers.length === 0)
+        return { profiles: [] };
+    if (phoneNumbers.length > MAX_PHONE_LOOKUP) {
+        throw new https_1.HttpsError("invalid-argument", `At most ${MAX_PHONE_LOOKUP} numbers per call.`);
+    }
+    const chunks = [];
+    for (let i = 0; i < phoneNumbers.length; i += PHONE_QUERY_CHUNK) {
+        chunks.push(phoneNumbers.slice(i, i + PHONE_QUERY_CHUNK));
+    }
+    const snapshots = await Promise.all(chunks.map((chunk) => db.collection("users").where("phoneNumber", "in", chunk).get()));
+    return {
+        profiles: snapshots
+            .flatMap((snapshot) => snapshot.docs)
+            .filter((doc) => doc.id !== uid)
+            .map((doc) => toPublicProfile(doc, true))
+            .filter((p) => p !== undefined),
+    };
 });
 // MARK: - Account deletion
 /**

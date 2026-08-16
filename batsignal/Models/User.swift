@@ -25,9 +25,5 @@ struct User: Identifiable, Codable {
     }
 
     // Up to two letters, for avatars with no photo to show.
-    var initials: String? {
-        guard !displayName.isEmpty else { return nil }
-        let letters = displayName.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
-        return letters.isEmpty ? nil : letters.uppercased()
-    }
+    var initials: String? { PublicProfile.initials(from: displayName) }
 }

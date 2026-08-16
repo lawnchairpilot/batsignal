@@ -1,14 +1,12 @@
 import Contacts
-import FirebaseFirestore
 
 struct ContactMatch: Identifiable {
-    var id: String { user.id ?? user.phoneNumber }
+    var id: String { user.id }
     let contactName: String
-    let user: User
+    let user: PublicProfile
 }
 
 final class ContactsService {
-    private let db = Firestore.firestore()
 
     var authorizationStatus: CNAuthorizationStatus {
         CNContactStore.authorizationStatus(for: .contacts)
@@ -45,20 +43,18 @@ final class ContactsService {
         let allPhones = Array(phoneToName.keys)
         guard !allPhones.isEmpty else { return [] }
 
-        // Firestore `in` supports up to 30 values per query
-        var users: [User] = []
-        for chunk in stride(from: 0, to: allPhones.count, by: 30).map({ Array(allPhones[$0 ..< min($0 + 30, allPhones.count)]) }) {
-            let snapshot = try await db.collection("users")
-                .whereField("phoneNumber", in: chunk)
-                .getDocuments()
-            users.append(contentsOf: snapshot.documents.compactMap { try? $0.data(as: User.self) })
-        }
+        // The matching happens server-side (findUsersByPhoneNumbers in
+        // functions/src/index.ts). The numbers still leave the device, but what
+        // comes back is a name and a photo rather than whole user documents,
+        // and the query can't be pointed at anything else.
+        let profiles = try await ProfileLookup.profiles(phoneNumbers: allPhones)
 
-        return users
+        return profiles
             .filter { $0.id != currentUserId }
-            .compactMap { user in
-                guard let name = phoneToName[user.phoneNumber] else { return nil }
-                return ContactMatch(contactName: name, user: user)
+            .compactMap { profile in
+                guard let phoneNumber = profile.phoneNumber,
+                      let name = phoneToName[phoneNumber] else { return nil }
+                return ContactMatch(contactName: name, user: profile)
             }
             .sorted { $0.contactName < $1.contactName }
     }

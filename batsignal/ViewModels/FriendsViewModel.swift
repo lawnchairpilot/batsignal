@@ -10,7 +10,7 @@ class FriendsViewModel: ObservableObject {
     @Published var outgoingRequests: [FriendRequest] = []
     @Published var senderNames: [String: String] = [:]    // fromUserId → displayName
     @Published var recipientNames: [String: String] = [:] // toUserId → displayName or phoneNumber
-    @Published var searchResult: User? = nil
+    @Published var searchResult: PublicProfile? = nil
     @Published var searchPhone = ""
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -105,15 +105,18 @@ class FriendsViewModel: ObservableObject {
         outgoingRequests.contains { $0.toUserId == toUserId }
     }
 
+    // Both sides resolve in one call rather than one per request: the profiles
+    // come from a Cloud Function now, and a screenful of pending requests
+    // shouldn't be a screenful of invocations.
     private func resolveSenderNames(for requests: [FriendRequest]) {
         let unresolvedIds = requests
             .map { $0.fromUserId }
             .filter { senderNames[$0] == nil }
-        for userId in unresolvedIds {
-            Task {
-                if let user = try? await friendService.fetchUser(id: userId) {
-                    await MainActor.run { self.senderNames[userId] = user.displayName }
-                }
+        guard !unresolvedIds.isEmpty else { return }
+        Task {
+            guard let profiles = try? await friendService.fetchProfiles(ids: unresolvedIds) else { return }
+            for profile in profiles {
+                senderNames[profile.id] = profile.displayName
             }
         }
     }
@@ -122,12 +125,11 @@ class FriendsViewModel: ObservableObject {
         let unresolvedIds = requests
             .map { $0.toUserId }
             .filter { recipientNames[$0] == nil }
-        for userId in unresolvedIds {
-            Task {
-                if let user = try? await friendService.fetchUser(id: userId) {
-                    let name = user.displayName.isEmpty ? user.phoneNumber : user.displayName
-                    await MainActor.run { self.recipientNames[userId] = name }
-                }
+        guard !unresolvedIds.isEmpty else { return }
+        Task {
+            guard let profiles = try? await friendService.fetchProfiles(ids: unresolvedIds) else { return }
+            for profile in profiles {
+                recipientNames[profile.id] = profile.displayName
             }
         }
     }
