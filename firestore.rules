@@ -35,6 +35,13 @@ service cloud.firestore {
         .difference(request.resource.data.get(field, []).toSet());
     }
 
+    // Blocks live at a derived id precisely so this can be a lookup rather than
+    // a search, which rules can't do. Either direction counts.
+    function isBlockedBetween(a, b) {
+      return exists(/databases/$(database)/documents/blocks/$(a + '_' + b))
+        || exists(/databases/$(database)/documents/blocks/$(b + '_' + a));
+    }
+
     // ---------------------------------------------------------------- users
 
     match /users/{userId} {
@@ -51,7 +58,8 @@ service cloud.firestore {
       function isValidNewProfile() {
         return request.resource.data.keys().hasOnly([
                  'phoneNumber', 'displayName', 'profilePhotoURL', 'friends',
-                 'maxEventRadius', 'activeEventId', 'fcmToken', 'createdAt'
+                 'maxEventRadius', 'activeEventId', 'fcmToken', 'createdAt',
+                 'acceptedTermsAt'
                ])
           // The phone number on the profile has to be the one that was
           // verified, otherwise contact matching could be pointed at someone
@@ -82,7 +90,7 @@ service cloud.firestore {
       allow update: if isSelf(userId)
         && changed().hasOnly([
              'displayName', 'profilePhotoURL', 'maxEventRadius',
-             'activeEventId', 'fcmToken'
+             'activeEventId', 'fcmToken', 'acceptedTermsAt'
            ])
         && (!('displayName' in request.resource.data) || (
              request.resource.data.displayName is string
@@ -177,10 +185,28 @@ service cloud.firestore {
       );
 
       allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly([
+             'fromUserId', 'toUserId', 'fromUserName', 'toUserName',
+             'status', 'createdAt'
+           ])
         && request.resource.data.fromUserId == request.auth.uid
         && request.resource.data.toUserId is string
         && request.resource.data.toUserId != request.auth.uid
-        && request.resource.data.status == 'pending';
+        && request.resource.data.status == 'pending'
+        // Both names are display copy only — they're what the row shows before
+        // either party can read the other's profile. Bounded so neither field
+        // can be used to smuggle a wall of text onto someone's requests screen.
+        && (!('fromUserName' in request.resource.data) || (
+             request.resource.data.fromUserName is string
+             && request.resource.data.fromUserName.size() <= 50
+           ))
+        && (!('toUserName' in request.resource.data) || (
+             request.resource.data.toUserName is string
+             && request.resource.data.toUserName.size() <= 50
+           ))
+        // A block stops requests in both directions, so neither person can use
+        // one to get back in front of the other.
+        && !isBlockedBetween(request.auth.uid, request.resource.data.toUserId);
 
       // Only the person being asked answers, only the status moves, and only
       // out of pending — so an accepted request can't be replayed later to
@@ -216,6 +242,44 @@ service cloud.firestore {
         && request.resource.data.name.size() <= 50;
 
       allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
+    // --------------------------------------------------------------- blocks
+
+    // Stored at a derived id (blockerId_blockedId) so isBlockedBetween can find
+    // one with exists(). Written only by the blockUser / unblockUser callables,
+    // which also have to tear down the friendship — a two-document write no
+    // client is allowed to make.
+    match /blocks/{blockId} {
+      allow read: if isSignedIn() && (
+        resource.data.blockerId == request.auth.uid
+        || resource.data.blockedId == request.auth.uid
+      );
+      allow write: if false;
+    }
+
+    // -------------------------------------------------------------- reports
+
+    match /reports/{reportId} {
+      // Your own reports, which is what lets the app keep reported content
+      // hidden from the person who reported it.
+      allow read: if isSignedIn() && resource.data.reporterId == request.auth.uid;
+
+      allow create: if isSignedIn()
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.targetType in ['comment', 'event', 'user']
+        && request.resource.data.targetId is string
+        && request.resource.data.targetId.size() > 0
+        && request.resource.data.reason is string
+        && request.resource.data.status == 'open'
+        && (!('note' in request.resource.data) || (
+             request.resource.data.note is string
+             && request.resource.data.note.size() <= 300
+           ));
+
+      // Reviewing a report happens in the console, as admin. Letting the
+      // reporter withdraw or edit one would just be a way to erase the trail.
+      allow update, delete: if false;
     }
 
     // Server-side bookkeeping for the event-update notification debounce.

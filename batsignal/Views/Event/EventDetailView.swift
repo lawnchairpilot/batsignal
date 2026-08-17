@@ -36,6 +36,9 @@ struct ExpandedEventCardView: View {
     @State private var isAttendeeListExpanded = false
     @State private var contentHeight: CGFloat?
     @State private var now = Date()
+    @State private var activeReport: ReportTarget?
+    @State private var showBlockConfirmation = false
+    @State private var moderationError: String?
 
     private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -77,6 +80,35 @@ struct ExpandedEventCardView: View {
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(Color.accentColor.opacity(0.4), lineWidth: 1)
             )
+            .sheet(item: $activeReport) { target in
+                ReportSheet(target: target)
+            }
+            .alert(
+                Strings.Moderation.blockTitle(creatorName ?? Strings.Friends.someone),
+                isPresented: $showBlockConfirmation
+            ) {
+                Button(Strings.Common.cancel, role: .cancel) {}
+                Button(Strings.Moderation.blockConfirm, role: .destructive) {
+                    Task {
+                        do {
+                            try await ModerationService.shared.block(userId: displayEvent.creatorId)
+                        } catch {
+                            moderationError = Strings.Moderation.blockFailed
+                        }
+                    }
+                }
+            } message: {
+                Text(Strings.Moderation.blockMessage)
+            }
+            .alert(
+                Strings.Moderation.blockFailed,
+                isPresented: Binding(
+                    get: { moderationError != nil },
+                    set: { if !$0 { moderationError = nil } }
+                )
+            ) {
+                Button(Strings.Common.ok, role: .cancel) { moderationError = nil }
+            }
             .onReceive(timer) { now = $0 }
             .onAppear {
                 Task { await loadJoinedUsers() }
@@ -181,6 +213,12 @@ struct ExpandedEventCardView: View {
                     .foregroundColor(.accentColor)
             }
 
+            // A visible control rather than a long press: this is the reporting
+            // route for a signal's words and photo, and it has to be findable.
+            if !isOwnEvent {
+                moderationMenu
+            }
+
             if let onCollapse {
                 Button(action: onCollapse) {
                     Image(systemName: "chevron.down.circle")
@@ -190,6 +228,31 @@ struct ExpandedEventCardView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    private var moderationMenu: some View {
+        Menu {
+            Button {
+                activeReport = ReportTarget.event(displayEvent)
+            } label: {
+                Label(Strings.Moderation.reportEvent, systemImage: "flag")
+            }
+            Button {
+                activeReport = ReportTarget.user(displayEvent.creatorId)
+            } label: {
+                Label(Strings.Moderation.reportUser, systemImage: "person.crop.circle.badge.exclamationmark")
+            }
+            Button(role: .destructive) {
+                showBlockConfirmation = true
+            } label: {
+                Label(Strings.Moderation.block, systemImage: "hand.raised")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.title2)
+                .foregroundColor(.accentColor)
+        }
+        .buttonStyle(.plain)
     }
 
     // Mirrors MyActiveEventCard's expanded card: a draining progress bar while

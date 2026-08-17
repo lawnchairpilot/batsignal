@@ -81,7 +81,7 @@ struct AddFriendView: View {
                     friends: viewModel.friends,
                     outgoingRequests: viewModel.outgoingRequests
                 ) {
-                    Task { await viewModel.sendRequest(toUserId: user.id) }
+                    Task { await viewModel.sendRequest(toUserId: user.id, toUserName: user.displayName) }
                 }
             }
 
@@ -118,7 +118,15 @@ struct AddFriendView: View {
                     friends: viewModel.friends,
                     outgoingRequests: viewModel.outgoingRequests
                 ) {
-                    Task { await viewModel.sendRequest(toUserId: match.user.id) }
+                    Task {
+                        // The profile's own name, not the contact-book name —
+                        // the row shows what's in your contacts, but the
+                        // request should carry what they call themselves.
+                        await viewModel.sendRequest(
+                            toUserId: match.user.id,
+                            toUserName: match.user.displayName
+                        )
+                    }
                 }
             }
             .listStyle(.plain)

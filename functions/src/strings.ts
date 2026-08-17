@@ -16,6 +16,11 @@ export const Strings = {
     commentBody: (text: string) => text,
   },
 
+  moderation: {
+    reportTitle: "New content report",
+    reportBody: (targetType: string, reason: string) => `${targetType} reported — ${reason}`,
+  },
+
   friends: {
     requestTitle: "New friend request",
     requestBody: (fromName: string) => `${fromName} wants to bool`,

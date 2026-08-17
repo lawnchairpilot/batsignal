@@ -16,6 +16,7 @@ struct SettingsView: View {
     @State private var isUploadingPhoto = false
     @State private var errorMessage: String?
     @State private var showRadiusSetting = false
+    @State private var showBlockedUsers = false
     @State private var showDeleteConfirmation = false
     @State private var isDeletingAccount = false
 
@@ -82,6 +83,22 @@ struct SettingsView: View {
                 } label: {
                     HStack {
                         Text(Strings.Profile.eventRadiusFilter)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .cardSurface()
+                }
+                .buttonStyle(.plain)
+                .cardRow()
+
+                Button {
+                    showBlockedUsers = true
+                } label: {
+                    HStack {
+                        Text(Strings.Moderation.blockedUsersTitle)
                             .foregroundStyle(.primary)
                         Spacer()
                         Image(systemName: "chevron.right")
@@ -162,6 +179,9 @@ struct SettingsView: View {
         }
         .navigationDestination(isPresented: $showRadiusSetting) {
             RadiusSettingView()
+        }
+        .navigationDestination(isPresented: $showBlockedUsers) {
+            BlockedUsersView()
         }
         // The cards carry their own spacing, so the gaps a grouped list leaves
         // for section headers would read as holes between them.

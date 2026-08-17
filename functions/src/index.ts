@@ -2,6 +2,7 @@ import * as admin from "firebase-admin";
 import * as functions from "firebase-functions/v2";
 import { onDocumentCreated, onDocumentDeleted, onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { defineString } from "firebase-functions/params";
 import { ScheduledEvent } from "firebase-functions/v2/scheduler";
 import { Strings } from "./strings";
 
@@ -532,6 +533,11 @@ async function visibleUserIds(uid: string, eventId?: string): Promise<Set<string
   sent.docs.forEach((doc) => visible.add(doc.data().toUserId));
   received.docs.forEach((doc) => visible.add(doc.data().fromUserId));
 
+  // Someone this user has blocked is no longer a friend, but the unblock
+  // screen still has to be able to put a name to them.
+  const blocked = await db.collection("blocks").where("blockerId", "==", uid).get();
+  blocked.docs.forEach((doc) => visible.add(doc.data().blockedId));
+
   if (eventId) {
     const eventDoc = await db.collection("events").doc(eventId).get();
     const data = eventDoc.data();
@@ -632,6 +638,161 @@ export const findUsersByPhoneNumbers = onCall(async (request) => {
       .filter((p): p is PublicProfile => p !== undefined),
   };
 });
+
+// MARK: - Moderation
+
+/**
+ * Blocking tears down a friendship, which means writing two users' documents,
+ * and no client may write either. It also has to reach into events on both
+ * sides, so all of it runs here.
+ *
+ * Every step is idempotent — blocking someone already blocked settles on the
+ * same state rather than failing.
+ */
+export const blockUser = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in first.");
+
+  const blockedId = request.data?.userId;
+  if (typeof blockedId !== "string" || blockedId.length === 0) {
+    throw new HttpsError("invalid-argument", "userId is required.");
+  }
+  if (blockedId === uid) {
+    throw new HttpsError("invalid-argument", "You can't block yourself.");
+  }
+
+  const blockId = `${uid}_${blockedId}`;
+  await db.collection("blocks").doc(blockId).set({
+    blockerId: uid,
+    blockedId,
+    createdAt: admin.firestore.Timestamp.now(),
+  });
+
+  // Drop the friendship from both sides. arrayRemove on a document that never
+  // had them is a no-op, so this is safe whether or not they were friends.
+  const batch = db.batch();
+  batch.update(db.collection("users").doc(uid), {
+    friends: admin.firestore.FieldValue.arrayRemove(blockedId),
+  });
+  batch.update(db.collection("users").doc(blockedId), {
+    friends: admin.firestore.FieldValue.arrayRemove(uid),
+  });
+  await batch.commit().catch((error) => {
+    console.warn(`[block] Could not unfriend ${uid} <-> ${blockedId}: ${(error as Error).message}`);
+  });
+
+  // Pending requests in either direction would otherwise sit there offering an
+  // accept button for someone who can no longer be a friend.
+  const [sent, received] = await Promise.all([
+    db.collection("friendRequests")
+      .where("fromUserId", "==", uid).where("toUserId", "==", blockedId).get(),
+    db.collection("friendRequests")
+      .where("fromUserId", "==", blockedId).where("toUserId", "==", uid).get(),
+  ]);
+  const requestBatch = db.batch();
+  [...sent.docs, ...received.docs].forEach((doc) => requestBatch.delete(doc.ref));
+  if (sent.size + received.size > 0) await requestBatch.commit();
+
+  // Pull each out of the other's signals, so nothing already sent keeps arriving.
+  await Promise.all([
+    removeFromEventsOf(uid, blockedId),
+    removeFromEventsOf(blockedId, uid),
+  ]);
+
+  console.log(`[block] ${uid} blocked ${blockedId}.`);
+  return { blocked: true };
+});
+
+/**
+ * Strips one user out of the recipient and joined lists on another user's
+ * events.
+ */
+async function removeFromEventsOf(ownerId: string, removedId: string): Promise<void> {
+  const snapshot = await db.collection("events").where("creatorId", "==", ownerId).get();
+  if (snapshot.empty) return;
+
+  const batch = db.batch();
+  let count = 0;
+  snapshot.docs.forEach((doc) => {
+    const data = doc.data();
+    const inRecipients = (data.recipientIds || []).includes(removedId);
+    const inJoined = (data.joinedUserIds || []).includes(removedId);
+    if (!inRecipients && !inJoined) return;
+
+    batch.update(doc.ref, {
+      recipientIds: admin.firestore.FieldValue.arrayRemove(removedId),
+      joinedUserIds: admin.firestore.FieldValue.arrayRemove(removedId),
+    });
+    count++;
+  });
+  if (count > 0) await batch.commit();
+}
+
+/**
+ * Lifts a block. Deliberately does not restore the friendship — someone has to
+ * send a fresh request, which is what the confirmation copy promises.
+ */
+export const unblockUser = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in first.");
+
+  const blockedId = request.data?.userId;
+  if (typeof blockedId !== "string" || blockedId.length === 0) {
+    throw new HttpsError("invalid-argument", "userId is required.");
+  }
+
+  await db.collection("blocks").doc(`${uid}_${blockedId}`).delete();
+  console.log(`[block] ${uid} unblocked ${blockedId}.`);
+  return { blocked: false };
+});
+
+// Comma-separated user ids that should be told when a report comes in. Set at
+// deploy time; leaving it empty just means no alert is sent.
+const moderationAdmins = defineString("MODERATION_ADMIN_UIDS", { default: "" });
+
+/**
+ * Pushes to whoever moderates as soon as a report lands. The 24-hour
+ * commitment in the reporting flow needs something that actually prompts a
+ * human — a queue nobody is told about isn't a process.
+ */
+export const notifyAdminsOnReport = onDocumentCreated(
+  "reports/{reportId}",
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const report = snap.data();
+
+    const adminIds = moderationAdmins.value()
+      .split(",")
+      .map((id: string) => id.trim())
+      .filter((id: string) => id.length > 0);
+    if (adminIds.length === 0) {
+      console.log("[report] No MODERATION_ADMIN_UIDS configured; skipping alert.");
+      return;
+    }
+
+    const targets = await getTokenTargets(adminIds);
+    if (targets.length === 0) return;
+
+    await sendMulticast(
+      targets,
+      {
+        notification: {
+          title: Strings.moderation.reportTitle,
+          body: Strings.moderation.reportBody(report.targetType, report.reason),
+        },
+        apns: { payload: { aps: { sound: "default" } } },
+        data: {
+          reportId: event.params.reportId,
+          targetType: String(report.targetType ?? ""),
+          targetId: String(report.targetId ?? ""),
+          type: "content_report",
+        },
+      },
+      "content_report"
+    );
+  }
+);
 
 // MARK: - Account deletion
 

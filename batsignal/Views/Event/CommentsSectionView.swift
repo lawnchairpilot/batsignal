@@ -1,5 +1,6 @@
 import SwiftUI
 import FirebaseFirestore
+import FirebaseAuth
 
 struct CommentsSectionView: View {
     let eventId: String
@@ -9,6 +10,13 @@ struct CommentsSectionView: View {
     @State private var newCommentText = ""
     @State private var isPosting = false
     @FocusState private var isCommentFieldFocused: Bool
+    @ObservedObject private var moderation = ModerationService.shared
+
+    // Comments from blocked people, and ones this user reported, never reach
+    // the list.
+    private var visibleComments: [Comment] {
+        comments.filter { !moderation.isHidden(comment: $0) }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -18,10 +26,10 @@ struct CommentsSectionView: View {
 
             Divider()
 
-            if !comments.isEmpty {
+            if !visibleComments.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
-                    ForEach(comments) { comment in
-                        CommentRow(comment: comment)
+                    ForEach(visibleComments) { comment in
+                        CommentRow(comment: comment, eventId: eventId)
                     }
                 }
             }
@@ -80,6 +88,11 @@ struct CommentsSectionView: View {
 
 private struct CommentRow: View {
     let comment: Comment
+    let eventId: String
+
+    private var isMine: Bool {
+        comment.authorId == Auth.auth().currentUser?.uid
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
@@ -95,6 +108,10 @@ private struct CommentRow: View {
                 .font(.caption2)
                 .foregroundColor(.secondary)
         }
+        .moderationMenu(
+            report: isMine ? nil : ReportTarget.comment(comment, eventId: eventId),
+            block: isMine ? nil : BlockTarget(userId: comment.authorId, displayName: comment.authorName)
+        )
     }
 
     private var initials: String? {

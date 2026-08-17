@@ -57,6 +57,7 @@ struct RootView: View {
         myEventViewModel.startListening(activeEventId: user.activeEventId)
         homeViewModel.startListening(userId: userId, maxRadius: user.maxEventRadius)
         friendsViewModel.startListening(friendIds: user.friends)
+        ModerationService.shared.startListening()
     }
 
     // Firestore keeps serving an attached listener after sign-out, so anything
@@ -67,5 +68,6 @@ struct RootView: View {
         myEventViewModel.stopListening()
         homeViewModel.stopListening()
         friendsViewModel.stopListening()
+        ModerationService.shared.stopListening()
     }
 }

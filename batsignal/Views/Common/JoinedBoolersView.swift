@@ -1,4 +1,5 @@
 import SwiftUI
+import FirebaseAuth
 
 // Who's in, in the two forms every expanded card shows them: a tight stack of
 // faces that costs almost no room, and the opened-up row with names. Shared so
@@ -36,6 +37,10 @@ struct JoinedBoolersRow: View {
     let users: [PublicProfile]
     let onTap: () -> Void
 
+    private func isSelf(_ user: PublicProfile) -> Bool {
+        user.id == Auth.auth().currentUser?.uid
+    }
+
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(alignment: .top, spacing: 12) {
@@ -48,6 +53,13 @@ struct JoinedBoolersRow: View {
                             .lineLimit(1)
                             .frame(width: 52)
                     }
+                    // The people on someone else's signal aren't necessarily
+                    // this user's friends, so the friends list isn't a route to
+                    // reporting them — this is.
+                    .moderationMenu(
+                        report: isSelf(user) ? nil : ReportTarget.user(user.id),
+                        block: isSelf(user) ? nil : BlockTarget(userId: user.id, displayName: user.displayName)
+                    )
                 }
             }
             .padding(.vertical, 2)

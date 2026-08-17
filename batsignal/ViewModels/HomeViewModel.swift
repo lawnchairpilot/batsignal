@@ -18,9 +18,16 @@ class HomeViewModel: ObservableObject {
     private var allEvents: [Event] = []
     private var maxRadius: Double?
     private var expiryTicker: Task<Void, Never>?
+    private var moderationObserver: AnyCancellable?
 
     func startListening(userId: String, maxRadius: Double?) {
         listener?.remove()
+        // Blocking someone strips them from recipientIds server-side, so their
+        // signals stop arriving on their own — but reporting one hides it for
+        // the reporter alone, and that's a local decision nothing re-queries.
+        moderationObserver = ModerationService.shared.objectWillChange.sink { [weak self] _ in
+            Task { @MainActor in self?.refreshVisibleEvents() }
+        }
         self.maxRadius = maxRadius
         isLoading = true
         listener = eventService.listenToVisibleEvents(userId: userId) { [weak self] fetched in
@@ -39,6 +46,7 @@ class HomeViewModel: ObservableObject {
         listener = nil
         expiryTicker?.cancel()
         expiryTicker = nil
+        moderationObserver = nil
     }
 
     // For the app coming back to the foreground: the ticker is throttled while
@@ -64,7 +72,8 @@ class HomeViewModel: ObservableObject {
     }
 
     private func refreshVisibleEvents() {
-        let live = allEvents.filter { !$0.isExpired }
+        let moderation = ModerationService.shared
+        let live = allEvents.filter { !$0.isExpired && !moderation.isHidden(event: $0) }
         let byStart = { (lhs: Event, rhs: Event) in
             lhs.startTime.dateValue() < rhs.startTime.dateValue()
         }

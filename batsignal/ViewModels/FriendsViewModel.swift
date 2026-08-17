@@ -82,9 +82,9 @@ class FriendsViewModel: ObservableObject {
         isLoading = false
     }
 
-    func sendRequest(toUserId: String) async {
+    func sendRequest(toUserId: String, toUserName: String?) async {
         do {
-            try await friendService.sendFriendRequest(toUserId: toUserId)
+            try await friendService.sendFriendRequest(toUserId: toUserId, toUserName: toUserName)
             searchResult = nil
             searchPhone = ""
         } catch {
@@ -105,31 +105,43 @@ class FriendsViewModel: ObservableObject {
         outgoingRequests.contains { $0.toUserId == toUserId }
     }
 
-    // Both sides resolve in one call rather than one per request: the profiles
-    // come from a Cloud Function now, and a screenful of pending requests
-    // shouldn't be a screenful of invocations.
+    // The request carries both names, so the common case needs no lookup at all
+    // and the name is on screen the moment the row is. Only requests sent
+    // before those fields existed fall through to the profile call, and that
+    // goes in one batch rather than one call per row.
     private func resolveSenderNames(for requests: [FriendRequest]) {
-        let unresolvedIds = requests
-            .map { $0.fromUserId }
-            .filter { senderNames[$0] == nil }
-        guard !unresolvedIds.isEmpty else { return }
-        Task {
-            guard let profiles = try? await friendService.fetchProfiles(ids: unresolvedIds) else { return }
-            for profile in profiles {
-                senderNames[profile.id] = profile.displayName
+        for request in requests {
+            if let name = request.fromUserName, !name.isEmpty {
+                senderNames[request.fromUserId] = name
             }
         }
+        resolve(
+            ids: requests.map(\.fromUserId).filter { senderNames[$0] == nil },
+            into: \.senderNames
+        )
     }
 
     private func resolveRecipientNames(for requests: [FriendRequest]) {
-        let unresolvedIds = requests
-            .map { $0.toUserId }
-            .filter { recipientNames[$0] == nil }
-        guard !unresolvedIds.isEmpty else { return }
+        for request in requests {
+            if let name = request.toUserName, !name.isEmpty {
+                recipientNames[request.toUserId] = name
+            }
+        }
+        resolve(
+            ids: requests.map(\.toUserId).filter { recipientNames[$0] == nil },
+            into: \.recipientNames
+        )
+    }
+
+    private func resolve(
+        ids: [String],
+        into keyPath: ReferenceWritableKeyPath<FriendsViewModel, [String: String]>
+    ) {
+        guard !ids.isEmpty else { return }
         Task {
-            guard let profiles = try? await friendService.fetchProfiles(ids: unresolvedIds) else { return }
-            for profile in profiles {
-                recipientNames[profile.id] = profile.displayName
+            guard let profiles = try? await friendService.fetchProfiles(ids: ids) else { return }
+            for profile in profiles where !profile.displayName.isEmpty {
+                self[keyPath: keyPath][profile.id] = profile.displayName
             }
         }
     }

@@ -25,6 +25,11 @@ struct batsignalApp: App {
                 } else if authService.needsProfileSetup {
                     ProfileSetupView()
                         .environmentObject(authService)
+                } else if authService.currentUser?.acceptedTermsAt == nil {
+                    // Sits after profile setup so there's a document to record
+                    // the acceptance on, and before Root so nothing can be
+                    // posted or read until the rules have been agreed to.
+                    CommunityRulesView()
                 } else {
                     RootView()
                         .environmentObject(authService)

@@ -16,6 +16,10 @@ exports.Strings = {
         commentTitle: (commenterName) => `${commenterName} commented`,
         commentBody: (text) => text,
     },
+    moderation: {
+        reportTitle: "New content report",
+        reportBody: (targetType, reason) => `${targetType} reported — ${reason}`,
+    },
     friends: {
         requestTitle: "New friend request",
         requestBody: (fromName) => `${fromName} wants to bool`,

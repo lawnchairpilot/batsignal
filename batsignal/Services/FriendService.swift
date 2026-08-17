@@ -23,7 +23,7 @@ class FriendService: ObservableObject {
 
     // MARK: - Friend requests
 
-    func sendFriendRequest(toUserId: String) async throws {
+    func sendFriendRequest(toUserId: String, toUserName: String?) async throws {
         guard let fromUserId = Auth.auth().currentUser?.uid else { return }
 
         // Check for an existing pending request in either direction
@@ -37,6 +37,8 @@ class FriendService: ObservableObject {
         let request = FriendRequest(
             fromUserId: fromUserId,
             toUserId: toUserId,
+            fromUserName: AuthService.shared.currentUser?.displayName,
+            toUserName: toUserName,
             status: .pending,
             createdAt: .init()
         )

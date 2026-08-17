@@ -180,6 +180,10 @@ struct ProfileView: View {
                         }
                     }
                     .profileCard()
+                    .moderationMenu(
+                        report: friend.id.map { ReportTarget.user($0) },
+                        block: friend.id.map { BlockTarget(userId: $0, displayName: friend.displayName) }
+                    )
                 }
             }
         }
