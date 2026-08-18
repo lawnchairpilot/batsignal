@@ -2,7 +2,7 @@ import Foundation
 
 enum Strings {
     enum Common {
-        static let appName = "Bool Signal"
+        static let appName = "Blipper"
         static let cancel = "Cancel"
         static let save = "Save"
         static let done = "Done"

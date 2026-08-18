@@ -9,7 +9,7 @@ struct JoinedAvatarStack: View {
     let users: [PublicProfile]
     // Matches whatever card the faces sit on, since the ring between them is
     // the card showing through rather than a color of its own.
-    var background: Color = Color(.secondarySystemBackground)
+    var background: Color = Blipper.surface
 
     private let maxVisible = 5
     private let size: CGFloat = 26
@@ -22,10 +22,10 @@ struct JoinedAvatarStack: View {
             }
             if users.count > maxVisible {
                 Text("+\(users.count - maxVisible)")
-                    .font(.caption2.bold())
-                    .foregroundStyle(.white)
+                    .font(.blipperUI(.caption2, weight: 600))
+                    .foregroundStyle(Blipper.textPrimary)
                     .frame(width: size, height: size)
-                    .background(Color(.systemGray3))
+                    .background(Blipper.surfaceRaised)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(background, lineWidth: 2))
             }
@@ -48,8 +48,8 @@ struct JoinedBoolersRow: View {
                     VStack(spacing: 4) {
                         EventIconView(photoURL: user.profilePhotoURL, label: user.initials, size: 44)
                         Text(user.displayName)
-                            .font(.caption2)
-                            .foregroundColor(.primary)
+                            .font(.blipperUI(.caption2))
+                            .foregroundColor(Blipper.textPrimary)
                             .lineLimit(1)
                             .frame(width: 52)
                     }

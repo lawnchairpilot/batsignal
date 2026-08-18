@@ -21,8 +21,8 @@ struct CommentsSectionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(Strings.Event.commentsSection, systemImage: "bubble.left")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(.blipperUI(.subheadline))
+                .foregroundColor(Blipper.textMuted)
 
             Divider()
 
@@ -46,8 +46,8 @@ struct CommentsSectionView: View {
                             }
                         }
                     Text("\(newCommentText.count)/\(Comment.characterLimit)")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .font(.blipperUI(.caption2))
+                        .foregroundColor(Blipper.textMuted)
                 }
 
                 Button(action: post) {
@@ -99,14 +99,14 @@ private struct CommentRow: View {
             EventIconView(photoURL: comment.authorPhotoURL, label: initials, size: 32)
             VStack(alignment: .leading, spacing: 2) {
                 Text(comment.authorName)
-                    .font(.caption.bold())
+                    .font(.blipperUI(.caption1, weight: 600))
                 Text(comment.text)
-                    .font(.subheadline)
+                    .font(.blipperUI(.subheadline))
             }
             Spacer(minLength: 0)
             Text(comment.createdAt.dateValue(), style: .time)
-                .font(.caption2)
-                .foregroundColor(.secondary)
+                .font(.blipperUI(.caption2))
+                .foregroundColor(Blipper.textMuted)
         }
         .moderationMenu(
             report: isMine ? nil : ReportTarget.comment(comment, eventId: eventId),

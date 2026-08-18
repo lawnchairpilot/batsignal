@@ -19,7 +19,7 @@ struct BlockedUsersView: View {
                     .listRowBackground(Color.clear)
             } else if profiles.isEmpty {
                 Text(Strings.Moderation.noBlockedUsers)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Blipper.textMuted)
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
             } else {
@@ -32,22 +32,23 @@ struct BlockedUsersView: View {
                                 size: 36
                             )
                             Text(profile.displayName)
-                                .font(.subheadline).bold()
+                                .font(.blipperUI(.subheadline, weight: 600))
                             Spacer()
                             Button(Strings.Moderation.unblock) {
                                 pendingUnblock = profile
                             }
-                            .font(.subheadline)
+                            .font(.blipperUI(.subheadline))
                             .buttonStyle(.bordered)
                         }
                         .profileCard()
                     }
                 } footer: {
                     Text(Strings.Moderation.blockedSectionFooter)
-                        .font(.caption)
+                        .font(.blipperUI(.caption1))
                 }
             }
         }
+        .blipperBackground()
         .navigationTitle(Strings.Moderation.blockedUsersTitle)
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }

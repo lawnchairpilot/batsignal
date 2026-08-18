@@ -26,10 +26,10 @@ struct ProfileView: View {
                     )
                     VStack(spacing: 4) {
                         Text(authService.currentUser?.displayName ?? "")
-                            .font(.title3).bold()
+                            .font(.blipperUI(.title3, weight: 600))
                         Text(authService.currentUser?.phoneNumber ?? "")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .font(.blipperUI(.subheadline))
+                            .foregroundColor(Blipper.textMuted)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -65,13 +65,13 @@ struct ProfileView: View {
                         ForEach(friendsViewModel.outgoingRequests) { request in
                             HStack {
                                 Image(systemName: "clock")
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(Blipper.textMuted)
                                 Text(friendsViewModel.recipientNames[request.toUserId] ?? Strings.Friends.pendingEllipsis)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(Blipper.textMuted)
                                 Spacer()
                                 Text(Strings.Friends.requestSent)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .font(.blipperUI(.caption1))
+                                    .foregroundColor(Blipper.textMuted)
                             }
                             .profileCard()
                         }
@@ -86,6 +86,7 @@ struct ProfileView: View {
         // Grouped lists reserve room between sections for headers that most of
         // these no longer have, which left gaps where the labels used to be.
         .listSectionSpacing(.compact)
+        .blipperBackground()
         .navigationTitle(Strings.Profile.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -135,7 +136,7 @@ struct ProfileView: View {
 
                 Button(action: { addTapped() }) {
                     Image(systemName: selectedTab == .friends ? "person.badge.plus" : "plus")
-                        .font(.body)
+                        .font(.blipperUI(.body))
                 }
                 .buttonStyle(.borderless)
             }
@@ -158,7 +159,7 @@ struct ProfileView: View {
                     .listRowBackground(Color.clear)
             } else if friendsViewModel.friends.isEmpty {
                 Text(Strings.Friends.noFriendsYet)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Blipper.textMuted)
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
             } else {
@@ -171,11 +172,11 @@ struct ProfileView: View {
                         )
                         VStack(alignment: .leading, spacing: 2) {
                             Text(friend.displayName)
-                                .font(.subheadline).bold()
+                                .font(.blipperUI(.subheadline, weight: 600))
                             if !friend.phoneNumber.isEmpty {
                                 Text(friend.phoneNumber)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .font(.blipperUI(.caption1))
+                                    .foregroundColor(Blipper.textMuted)
                             }
                         }
                     }
@@ -193,7 +194,7 @@ struct ProfileView: View {
         Section {
             if groupsViewModel.groups.isEmpty {
                 Text(Strings.Groups.noGroupsYet)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Blipper.textMuted)
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
             } else {
@@ -205,15 +206,15 @@ struct ProfileView: View {
                             } else {
                                 Image(systemName: "person.2.fill")
                                     .font(.title2)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(Blipper.textMuted)
                             }
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(group.name)
-                                    .font(.subheadline).bold()
-                                    .foregroundColor(.primary)
+                                    .font(.blipperUI(.subheadline, weight: 600))
+                                    .foregroundColor(Blipper.textPrimary)
                                 Text(Strings.Groups.memberCount(group.memberIds.count))
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .font(.blipperUI(.caption1))
+                                    .foregroundColor(Blipper.textMuted)
                             }
                         }
                         .cardSurface()
@@ -245,10 +246,10 @@ private struct IncomingRequestRow: View {
                 .foregroundColor(.accentColor)
             VStack(alignment: .leading, spacing: 2) {
                 Text(senderName ?? Strings.Friends.someone)
-                    .font(.subheadline).bold()
+                    .font(.blipperUI(.subheadline, weight: 600))
                 Text(Strings.Friends.wantsToBeFriends)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.blipperUI(.caption1))
+                    .foregroundColor(Blipper.textMuted)
             }
             Spacer()
             Button(Strings.Friends.accept) { onRespond(true) }

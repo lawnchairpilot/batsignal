@@ -77,7 +77,7 @@ struct HomeView: View {
     private var header: some View {
         HStack(spacing: 8) {
             Text(Strings.Common.appName)
-                .font(.title2.bold())
+                .font(.blipperDisplay(.title2, weight: 800))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(.thinMaterial, in: Capsule())
@@ -380,11 +380,11 @@ private struct CreateEventPromptCard: View {
                 Image(systemName: "plus.circle.fill")
                     .font(.headline)
                     .foregroundColor(.accentColor)
-                FadingHeadline(text: Strings.Home.createSignalTitle, background: Color(.secondarySystemBackground))
+                FadingHeadline(text: Strings.Home.createSignalTitle, background: Blipper.surface)
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemBackground))
+            .background(Blipper.surface)
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)

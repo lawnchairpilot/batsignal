@@ -13,7 +13,7 @@ struct ProfileSetupView: View {
                     .font(.system(size: 64))
                     .foregroundColor(.accentColor)
                 Text(Strings.Common.appName)
-                    .font(.largeTitle).bold()
+                    .font(.blipperDisplay(.largeTitle, weight: 800))
             }
             .padding(.top, 60)
             .padding(.bottom, 48)
@@ -21,28 +21,28 @@ struct ProfileSetupView: View {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(Strings.Auth.setUpProfileHeadline)
-                        .font(.title2).bold()
+                        .font(.blipperUI(.title2, weight: 600))
                     Text(Strings.Auth.setUpProfileSubtitle)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(.blipperUI(.subheadline))
+                        .foregroundColor(Blipper.textMuted)
                 }
 
                 TextField(Strings.Auth.displayNamePlaceholder, text: $displayName)
                     .textContentType(.name)
                     .padding()
-                    .background(Color(.secondarySystemBackground))
+                    .background(Blipper.surface)
                     .cornerRadius(12)
 
                 if let error = errorMessage {
                     Text(error)
-                        .foregroundColor(.red)
-                        .font(.caption)
+                        .foregroundColor(Blipper.roseBright)
+                        .font(.blipperUI(.caption1))
                 }
 
                 Button(action: { Task { await createProfile() } }) {
                     Group {
                         if isLoading {
-                            ProgressView().tint(.white)
+                            ProgressView().tint(Blipper.onMoonlight)
                         } else {
                             Text(Strings.Auth.continueLabel).fontWeight(.semibold)
                         }
@@ -50,7 +50,7 @@ struct ProfileSetupView: View {
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Color.accentColor)
-                    .foregroundColor(.white)
+                    .foregroundColor(Blipper.onMoonlight)
                     .cornerRadius(12)
                 }
                 .disabled(displayName.trimmingCharacters(in: .whitespaces).isEmpty || isLoading)
@@ -59,6 +59,7 @@ struct ProfileSetupView: View {
             Spacer()
         }
         .padding(.horizontal, 24)
+        .blipperBackground()
     }
 
     private func createProfile() async {

@@ -26,9 +26,11 @@ struct RadiusSettingView: View {
                         }
                     }
                 }
-                .foregroundColor(.primary)
+                .foregroundColor(Blipper.textPrimary)
             }
+            .blipperRows()
         }
+        .blipperBackground()
         .navigationTitle(Strings.Profile.radiusTitle)
         .onAppear {
             selectedRadius = authService.currentUser?.maxEventRadius

@@ -49,7 +49,7 @@ struct SettingsView: View {
                             if isUploadingPhoto {
                                 ZStack {
                                     Circle().fill(.black.opacity(0.4))
-                                    ProgressView().tint(.white)
+                                    ProgressView().tint(Blipper.moonlight)
                                 }
                             }
                         }
@@ -57,8 +57,8 @@ struct SettingsView: View {
                         PhotosPicker(selection: $selectedItem, matching: .images) {
                             Image(systemName: "camera.circle.fill")
                                 .font(.largeTitle)
-                                .foregroundStyle(.white, Color.accentColor)
-                                .background(Color(.systemBackground))
+                                .foregroundStyle(Blipper.onMoonlight, Color.accentColor)
+                                .background(Blipper.duskNavy)
                                 .clipShape(Circle())
                         }
                         .disabled(isUploadingPhoto)
@@ -83,11 +83,11 @@ struct SettingsView: View {
                 } label: {
                     HStack {
                         Text(Strings.Profile.eventRadiusFilter)
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(Blipper.textPrimary)
                         Spacer()
                         Image(systemName: "chevron.right")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.tertiary)
+                            .font(.blipperUI(.footnote, weight: 600))
+                            .foregroundStyle(Blipper.textMuted.opacity(0.6))
                     }
                     .cardSurface()
                 }
@@ -99,11 +99,11 @@ struct SettingsView: View {
                 } label: {
                     HStack {
                         Text(Strings.Moderation.blockedUsersTitle)
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(Blipper.textPrimary)
                         Spacer()
                         Image(systemName: "chevron.right")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.tertiary)
+                            .font(.blipperUI(.footnote, weight: 600))
+                            .foregroundStyle(Blipper.textMuted.opacity(0.6))
                     }
                     .cardSurface()
                 }
@@ -117,16 +117,16 @@ struct SettingsView: View {
             Section {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(Strings.Profile.locationSharingTitle)
-                        .font(.subheadline.bold())
+                        .font(.blipperUI(.subheadline, weight: 600))
                     Text(Strings.Profile.locationSharingExplainer)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.blipperUI(.caption1))
+                        .foregroundColor(Blipper.textMuted)
                         .fixedSize(horizontal: false, vertical: true)
                     Button(Strings.Home.openSettings) {
                         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
                         UIApplication.shared.open(url)
                     }
-                    .font(.caption.bold())
+                    .font(.blipperUI(.caption1, weight: 600))
                     .buttonStyle(.plain)
                     .foregroundColor(.accentColor)
                 }
@@ -136,8 +136,8 @@ struct SettingsView: View {
             if let error = errorMessage {
                 Section {
                     Text(error)
-                        .foregroundColor(.red)
-                        .font(.caption)
+                        .foregroundColor(Blipper.roseBright)
+                        .font(.blipperUI(.caption1))
                         .profileCard()
                 }
             }
@@ -186,6 +186,7 @@ struct SettingsView: View {
         // The cards carry their own spacing, so the gaps a grouped list leaves
         // for section headers would read as holes between them.
         .listSectionSpacing(.compact)
+        .blipperBackground()
         .navigationTitle(Strings.Profile.settingsTitle)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -221,12 +222,12 @@ struct SettingsView: View {
     private var nameField: some View {
         HStack(spacing: 6) {
             Image(systemName: "pencil")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(.blipperUI(.subheadline))
+                .foregroundStyle(Blipper.textMuted)
                 .frame(width: pencilWidth)
 
             TextField(Strings.Profile.displayNamePlaceholder, text: $displayName)
-                .font(.title2).bold()
+                .font(.blipperUI(.title2, weight: 600))
                 .multilineTextAlignment(.center)
                 .lineLimit(1)
                 .fixedSize()

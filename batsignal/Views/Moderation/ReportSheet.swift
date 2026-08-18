@@ -22,6 +22,7 @@ struct ReportSheet: View {
                     form
                 }
             }
+            .blipperBackground()
             .navigationTitle(target.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -40,7 +41,7 @@ struct ReportSheet: View {
                         reason = option
                     } label: {
                         HStack {
-                            Text(option.label).foregroundStyle(.primary)
+                            Text(option.label).foregroundStyle(Blipper.textPrimary)
                             Spacer()
                             if reason == option {
                                 Image(systemName: "checkmark")
@@ -50,6 +51,7 @@ struct ReportSheet: View {
                     }
                 }
             }
+            .blipperRows()
 
             Section {
                 TextField(Strings.Moderation.reportNotePlaceholder, text: $note, axis: .vertical)
@@ -60,11 +62,13 @@ struct ReportSheet: View {
                         }
                     }
             }
+            .blipperRows()
 
             if let errorMessage {
                 Section {
-                    Text(errorMessage).font(.caption).foregroundColor(.red)
+                    Text(errorMessage).font(.blipperUI(.caption1)).foregroundColor(Blipper.roseBright)
                 }
+                .blipperRows()
             }
 
             Section {
@@ -77,6 +81,7 @@ struct ReportSheet: View {
                 }
                 .disabled(reason == nil || isSubmitting)
             }
+            .blipperRows()
         }
     }
 
@@ -86,10 +91,10 @@ struct ReportSheet: View {
                 .font(.system(size: 44))
                 .foregroundStyle(Color.accentColor)
             Text(Strings.Moderation.reportThanksTitle)
-                .font(.headline)
+                .font(.blipperUI(.headline, weight: 600))
             Text(Strings.Moderation.reportThanksMessage)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(.blipperUI(.subheadline))
+                .foregroundColor(Blipper.textMuted)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }

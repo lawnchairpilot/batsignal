@@ -17,11 +17,11 @@ struct CommunityRulesView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     Text(Strings.Moderation.termsTitle)
-                        .font(.title2.bold())
+                        .font(.blipperUI(.title2, weight: 600))
 
                     Text(Strings.Moderation.termsBody)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(.blipperUI(.subheadline))
+                        .foregroundColor(Blipper.textMuted)
                         .fixedSize(horizontal: false, vertical: true)
 
                     // TODO: point these at the hosted documents once they're
@@ -32,8 +32,8 @@ struct CommunityRulesView: View {
                         Text("&")
                         Link(Strings.Moderation.termsLinkPrivacy, destination: Self.privacyURL)
                     }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.blipperUI(.caption1))
+                    .foregroundColor(Blipper.textMuted)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(24)
@@ -41,15 +41,15 @@ struct CommunityRulesView: View {
 
             if let errorMessage {
                 Text(errorMessage)
-                    .font(.caption)
-                    .foregroundColor(.red)
+                    .font(.blipperUI(.caption1))
+                    .foregroundColor(Blipper.roseBright)
                     .padding(.horizontal, 24)
             }
 
             Button(action: accept) {
                 HStack {
                     Spacer()
-                    Text(Strings.Moderation.termsAgree).bold()
+                    Text(Strings.Moderation.termsAgree).font(.blipperUI(.body, weight: 600))
                     Spacer()
                 }
                 .padding(.vertical, 14)
@@ -58,6 +58,7 @@ struct CommunityRulesView: View {
             .disabled(isSaving)
             .padding(24)
         }
+        .blipperBackground()
     }
 
     static let termsURL = URL(string: "https://boolsignal.app/terms")!

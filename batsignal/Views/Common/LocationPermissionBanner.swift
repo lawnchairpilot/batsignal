@@ -30,17 +30,17 @@ struct LocationPermissionBanner: View {
         if let warning {
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: "location.slash.fill")
-                    .font(.caption)
+                    .font(.blipperUI(.caption1))
                     .foregroundColor(.accentColor)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(warning)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.blipperUI(.caption1))
+                        .foregroundColor(Blipper.textMuted)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Button(Strings.Home.openSettings, action: openSettings)
-                        .font(.caption.bold())
+                        .font(.blipperUI(.caption1, weight: 600))
                         .buttonStyle(.plain)
                         .foregroundColor(.accentColor)
                 }

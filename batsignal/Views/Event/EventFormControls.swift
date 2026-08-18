@@ -56,7 +56,7 @@ struct EventSymbolHeader: View {
 
     private func previewCircle(size: CGFloat) -> some View {
         ZStack {
-            Circle().fill(Color.accentColor)
+            Circle().fill(Blipper.swellBlue)
 
             if let selectedImage {
                 Image(uiImage: selectedImage)
@@ -79,13 +79,15 @@ struct EventSymbolHeader: View {
         }
         .frame(width: size, height: size)
         .clipShape(Circle())
-        .overlay(Circle().stroke(Color(.separator), lineWidth: 1))
+        // This is the event's own icon being composed, so it takes the same
+        // amber ring the finished icon wears rather than a neutral hairline.
+        .overlay(Circle().strokeBorder(Blipper.amber, lineWidth: 2))
     }
 
     private func fallbackIcon(size: CGFloat) -> some View {
         Image(systemName: "antenna.radiowaves.left.and.right")
             .font(.system(size: size * 0.3))
-            .foregroundColor(.white.opacity(0.8))
+            .foregroundColor(Blipper.textPrimary.opacity(0.8))
     }
 
     private var imageThumbnail: some View {
@@ -93,7 +95,7 @@ struct EventSymbolHeader: View {
             .font(.title3)
             .foregroundColor(.accentColor)
             .frame(width: buttonSize, height: buttonSize)
-            .background(Color(.secondarySystemBackground))
+            .background(Blipper.surface)
             .clipShape(Circle())
     }
 
@@ -128,7 +130,7 @@ struct EventSymbolHeader: View {
                 .font(.title3)
                 .foregroundColor(.accentColor)
                 .frame(width: buttonSize, height: buttonSize)
-                .background(Color(.secondarySystemBackground))
+                .background(Blipper.surface)
                 .clipShape(Circle())
         }
         .buttonStyle(.plain)
@@ -203,18 +205,18 @@ struct EventLocationField: View {
                 Button(action: { showLocationPicker = true }) {
                     HStack {
                         Image(systemName: "mappin.circle")
-                            .foregroundColor(showError ? .red : .accentColor)
+                            .foregroundColor(showError ? Blipper.roseBright : Color.accentColor)
                         if locationLabel.isEmpty {
                             Text(Strings.Event.pickLocationOnMap)
-                                .foregroundColor(showError ? .red : .secondary)
+                                .foregroundColor(showError ? Blipper.roseBright : Blipper.textMuted)
                         } else {
                             Text(locationLabel)
-                                .foregroundColor(.primary)
+                                .foregroundColor(Blipper.textPrimary)
                         }
                         Spacer()
                         Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(.blipperUI(.caption1))
+                            .foregroundColor(Blipper.textMuted)
                     }
                 }
             }

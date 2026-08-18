@@ -21,8 +21,8 @@ struct EmojiPickerView: View {
                     ForEach(categories, id: \.name) { category in
                         VStack(alignment: .leading, spacing: 10) {
                             Text(category.name)
-                                .font(.subheadline.bold())
-                                .foregroundColor(.secondary)
+                                .font(.blipperUI(.subheadline, weight: 600))
+                                .foregroundColor(Blipper.textMuted)
                                 .padding(.horizontal)
 
                             LazyVGrid(columns: columns, spacing: 4) {
@@ -48,6 +48,7 @@ struct EmojiPickerView: View {
                 }
                 .padding(.vertical)
             }
+            .blipperBackground()
             .navigationTitle(Strings.Event.chooseEmojiTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -60,7 +61,7 @@ struct EmojiPickerView: View {
                             selectedEmoji = nil
                             dismiss()
                         }
-                        .foregroundColor(.red)
+                        .foregroundColor(Blipper.roseBright)
                     }
                 }
             }

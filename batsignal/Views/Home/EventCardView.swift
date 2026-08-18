@@ -31,10 +31,10 @@ struct FadingHeadline: View {
     var body: some View {
         ViewThatFits(in: .horizontal) {
             Text(text)
-                .font(.headline)
+                .font(.blipperUI(.headline, weight: 600))
                 .fixedSize(horizontal: true, vertical: false)
             Text(text)
-                .font(.headline)
+                .font(.blipperUI(.headline, weight: 600))
                 .lineLimit(1)
                 .fadingTrailingEdge(background: background)
         }
@@ -92,7 +92,7 @@ struct EventCardView: View {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         Rectangle()
-                            .fill(Color.primary.opacity(0.08))
+                            .fill(Blipper.track)
                         Rectangle()
                             .fill(remainingColor(remaining))
                             .frame(width: geometry.size.width * remaining)
@@ -104,11 +104,10 @@ struct EventCardView: View {
             VStack(alignment: .leading, spacing: 8) {
                 if let name = creatorName {
                     Text(name)
-                        .font(.caption)
+                        .font(.blipperUI(.caption1, weight: 600))
                         .foregroundColor(.accentColor)
-                        .bold()
                 }
-                FadingHeadline(text: event.activity, background: Color(.secondarySystemBackground))
+                FadingHeadline(text: event.activity, background: Blipper.surface)
 
                 if !event.isActive {
                     HStack(spacing: 4) {
@@ -118,14 +117,14 @@ struct EventCardView: View {
                             Text(Strings.Home.durationSuffix(event.durationLabel))
                         }
                     }
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(.blipperUI(.subheadline))
+                    .foregroundColor(Blipper.textMuted)
                 }
             }
             .padding()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemBackground))
+        .background(Blipper.surface)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -142,8 +141,8 @@ struct EventCardView: View {
     // Takes time remaining, so the thresholds run the opposite way from a
     // fill-up bar: the less that's left, the more urgent the color.
     private func remainingColor(_ remaining: Double) -> Color {
-        if remaining < 0.25 { return .red }
-        if remaining < 0.5 { return .orange }
+        if remaining < 0.25 { return Blipper.roseBright }
+        if remaining < 0.5 { return Blipper.rose }
         return .accentColor
     }
 
@@ -184,8 +183,19 @@ struct EventIconView: View {
             }
         }
         .frame(width: size, height: size)
-        .background(Color.accentColor)
+        .background(Blipper.swellBlue)
         .clipShape(Circle())
+        // Amber lives here and nowhere else in the chrome, so the ring is what
+        // marks something out as a signal. strokeBorder rather than stroke so
+        // it sits fully inside the circle and leaves the boundary free for the
+        // separator ring the avatar stack draws over the top of it.
+        .overlay(Circle().strokeBorder(Blipper.amber, lineWidth: ringWidth))
+    }
+
+    // Scaled off the icon so a 26pt avatar isn't ringed like a 140pt one, but
+    // capped at both ends: any thinner disappears, any thicker eats the photo.
+    private var ringWidth: CGFloat {
+        min(max(size * 0.05, 1.5), 3)
     }
 
     @ViewBuilder
@@ -195,11 +205,11 @@ struct EventIconView: View {
                 .font(isEmoji
                     ? .system(size: size * 0.45)
                     : .system(size: size * 0.3, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(Blipper.textPrimary)
         } else {
             Image(systemName: "person.fill")
                 .font(.system(size: size * 0.4))
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(Blipper.textPrimary.opacity(0.8))
         }
     }
 }

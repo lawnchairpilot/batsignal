@@ -76,7 +76,7 @@ struct LocationPickerView: View {
             Map(position: $position, selection: $selectedFeature) {
                 if let coord = droppedPin {
                     Marker(droppedPinName.isEmpty ? Strings.Event.droppedPin : droppedPinName, coordinate: coord)
-                        .tint(.red)
+                        .tint(Blipper.roseBright)
                 }
                 UserAnnotation()
             }
@@ -113,7 +113,7 @@ struct LocationPickerView: View {
 
     private var searchBar: some View {
         HStack {
-            Image(systemName: "magnifyingglass").foregroundColor(.secondary)
+            Image(systemName: "magnifyingglass").foregroundColor(Blipper.textMuted)
             TextField(Strings.Event.searchPlaceholder, text: $searchModel.searchText)
                 .autocorrectionDisabled()
                 .onSubmit { searchModel.search(near: centerCoordinate) }
@@ -122,7 +122,7 @@ struct LocationPickerView: View {
                     searchModel.searchText = ""
                     searchModel.results = []
                 }) {
-                    Image(systemName: "xmark.circle.fill").foregroundColor(.secondary)
+                    Image(systemName: "xmark.circle.fill").foregroundColor(Blipper.textMuted)
                 }
             }
         }
@@ -137,7 +137,7 @@ struct LocationPickerView: View {
         Button(action: useCurrentLocation) {
             Image(systemName: "location.circle.fill")
                 .font(.system(size: 32))
-                .foregroundColor(.white)
+                .foregroundColor(Blipper.onMoonlight)
                 .padding(10)
                 .background(Color.accentColor)
                 .clipShape(Circle())
@@ -147,7 +147,7 @@ struct LocationPickerView: View {
 
     private var nameField: some View {
         HStack {
-            Image(systemName: "pencil").foregroundColor(.secondary)
+            Image(systemName: "pencil").foregroundColor(Blipper.textMuted)
             TextField(Strings.Event.nameLocationPlaceholder, text: $droppedPinName)
                 .autocorrectionDisabled()
         }
@@ -179,12 +179,12 @@ struct LocationPickerView: View {
         return Button(action: { selectSearchResult(item) }) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(name)
-                    .font(.subheadline).bold()
-                    .foregroundColor(.primary)
+                    .font(.blipperUI(.subheadline, weight: 600))
+                    .foregroundColor(Blipper.textPrimary)
                 if let subtitle {
                     Text(subtitle)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.blipperUI(.caption1))
+                        .foregroundColor(Blipper.textMuted)
                 }
             }
             .padding(.horizontal, 16)

@@ -74,7 +74,7 @@ struct ExpandedEventCardView: View {
         cardContent
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemBackground))
+            .background(Blipper.surface)
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
@@ -172,8 +172,8 @@ struct ExpandedEventCardView: View {
 
             if let desc = displayEvent.description, !desc.isEmpty {
                 Text(desc)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(.blipperUI(.subheadline))
+                    .foregroundColor(Blipper.textMuted)
             }
 
             timeBlock
@@ -197,19 +197,18 @@ struct ExpandedEventCardView: View {
             VStack(alignment: .leading, spacing: 2) {
                 if let creatorName {
                     Text(creatorName)
-                        .font(.caption)
+                        .font(.blipperUI(.caption1, weight: 600))
                         .foregroundColor(.accentColor)
-                        .bold()
                 }
                 Text(displayEvent.activity)
-                    .font(.headline)
+                    .font(.blipperUI(.headline, weight: 600))
             }
 
             Spacer(minLength: 8)
 
             if !displayEvent.isActive, let eta = displayEvent.startsInLabel {
                 Text(eta)
-                    .font(.caption.bold())
+                    .font(.blipperUI(.caption1, weight: 600))
                     .foregroundColor(.accentColor)
             }
 
@@ -267,14 +266,14 @@ struct ExpandedEventCardView: View {
                         .tint(remainingColor(remaining))
                     if let label = displayEvent.timeRemainingLabel {
                         Text(label)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(.blipperUI(.caption1))
+                            .foregroundColor(Blipper.textMuted)
                     }
                 }
             } else if let label = displayEvent.durationVagueLabel {
                 Label(label, systemImage: "clock")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.blipperUI(.caption1))
+                    .foregroundColor(Blipper.textMuted)
             }
         } else {
             HStack(spacing: 4) {
@@ -284,8 +283,8 @@ struct ExpandedEventCardView: View {
                     Text(Strings.Home.durationSuffix(displayEvent.durationLabel))
                 }
             }
-            .font(.subheadline)
-            .foregroundColor(.secondary)
+            .font(.blipperUI(.subheadline))
+            .foregroundColor(Blipper.textMuted)
         }
     }
 
@@ -295,8 +294,8 @@ struct ExpandedEventCardView: View {
             HStack(spacing: 8) {
                 if let label = locationText {
                     Label(label, systemImage: locationIcon)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(.blipperUI(.subheadline))
+                        .foregroundColor(Blipper.textMuted)
                         .lineLimit(1)
                 }
 
@@ -307,7 +306,7 @@ struct ExpandedEventCardView: View {
                 if eventCoordinate != nil {
                     Button(action: openInMaps) {
                         Label(Strings.Event.openInMaps, systemImage: "map.fill")
-                            .font(.caption.bold())
+                            .font(.blipperUI(.caption1, weight: 600))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
                             .background(Color.accentColor.opacity(0.15))
@@ -345,11 +344,11 @@ struct ExpandedEventCardView: View {
                 Image(systemName: isJoined ? "checkmark.circle.fill" : "person.badge.plus")
                 Text(isJoined ? Strings.Event.joined : Strings.Event.join)
             }
-            .font(.subheadline.bold())
+            .font(.blipperUI(.subheadline, weight: 600))
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(isJoined ? Color.accentColor.opacity(0.15) : Color.accentColor)
-            .foregroundColor(isJoined ? .accentColor : .white)
+            .foregroundColor(isJoined ? Color.accentColor : Blipper.onMoonlight)
             .cornerRadius(20)
         }
         .buttonStyle(.plain)
@@ -430,8 +429,8 @@ struct ExpandedEventCardView: View {
     // Takes time remaining, so the thresholds run the opposite way from a
     // fill-up bar: the less that's left, the more urgent the color.
     private func remainingColor(_ remaining: Double) -> Color {
-        if remaining < 0.25 { return .red }
-        if remaining < 0.5 { return .orange }
+        if remaining < 0.25 { return Blipper.roseBright }
+        if remaining < 0.5 { return Blipper.rose }
         return .accentColor
     }
 
@@ -483,16 +482,18 @@ struct LiveBadge: View {
     var body: some View {
         HStack(spacing: 4) {
             Circle()
-                .fill(.white)
+                .fill(Blipper.onRoseLight)
                 .frame(width: 7, height: 7)
                 .opacity(opacity)
             Text(Strings.Event.live)
-                .font(.caption2.bold())
-                .foregroundStyle(.white)
+                .font(.blipperUI(.caption2, weight: 600))
+                .foregroundStyle(Blipper.onRoseLight)
         }
         .padding(.horizontal, 7)
         .padding(.vertical, 4)
-        .background(.red)
+        // Rose rather than amber: live is a status, and status is the one thing
+        // the rose accent is reserved for.
+        .background(Blipper.rose)
         .clipShape(Capsule())
         .task {
             while !Task.isCancelled {
@@ -521,12 +522,16 @@ struct EventAnnotationView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // The ring is EventIconView's own amber border now — a second ring
+            // here would only double it. The shadow is what holds the pin off
+            // the map behind it.
             EventIconView(photoURL: photoURL, label: label, size: size)
-                .overlay(Circle().stroke(Color.white, lineWidth: max(2, size * 0.02)))
                 .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 2)
+            // The tail is the pin's body, not its outline, so it takes the same
+            // swell blue the icon is filled with.
             Image(systemName: "triangle.fill")
                 .font(.system(size: tailSize))
-                .foregroundColor(.accentColor)
+                .foregroundColor(Blipper.swellBlue)
                 .rotationEffect(.degrees(180))
                 .offset(y: -tailSize / 3)
         }
@@ -649,7 +654,7 @@ struct FullMapView: View {
                     Spacer()
                     Button(action: openInMaps) {
                         Label(Strings.Event.openInMaps, systemImage: "map.fill")
-                            .font(.body.bold())
+                            .font(.blipperUI(.body, weight: 600))
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(.regularMaterial)

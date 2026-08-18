@@ -48,7 +48,7 @@ struct CreateEventView: View {
                                 }
                             }
                         Rectangle()
-                            .fill(Color(.separator))
+                            .fill(Blipper.hairline)
                             .frame(maxWidth: .infinity)
                             .frame(height: 1)
                     }
@@ -66,7 +66,7 @@ struct CreateEventView: View {
 
                 if let error = viewModel.errorMessage {
                     Section {
-                        Text(error).foregroundColor(.red).font(.caption)
+                        Text(error).foregroundColor(Blipper.roseBright).font(.blipperUI(.caption1))
                             .listRowBackground(Color.clear)
                     }
                 }
@@ -78,6 +78,7 @@ struct CreateEventView: View {
 
             swipeToSendIndicator
         }
+        .blipperBackground()
         .overlay(alignment: .topLeading) {
             cancelButton
                 .padding(.leading, 24)
@@ -90,11 +91,11 @@ struct CreateEventView: View {
         Button(action: { dismiss() }) {
             Image(systemName: "xmark")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundColor(.red)
+                .foregroundColor(Blipper.roseBright)
                 .frame(width: 44, height: 44)
-                .background(Color(.secondarySystemBackground))
+                .background(Blipper.surface)
                 .clipShape(Circle())
-                .overlay(Circle().stroke(Color(.separator), lineWidth: 1))
+                .overlay(Circle().stroke(Blipper.hairline, lineWidth: 1))
                 .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
         }
         .buttonStyle(.plain)
@@ -112,8 +113,8 @@ struct CreateEventView: View {
             }
 
             Text(isDragging && dragProgress >= 1 ? Strings.Event.releaseToSend : Strings.Event.swipeUpToSend)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(.blipperUI(.caption1))
+                .foregroundColor(Blipper.textMuted)
         }
         .opacity(canSubmit ? 1 : 0.35)
         .padding(.vertical, 16)
@@ -266,7 +267,7 @@ private struct AudienceCard: View {
         Button(action: action) {
             VStack(spacing: 6) {
                 ZStack {
-                    Circle().fill(Color(.secondarySystemBackground))
+                    Circle().fill(Blipper.surface)
 
                     if let emoji {
                         Text(emoji).font(.title2)
@@ -279,14 +280,14 @@ private struct AudienceCard: View {
                 .frame(width: circleSize, height: circleSize)
                 .overlay(
                     Circle()
-                        .stroke(isSelected ? Color.accentColor : Color(.separator), lineWidth: isSelected ? 2 : 1)
+                        .stroke(isSelected ? Color.accentColor : Blipper.hairline, lineWidth: isSelected ? 2 : 1)
                 )
                 .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
 
                 Text(title)
-                    .font(.caption)
+                    .font(.blipperUI(.caption1))
                     .fontWeight(.medium)
-                    .foregroundColor(.primary)
+                    .foregroundColor(Blipper.textPrimary)
                     .lineLimit(1)
             }
             .frame(width: 76)

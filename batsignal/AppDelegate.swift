@@ -11,6 +11,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         FirebaseApp.configure()
+        BlipperAppearance.apply()
         UNUserNotificationCenter.current().delegate = self
         Messaging.messaging().delegate = NotificationService.shared
         // Must come after FirebaseApp.configure() so swizzling is active before
