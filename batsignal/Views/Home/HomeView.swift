@@ -78,9 +78,21 @@ struct HomeView: View {
         HStack(spacing: 8) {
             Text(Strings.Common.appName)
                 .font(.blipperDisplay(.title2, weight: 800))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(.thinMaterial, in: Capsule())
+                // The wordmark sits on the map among the signals it names, so
+                // it takes their color rather than the chrome's.
+                .foregroundStyle(Blipper.amber)
+                // Uneven on purpose, and it still totals the 12pt it did when
+                // it was even, so the backdrop is the same size. Manrope's
+                // ascent sits 7.6pt above its cap height while its descent sits
+                // only ~1.4pt below the descenders, so centring the text's line
+                // box — which is what the HStack does — leaves the visible word
+                // about 3pt low. That's what threw it out of line with the LIVE
+                // badge and the profile button, both of which are set in Inter,
+                // whose cap box does centre on its line box. Taking 3pt off the
+                // top and adding it to the bottom puts the glyphs on the
+                // centre line instead.
+                .padding(EdgeInsets(top: 3, leading: 12, bottom: 9, trailing: 12))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
 
             Spacer()
 
@@ -379,7 +391,10 @@ private struct CreateEventPromptCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 Image(systemName: "plus.circle.fill")
                     .font(.headline)
-                    .foregroundColor(.accentColor)
+                    // Amber because this card stands in for the signal you
+                    // don't have yet — it's the one card in the carousel with
+                    // no icon of its own to carry the colour.
+                    .foregroundColor(Blipper.amber)
                 FadingHeadline(text: Strings.Home.createSignalTitle, background: Blipper.surface)
             }
             .padding()

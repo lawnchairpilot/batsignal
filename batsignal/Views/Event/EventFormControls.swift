@@ -56,7 +56,7 @@ struct EventSymbolHeader: View {
 
     private func previewCircle(size: CGFloat) -> some View {
         ZStack {
-            Circle().fill(Blipper.swellBlue)
+            Circle().fill(EventIconStyle.signal.fill)
 
             if let selectedImage {
                 Image(uiImage: selectedImage)
@@ -79,15 +79,17 @@ struct EventSymbolHeader: View {
         }
         .frame(width: size, height: size)
         .clipShape(Circle())
-        // This is the event's own icon being composed, so it takes the same
-        // amber ring the finished icon wears rather than a neutral hairline.
+        // This is the event's own icon being composed, so it wears the signal
+        // style the finished pin does — amber fill, amber ring, and the same
+        // haze — rather than a neutral hairline.
         .overlay(Circle().strokeBorder(Blipper.amber, lineWidth: 2))
+        .blipperGlow(Blipper.amber, radius: size * 0.16)
     }
 
     private func fallbackIcon(size: CGFloat) -> some View {
         Image(systemName: "antenna.radiowaves.left.and.right")
             .font(.system(size: size * 0.3))
-            .foregroundColor(Blipper.textPrimary.opacity(0.8))
+            .foregroundColor(EventIconStyle.signal.content.opacity(0.8))
     }
 
     private var imageThumbnail: some View {

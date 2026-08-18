@@ -17,9 +17,10 @@ enum Blipper {
 
     // MARK: Accents
 
-    /// Reserved for the outline of an event icon, and nothing else. It reads
-    /// as "a signal is here" precisely because it appears nowhere else — the
-    /// interactive chrome uses `moonlight` instead.
+    /// The signal color: an event icon's ring everywhere, its fill on the map
+    /// pin and in the create/edit flow, and a running signal's time remaining.
+    /// It stays out of the interactive chrome — buttons, links and icons use
+    /// `moonlight` — so amber keeps meaning "a signal" rather than "tap here".
     static let amber = Color(hex: 0xE0A83F)
     /// Status/urgency accent, as a fill.
     static let rose = Color(hex: 0x93443A)
@@ -69,18 +70,13 @@ enum Blipper {
     /// The unfilled remainder of a progress track.
     static let track = moonlight.opacity(0.12)
 
-    /// The full-screen dusk gradient, top to bottom: cool navy down through the
-    /// mid-blues into the last warm light on the horizon. Backgrounds only —
-    /// cards and badges sit on flat `duskNavy` instead.
+    /// The full-screen dusk gradient: dark navy sky at the top easing down into
+    /// the mid-blue of the water. Two tones only — the warm stops that used to
+    /// close it out have gone, so nothing on a background competes with the
+    /// rose that signals urgency. Backgrounds only; cards and badges sit on
+    /// flat `duskNavy` instead.
     static let backgroundGradient = LinearGradient(
-        stops: [
-            .init(color: Color(hex: 0x16283A), location: 0.00),
-            .init(color: Color(hex: 0x1C3245), location: 0.35),
-            .init(color: Color(hex: 0x2F4E63), location: 0.62),
-            .init(color: Color(hex: 0x3D5A6B), location: 0.78),
-            .init(color: Color(hex: 0x5C4640), location: 0.92),
-            .init(color: Color(hex: 0x75504A), location: 1.00),
-        ],
+        colors: [duskNavy, swellBlue],
         startPoint: .top,
         endPoint: .bottom
     )

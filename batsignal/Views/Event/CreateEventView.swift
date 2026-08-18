@@ -168,7 +168,10 @@ struct CreateEventView: View {
 
     private func line(for index: Int) -> some View {
         Capsule()
-            .fill(Color.accentColor)
+            // Turns amber the moment there's something to send, so the colour
+            // itself says the signal is ready to go — until then these are
+            // inert chrome and stay moonlight.
+            .fill(canSubmit ? Blipper.amber : Color.accentColor)
             .frame(width: lineWidth(for: index), height: lineThickness(for: index))
     }
 

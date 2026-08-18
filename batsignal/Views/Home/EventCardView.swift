@@ -94,7 +94,7 @@ struct EventCardView: View {
                         Rectangle()
                             .fill(Blipper.track)
                         Rectangle()
-                            .fill(remainingColor(remaining))
+                            .fill(Blipper.amber)
                             .frame(width: geometry.size.width * remaining)
                     }
                 }
@@ -138,14 +138,6 @@ struct EventCardView: View {
         }
     }
 
-    // Takes time remaining, so the thresholds run the opposite way from a
-    // fill-up bar: the less that's left, the more urgent the color.
-    private func remainingColor(_ remaining: Double) -> Color {
-        if remaining < 0.25 { return Blipper.roseBright }
-        if remaining < 0.5 { return Blipper.rose }
-        return .accentColor
-    }
-
     private var startTimeLabel: String {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
@@ -157,11 +149,27 @@ struct EventCardView: View {
     }
 }
 
+// How loudly an icon should announce itself. The two differ only in color, so
+// the fill and whatever sits on top of it stay in step — an amber fill needs
+// dark content on it, a swell blue fill needs light.
+struct EventIconStyle {
+    let fill: Color
+    let content: Color
+
+    /// A person: list avatars, the joined stack, the profile photo. Amber on
+    /// the ring alone, so it doesn't compete with an actual signal.
+    static let avatar = EventIconStyle(fill: Blipper.swellBlue, content: Blipper.textPrimary)
+    /// A signal: the map pin, and the icon being built in the create/edit
+    /// flow. Filled amber so it carries across a map at a glance.
+    static let signal = EventIconStyle(fill: Blipper.amber, content: Blipper.onAmber)
+}
+
 // Reusable circle icon: profile photo → emoji/initials label → person placeholder
 struct EventIconView: View {
     var photoURL: String? = nil
     var label: String? = nil
     var size: CGFloat = 44
+    var style: EventIconStyle = .avatar
 
     private var isEmoji: Bool {
         label?.unicodeScalars.contains { $0.properties.isEmojiPresentation } ?? false
@@ -183,12 +191,12 @@ struct EventIconView: View {
             }
         }
         .frame(width: size, height: size)
-        .background(Blipper.swellBlue)
+        .background(style.fill)
         .clipShape(Circle())
-        // Amber lives here and nowhere else in the chrome, so the ring is what
-        // marks something out as a signal. strokeBorder rather than stroke so
-        // it sits fully inside the circle and leaves the boundary free for the
-        // separator ring the avatar stack draws over the top of it.
+        // strokeBorder rather than stroke so the ring sits fully inside the
+        // circle and leaves the boundary free for the separator ring the avatar
+        // stack draws over the top of it. On the signal style it lands amber on
+        // amber and simply reads as a clean edge.
         .overlay(Circle().strokeBorder(Blipper.amber, lineWidth: ringWidth))
     }
 
@@ -205,11 +213,11 @@ struct EventIconView: View {
                 .font(isEmoji
                     ? .system(size: size * 0.45)
                     : .system(size: size * 0.3, weight: .bold))
-                .foregroundStyle(Blipper.textPrimary)
+                .foregroundStyle(style.content)
         } else {
             Image(systemName: "person.fill")
                 .font(.system(size: size * 0.4))
-                .foregroundStyle(Blipper.textPrimary.opacity(0.8))
+                .foregroundStyle(style.content.opacity(0.8))
         }
     }
 }

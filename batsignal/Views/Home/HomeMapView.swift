@@ -117,6 +117,15 @@ struct HomeMapView: View {
             }
             UserAnnotation()
         }
+        // Fills the system's own "you are here" dot, which takes the map's
+        // tint. Swell blue rather than the app's moonlight so the dot reads as
+        // part of the water rather than as another piece of chrome — and it
+        // keeps the white ring, accuracy circle and heading wedge that come
+        // with the built-in dot.
+        .tint(Blipper.swellBlue)
+        // Over the map, under everything HomeView lays on top of it — the
+        // header and the carousel both want to stay out of the fog.
+        .overlay(MapFogVignette())
         .onAppear {
             refreshPosition()
             selectedAnnotationId = focusedEventId

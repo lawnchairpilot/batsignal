@@ -6,15 +6,11 @@ struct AuthFlowView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Branding
-            VStack(spacing: 8) {
-                Image(systemName: "bolt.circle.fill")
-                    .font(.system(size: 64))
-                    .foregroundColor(.accentColor)
-                Text(Strings.Common.appName)
-                    .font(.blipperDisplay(.largeTitle, weight: 800))
-            }
-            .padding(.top, 60)
-            .padding(.bottom, 48)
+            Text(Strings.Common.appName)
+                .font(.blipperDisplay(.largeTitle, weight: 800))
+                .foregroundStyle(Blipper.amber)
+                .padding(.top, 60)
+                .padding(.bottom, 48)
 
             switch viewModel.step {
             case .phoneEntry:

@@ -263,7 +263,7 @@ struct ExpandedEventCardView: View {
             if let remaining = displayEvent.remainingFraction {
                 VStack(alignment: .leading, spacing: 4) {
                     ProgressView(value: remaining)
-                        .tint(remainingColor(remaining))
+                        .tint(Blipper.amber)
                     if let label = displayEvent.timeRemainingLabel {
                         Text(label)
                             .font(.blipperUI(.caption1))
@@ -426,14 +426,6 @@ struct ExpandedEventCardView: View {
 
     // MARK: - Labels
 
-    // Takes time remaining, so the thresholds run the opposite way from a
-    // fill-up bar: the less that's left, the more urgent the color.
-    private func remainingColor(_ remaining: Double) -> Color {
-        if remaining < 0.25 { return Blipper.roseBright }
-        if remaining < 0.5 { return Blipper.rose }
-        return .accentColor
-    }
-
     private var startTimeLabel: String {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
@@ -520,18 +512,25 @@ struct EventAnnotationView: View {
 
     private var tailSize: CGFloat { size * 0.2 }
 
+    // Scaled off the pin rather than fixed, so the hero pin — which can be five
+    // times the default size — glows like a bigger light instead of wearing the
+    // same thin rim a 44pt pin does.
+    private var hazeRadius: CGFloat { max(size * 0.28, 10) }
+
     var body: some View {
         VStack(spacing: 0) {
             // The ring is EventIconView's own amber border now — a second ring
-            // here would only double it. The shadow is what holds the pin off
-            // the map behind it.
-            EventIconView(photoURL: photoURL, label: label, size: size)
+            // here would only double it. The haze reads as that ring's light
+            // bleeding into the fog; the black shadow underneath it is what
+            // holds the pin off the map behind it.
+            EventIconView(photoURL: photoURL, label: label, size: size, style: .signal)
+                .blipperGlow(Blipper.amber, radius: hazeRadius)
                 .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 2)
-            // The tail is the pin's body, not its outline, so it takes the same
-            // swell blue the icon is filled with.
+            // The tail is the pin's body, so it takes whatever the icon is
+            // filled with and the two read as one shape.
             Image(systemName: "triangle.fill")
                 .font(.system(size: tailSize))
-                .foregroundColor(Blipper.swellBlue)
+                .foregroundColor(EventIconStyle.signal.fill)
                 .rotationEffect(.degrees(180))
                 .offset(y: -tailSize / 3)
         }

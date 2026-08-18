@@ -40,7 +40,7 @@ struct MyActiveEventCard: View {
                         Rectangle()
                             .fill(Blipper.track)
                         Rectangle()
-                            .fill(remainingColor(remaining))
+                            .fill(Blipper.amber)
                             .frame(width: geometry.size.width * remaining)
                     }
                 }
@@ -167,7 +167,7 @@ struct MyActiveEventCard: View {
             if let remaining = viewModel.remainingFraction {
                 VStack(alignment: .leading, spacing: 4) {
                     ProgressView(value: remaining)
-                        .tint(remainingColor(remaining))
+                        .tint(Blipper.amber)
                     if let label = viewModel.timeRemainingLabel {
                         Text(label)
                             .font(.blipperUI(.caption1))
@@ -301,14 +301,6 @@ struct MyActiveEventCard: View {
               let users = try? await FriendService().fetchProfiles(ids: ids, eventId: eventId)
         else { return }
         joinedUsers = users
-    }
-
-    // Takes time remaining, so the thresholds run the opposite way from a
-    // fill-up bar: the less that's left, the more urgent the color.
-    private func remainingColor(_ remaining: Double) -> Color {
-        if remaining < 0.25 { return Blipper.roseBright }
-        if remaining < 0.5 { return Blipper.rose }
-        return .accentColor
     }
 
     private func locationIcon(_ event: Event) -> String {
