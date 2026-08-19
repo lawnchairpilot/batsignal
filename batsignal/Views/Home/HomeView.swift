@@ -72,8 +72,9 @@ struct HomeView: View {
         }
     }
 
-    // Sits on the map rather than in a navigation bar, so both pieces carry a
-    // material backing of their own to stay legible over whatever is beneath.
+    // Sits on the map rather than in a navigation bar. The profile button keeps
+    // a material backing to stay legible over whatever is beneath; the wordmark
+    // leans on its own color and haze instead.
     private var header: some View {
         HStack(spacing: 8) {
             Text(Strings.Common.appName)
@@ -81,17 +82,23 @@ struct HomeView: View {
                 // The wordmark sits on the map among the signals it names, so
                 // it takes their color rather than the chrome's.
                 .foregroundStyle(Blipper.amber)
-                // Uneven on purpose, and it still totals the 12pt it did when
-                // it was even, so the backdrop is the same size. The HStack
-                // centres the text's *line box*, but "Blipper" has descenders,
-                // so its inked glyphs sit below that box's centre — 2.04pt at
-                // this size, measured — while the LIVE badge beside it is all
-                // caps and has none, so its ink centres exactly. Taking 2pt off
-                // the top and adding it to the bottom lines the two up by what
-                // you can actually see. Retune this if the wordmark's face or
-                // size changes; it was 3pt when this was set in Manrope.
+                // The same haze the map pins wear. With the backdrop gone this
+                // is also what holds the wordmark off busy map content.
+                .blipperGlow(Blipper.amber)
+                // Uneven vertically on purpose. The HStack centres the text's
+                // *line box*, but "Blipper" has descenders so its inked glyphs
+                // sit below that centre, while the LIVE badge beside it is all
+                // caps and has none — so the two don't line up by eye even
+                // though the stack has centred them both. More padding at the
+                // bottom than the top lifts the glyphs back onto the badge's
+                // centre line. The 4pt of lift here is set by eye; measuring the
+                // ink against the line box says ~2pt, which read a touch low
+                // once the backdrop came off and the glow went on. Retune by
+                // eye if the wordmark's face or size changes.
+                //
+                // The horizontal inset is what keeps the wordmark off the
+                // header's own margin now that there's no backdrop shaping it.
                 .padding(EdgeInsets(top: 2, leading: 12, bottom: 10, trailing: 12))
-                // .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
 
             Spacer()
 
