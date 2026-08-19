@@ -9,7 +9,7 @@ struct ProfileSetupView: View {
     var body: some View {
         VStack(spacing: 0) {
             Text(Strings.Common.appName)
-                .font(.blipperDisplay(.largeTitle, weight: 800))
+                .font(.blipperDisplay(.largeTitle, weight: 700))
                 .foregroundStyle(Blipper.amber)
                 .padding(.top, 60)
                 .padding(.bottom, 48)

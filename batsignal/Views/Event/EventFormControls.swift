@@ -80,10 +80,16 @@ struct EventSymbolHeader: View {
         .frame(width: size, height: size)
         .clipShape(Circle())
         // This is the event's own icon being composed, so it wears the signal
-        // style the finished pin does — amber fill, amber ring, and the same
-        // haze — rather than a neutral hairline.
+        // style the finished pin does — amber fill and amber ring — rather than
+        // a neutral hairline.
+        //
+        // No haze here, though the map pin has one. A shadow draws outside its
+        // view's bounds and a form row clips to them, and this circle already
+        // fills its container to within the 12pt padding, so the glow came out
+        // sliced flat top and bottom. Reserving room for it would mean ~100pt
+        // more height on a form that can't scroll (see CreateEventView), and
+        // shrinking the circle would break its match with heroIconMaxSize.
         .overlay(Circle().strokeBorder(Blipper.amber, lineWidth: 2))
-        .blipperGlow(Blipper.amber, radius: size * 0.16)
     }
 
     private func fallbackIcon(size: CGFloat) -> some View {

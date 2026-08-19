@@ -18,7 +18,7 @@ enum BlipperAppearance {
         navigation.configureWithTransparentBackground()
         navigation.backgroundColor = .clear
         navigation.shadowColor = .clear
-        // Inter, not Manrope: a navigation title names the screen, not the app,
+        // Inter, not the display face: a navigation title names the screen, not the app,
         // and the wordmark is the only place the display face earns its keep.
         navigation.titleTextAttributes = [
             .foregroundColor: title,

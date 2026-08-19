@@ -520,20 +520,34 @@ struct EventAnnotationView: View {
     var body: some View {
         VStack(spacing: 0) {
             // The ring is EventIconView's own amber border now — a second ring
-            // here would only double it. The haze reads as that ring's light
-            // bleeding into the fog; the black shadow underneath it is what
-            // holds the pin off the map behind it.
+            // here would only double it.
             EventIconView(photoURL: photoURL, label: label, size: size, style: .signal)
-                .blipperGlow(Blipper.amber, radius: hazeRadius)
-                .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 2)
             // The tail is the pin's body, so it takes whatever the icon is
             // filled with and the two read as one shape.
+            //
+            // Drawn behind the circle: it overlaps by a third so the two join
+            // without a seam, and painted on top that overlap sat as an amber
+            // wedge across the bottom of a photo. zIndex rather than reordering
+            // or moving it into a background, because the tail has to keep
+            // contributing its height to the stack — the map anchors these at
+            // .bottom so the tail's tip is what marks the coordinate, and
+            // totalHeight(forIconSize:) counts on it too.
             Image(systemName: "triangle.fill")
                 .font(.system(size: tailSize))
                 .foregroundColor(EventIconStyle.signal.fill)
                 .rotationEffect(.degrees(180))
                 .offset(y: -tailSize / 3)
+                .zIndex(-1)
         }
+        // Both cast from the whole pin rather than from the circle alone. A
+        // shadow always draws behind the view it's attached to, so hanging them
+        // here puts them behind the tail as well — on the circle they were
+        // being painted over it, which is what made the tail look like it was
+        // sitting behind the outline in a haze. As a bonus the haze now traces
+        // the pin's real silhouette, tail included, instead of stopping at the
+        // circle. The black shadow is what holds the pin off the map.
+        .blipperGlow(Blipper.amber, radius: hazeRadius)
+        .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 2)
     }
 }
 

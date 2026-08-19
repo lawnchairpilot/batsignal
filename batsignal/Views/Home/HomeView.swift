@@ -77,21 +77,20 @@ struct HomeView: View {
     private var header: some View {
         HStack(spacing: 8) {
             Text(Strings.Common.appName)
-                .font(.blipperDisplay(.title2, weight: 800))
+                .font(.blipperDisplay(.title2, weight: 700))
                 // The wordmark sits on the map among the signals it names, so
                 // it takes their color rather than the chrome's.
                 .foregroundStyle(Blipper.amber)
                 // Uneven on purpose, and it still totals the 12pt it did when
-                // it was even, so the backdrop is the same size. Manrope's
-                // ascent sits 7.6pt above its cap height while its descent sits
-                // only ~1.4pt below the descenders, so centring the text's line
-                // box — which is what the HStack does — leaves the visible word
-                // about 3pt low. That's what threw it out of line with the LIVE
-                // badge and the profile button, both of which are set in Inter,
-                // whose cap box does centre on its line box. Taking 3pt off the
-                // top and adding it to the bottom puts the glyphs on the
-                // centre line instead.
-                .padding(EdgeInsets(top: 3, leading: 12, bottom: 9, trailing: 12))
+                // it was even, so the backdrop is the same size. The HStack
+                // centres the text's *line box*, but "Blipper" has descenders,
+                // so its inked glyphs sit below that box's centre — 2.04pt at
+                // this size, measured — while the LIVE badge beside it is all
+                // caps and has none, so its ink centres exactly. Taking 2pt off
+                // the top and adding it to the bottom lines the two up by what
+                // you can actually see. Retune this if the wordmark's face or
+                // size changes; it was 3pt when this was set in Manrope.
+                .padding(EdgeInsets(top: 2, leading: 12, bottom: 10, trailing: 12))
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
 
             Spacer()
@@ -332,12 +331,22 @@ struct HomeView: View {
             id: id,
             coordinate: coordinate,
             label: label,
-            creatorPhotoURL: event.imageURL ?? authService.currentUser?.profilePhotoURL,
+            creatorPhotoURL: annotationPhotoURL(for: event, creatorPhotoURL: authService.currentUser?.profilePhotoURL),
             isLive: event.locationType == .live,
             isActive: true,
             event: event,
             creatorName: name
         )
+    }
+
+    // EventIconView draws a photo in preference to a label, so the photo and the
+    // label can't pick their fallbacks independently: a creator's profile photo
+    // left in place here outranks the event's own emoji and silently swallows
+    // it. What the event says about itself comes first — its image, then its
+    // emoji — and the creator's photo is only reached when it says neither.
+    private func annotationPhotoURL(for event: Event, creatorPhotoURL: String?) -> String? {
+        if let imageURL = event.imageURL { return imageURL }
+        return event.emoji == nil ? creatorPhotoURL : nil
     }
 
     private func makeAnnotationItems(from events: [Event], isActive: Bool) -> [EventAnnotationItem] {
@@ -350,7 +359,7 @@ struct HomeView: View {
                 id: id,
                 coordinate: coordinate,
                 label: label,
-                creatorPhotoURL: event.imageURL ?? creator?.profilePhotoURL,
+                creatorPhotoURL: annotationPhotoURL(for: event, creatorPhotoURL: creator?.profilePhotoURL),
                 isLive: event.locationType == .live,
                 isActive: isActive,
                 event: event,

@@ -34,7 +34,7 @@
     <false/>
 	<key>UIAppFonts</key>
 	<array>
-		<string>Manrope.ttf</string>
+		<string>InstrumentSans-Italic.ttf</string>
 		<string>Inter.ttf</string>
 	</array>
 </dict>
