@@ -199,6 +199,15 @@ struct Event: Identifiable, Codable {
         return "Starts in \(minutes)m"
     }
 
+    // MARK: - Attendance
+
+    // Missing on documents written before joining existed, and cleared back to
+    // nil rather than [] once the last person leaves — so nil and empty both
+    // mean "nobody has joined".
+    var joinedCount: Int {
+        joinedUserIds?.count ?? 0
+    }
+
     // MARK: - Expiry (client-side for MVP)
 
     var isExpired: Bool {

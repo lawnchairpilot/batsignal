@@ -503,19 +503,76 @@ struct LiveBadge: View {
 struct EventAnnotationView: View {
     var label: String? = nil
     var photoURL: String? = nil
+    // The size to draw at, joins already accounted for — see joinedSize(base:),
+    // which is what callers are expected to run their base size through. The
+    // growth deliberately isn't applied in here: the map frames the focused pin
+    // by measuring totalHeight(forIconSize:) against the strip the carousel
+    // leaves uncovered, and a pin that quietly drew itself larger than the size
+    // it was handed would put that arithmetic out by however many people had
+    // joined.
     var size: CGFloat = EventAnnotationView.defaultSize
+    // How many people have joined the event this pin stands for. Drives the
+    // glow only — the circle's own growth comes in through `size`.
+    var joinCount: Int = 0
 
     static let defaultSize: CGFloat = 44
     // The pin keeps its proportions when it's blown up for a focused event, so
     // callers can work out how tall the whole thing will be before drawing it.
     static func totalHeight(forIconSize size: CGFloat) -> CGFloat { size * 1.2 }
 
+    // MARK: Joins
+
+    // The headcount at which a pin stops growing. Set for a friend-group app:
+    // most signals top out around here, so the scale spends its whole range on
+    // the counts that actually happen rather than saving most of it for crowds
+    // that never turn up.
+    static let joinCap = 5
+
+    /// 0 when nobody has joined, 1 at the cap. Square root rather than linear
+    /// so the first person to join produces the biggest single jump — going
+    /// from nobody to somebody is the moment worth seeing across a map, and the
+    /// difference between the fourth and fifth is not.
+    static func joinIntensity(joinCount: Int) -> Double {
+        sqrt(min(Double(joinCount) / Double(joinCap), 1))
+    }
+
+    /// What to pass as `size`: a base size grown by however many have joined.
+    ///
+    /// Far gentler than the glow's growth, and on purpose. The haze is
+    /// atmosphere — it can nearly double without taking anything from its
+    /// neighbours — whereas the circle is a hard shape that starts overlapping
+    /// the pins around it the moment it gets greedy. A third is enough to read
+    /// as bigger when two pins sit side by side: the 44pt default lands at 57.
+    static func joinedSize(base: CGFloat, joinCount: Int) -> CGFloat {
+        base * (1 + 0.3 * joinIntensity(joinCount: joinCount))
+    }
+
+    private var joinIntensity: Double { Self.joinIntensity(joinCount: joinCount) }
+
     private var tailSize: CGFloat { size * 0.2 }
+
+    // MARK: Glow
 
     // Scaled off the pin rather than fixed, so the hero pin — which can be five
     // times the default size — glows like a bigger light instead of wearing the
-    // same thin rim a 44pt pin does.
-    private var hazeRadius: CGFloat { max(size * 0.28, 10) }
+    // same thin rim a 44pt pin does. Joins then widen that in proportion, on
+    // top of the growth they already gave `size`, so a crowded pin gains a
+    // halo out of step with its circle rather than just a scaled copy of the
+    // whole pin — which would read as nearer, not busier.
+    private var hazeRadius: CGFloat {
+        max(size * 0.28, 10) * (1 + 0.9 * joinIntensity)
+    }
+
+    // Never falls below blipperGlow's own 0.35, so an unjoined pin looks
+    // exactly as it always has and joining only ever adds.
+    private var hazeOpacity: Double { 0.35 + 0.30 * joinIntensity }
+
+    // A second, wider, fainter halo layered outside the first. Raising the
+    // core's opacity alone stops reading as "brighter" past about 0.6 — it just
+    // flattens into a colored disc — whereas a bloom around it keeps a lit
+    // center and gives the light somewhere to spread to. Invisible at zero
+    // joiners, so it costs an unjoined pin nothing.
+    private var bloomOpacity: Double { 0.28 * joinIntensity }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -539,15 +596,29 @@ struct EventAnnotationView: View {
                 .offset(y: -tailSize / 3)
                 .zIndex(-1)
         }
-        // Both cast from the whole pin rather than from the circle alone. A
-        // shadow always draws behind the view it's attached to, so hanging them
-        // here puts them behind the tail as well — on the circle they were
+        // All three cast from the whole pin rather than from the circle alone.
+        // A shadow always draws behind the view it's attached to, so hanging
+        // them here puts them behind the tail as well — on the circle they were
         // being painted over it, which is what made the tail look like it was
         // sitting behind the outline in a haze. As a bonus the haze now traces
         // the pin's real silhouette, tail included, instead of stopping at the
         // circle. The black shadow is what holds the pin off the map.
-        .blipperGlow(Blipper.amber, radius: hazeRadius)
+        //
+        // Order matters: each shadow is cast by everything above it, so the
+        // core goes on first and the bloom spreads that already-lit shape
+        // outward. The black one stays last, tight enough not to dirty either.
+        .blipperGlow(Blipper.amber, radius: hazeRadius, opacity: hazeOpacity)
+        .blipperGlow(Blipper.amber, radius: hazeRadius * 1.8, opacity: bloomOpacity)
         .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 2)
+        // Joins arrive over a live Firestore listener while the map is open, so
+        // this is usually someone else answering the signal in front of you.
+        // Blooming up to the new size beats snapping to it. Keyed on the count
+        // rather than on the size, which also catches the circle's own growth:
+        // `size` is handed in already grown, so it changes in the same pass the
+        // count does and swells under this animation too. The focused pin's
+        // resize is deliberately not covered — its size moves with the card,
+        // not the headcount, and it has the camera animating alongside it.
+        .animation(.easeInOut(duration: 0.45), value: joinCount)
     }
 }
 

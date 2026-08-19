@@ -91,7 +91,7 @@ struct HomeView: View {
                 // you can actually see. Retune this if the wordmark's face or
                 // size changes; it was 3pt when this was set in Manrope.
                 .padding(EdgeInsets(top: 2, leading: 12, bottom: 10, trailing: 12))
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                // .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
 
             Spacer()
 
