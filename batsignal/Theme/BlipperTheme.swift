@@ -21,7 +21,7 @@ enum Blipper {
     /// pin and in the create/edit flow, and a running signal's time remaining.
     /// It stays out of the interactive chrome — buttons, links and icons use
     /// `moonlight` — so amber keeps meaning "a signal" rather than "tap here".
-    static let amber = Color(hex: 0xE0A83F)
+    static let amber = Color(hex: 0xFFD35C)
     /// Status/urgency accent, as a fill.
     static let rose = Color(hex: 0x93443A)
     /// The lighter, more saturated rose. Carries urgency where the dark rose

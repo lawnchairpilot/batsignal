@@ -388,6 +388,13 @@ struct UpcomingEventDetailView: View {
                     )
                 }
 
+                // Reported, not offered: the recipients were resolved and
+                // written when the signal went out, so this says where it went
+                // rather than pretending the answer is still open.
+                Section(Strings.Event.sentToLabel) {
+                    EventAudienceSummary(event: event)
+                }
+
                 if let error = editViewModel.errorMessage {
                     Section {
                         Text(error).foregroundColor(Blipper.roseBright).font(.blipperUI(.caption1))
@@ -497,6 +504,11 @@ struct ActiveEventDetailView: View {
                         fixedCoordinate: $editViewModel.fixedCoordinate,
                         showError: showLocationError
                     )
+                }
+
+                // Reported, not offered — see the upcoming sheet's copy of this.
+                Section(Strings.Event.sentToLabel) {
+                    EventAudienceSummary(event: event)
                 }
 
                 if let error = editViewModel.errorMessage {

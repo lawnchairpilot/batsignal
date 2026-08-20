@@ -67,6 +67,13 @@ struct Event: Identifiable, Codable {
     // recipients the creator deliberately excluded. Missing on older documents
     // defaults to true, since every event predates the group-scoping feature.
     var audienceIsAllFriends: Bool?
+    // The groups that were picked when the signal went out. recipientIds is the
+    // flattened result of that pick and can't be turned back into it — two
+    // groups sharing a member give no clue they were two — so the choice is
+    // kept alongside it. Recorded for display only: nothing reads it to decide
+    // who receives anything. Nil on documents written before it existed, and on
+    // any signal that went to everyone.
+    var audienceGroupIds: [String]?
 
     init(
         id: String? = nil,
@@ -88,7 +95,8 @@ struct Event: Identifiable, Codable {
         joinedUserIds: [String]? = nil,
         commentsEnabled: Bool? = nil,
         imageURL: String? = nil,
-        audienceIsAllFriends: Bool = true
+        audienceIsAllFriends: Bool = true,
+        audienceGroupIds: [String]? = nil
     ) {
         self.id = id
         self.creatorId = creatorId
@@ -111,6 +119,7 @@ struct Event: Identifiable, Codable {
         self.commentsEnabled = commentsEnabled
         self.imageURL = imageURL
         self.audienceIsAllFriends = audienceIsAllFriends
+        self.audienceGroupIds = audienceGroupIds
     }
 
     // What the activity field accepts, on the create form and the edit sheets
@@ -197,6 +206,40 @@ struct Event: Identifiable, Codable {
             return mins > 0 ? "Starts in \(hours)h \(mins)m" : "Starts in \(hours)h"
         }
         return "Starts in \(minutes)m"
+    }
+
+    // MARK: - Audience
+
+    // Missing field on older documents defaults to everyone, since every event
+    // written then predates group scoping.
+    var wentToAllFriends: Bool {
+        audienceIsAllFriends ?? true
+    }
+
+    /// The groups this signal went out to, matched against the owner's groups as
+    /// they stand now. Empty when it went to everyone, and empty for a group
+    /// that has since been deleted — this reports the audience, it doesn't
+    /// preserve it.
+    func audienceGroups(from groups: [FriendGroup]) -> [FriendGroup] {
+        guard !wentToAllFriends else { return [] }
+
+        if let audienceGroupIds {
+            return groups.filter { group in
+                group.id.map(audienceGroupIds.contains) ?? false
+            }
+        }
+
+        // Written before the pick was recorded, so it has to be read back out
+        // of the recipients: a group whose every member was sent to was, in all
+        // likelihood, one of the ones chosen. Best effort by nature — a group
+        // that lost a member since is no longer fully contained and drops out,
+        // and one that happens to sit entirely inside a larger pick reads as
+        // chosen when it wasn't. Only ever used for display, and only for
+        // documents old enough to have no better answer.
+        let recipients = Set(recipientIds)
+        return groups.filter { group in
+            !group.memberIds.isEmpty && group.memberIds.allSatisfy(recipients.contains)
+        }
     }
 
     // MARK: - Attendance

@@ -5,14 +5,27 @@ struct CreateEventView: View {
     @StateObject private var viewModel = CreateEventViewModel()
     @Environment(\.dismiss) private var dismiss
     @State private var isPulsing = false
-    @State private var isDragging = false
-    @State private var dragProgress: CGFloat = 0
+    // Lights the preview circle while the signal is on its way out. Held here
+    // rather than in EventSymbolHeader because it's the send button that knows
+    // when the signal goes.
+    @State private var flare: Double = 0
 
-    private let swipeToSendThreshold: CGFloat = -70
-    private let indicatorLineCount = 5
+    // How long the lit icon stays up before the sheet closes, whether or not
+    // the write has come back by then. Long enough to register as the icon
+    // you built lighting up, short enough not to feel like a wait.
+    private let flareDwell: Duration = .milliseconds(550)
+
+    // Whether there is a signal here at all. Drives how the send button *looks*,
+    // which is not the same question as whether it can be tapped: the send is
+    // the moment the button matters most, and canSubmit has already gone false
+    // by then, so keying the fill off that would grey the button out at exactly
+    // the wrong time.
+    private var isArmed: Bool {
+        !viewModel.activity.isEmpty
+    }
 
     private var canSubmit: Bool {
-        !viewModel.activity.isEmpty && !viewModel.isLoading
+        isArmed && !viewModel.isLoading
     }
 
     var body: some View {
@@ -32,7 +45,8 @@ struct CreateEventView: View {
                     EventSymbolHeader(
                         selectedImage: $viewModel.selectedImage,
                         emoji: $viewModel.emoji,
-                        imageURL: .constant(nil)
+                        imageURL: .constant(nil),
+                        flare: flare
                     )
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
@@ -76,7 +90,7 @@ struct CreateEventView: View {
                 Color.clear.frame(height: 200)
             }
 
-            swipeToSendIndicator
+            sendButton
         }
         .blipperBackground()
         .overlay(alignment: .topLeading) {
@@ -101,107 +115,103 @@ struct CreateEventView: View {
         .buttonStyle(.plain)
     }
 
-    private var swipeToSendIndicator: some View {
-        VStack(spacing: 8) {
-            if viewModel.isLoading {
-                ProgressView()
-                    .padding(.bottom, 4)
-            } else if isDragging {
-                dragTrackingLines
-            } else {
-                ambientLines
+    // Was a swipe up across a stack of glowing lines, which sat low enough that
+    // reaching for it from underneath caught the home indicator and threw the
+    // app out instead. A button in the same spot can't be confused for the
+    // system's gesture — but it keeps the breathing the lines had, because
+    // that pulse is what made this read as a signal waiting to be sent rather
+    // than a form waiting to be submitted.
+    private var sendButton: some View {
+        Button(action: submitEvent) {
+            ZStack {
+                Text(Strings.Event.sendSignal)
+                    .font(.blipperUI(.headline, weight: 600))
+                    // Hidden rather than removed, so the button doesn't resize
+                    // around the spinner mid-send.
+                    .opacity(viewModel.isLoading ? 0 : 1)
+
+                if viewModel.isLoading {
+                    ProgressView()
+                        .tint(Blipper.onAmber)
+                }
             }
-
-            Text(isDragging && dragProgress >= 1 ? Strings.Event.releaseToSend : Strings.Event.swipeUpToSend)
-                .font(.blipperUI(.caption1))
-                .foregroundColor(Blipper.textMuted)
+            .frame(maxWidth: .infinity)
+            .frame(height: 54)
+            // The one filled-amber surface in the app. Amber is otherwise the
+            // event icon's outline and nothing else, and this is the button
+            // that turns what you've built into one of those icons — so it's
+            // the signal's own colour, not the chrome's. Inert until there's
+            // something to send, where it drops back to a plain surface.
+            .background(
+                isArmed ? Blipper.amber : Blipper.surface,
+                in: RoundedRectangle(cornerRadius: 14)
+            )
+            .foregroundStyle(isArmed ? Blipper.onAmber : Blipper.textMuted)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(isArmed ? .clear : Blipper.hairline, lineWidth: 1)
+            )
+            // The pulse the lines used to carry, moved into the haze: the
+            // button holds still and its light breathes, which survives being
+            // a solid shape where an opacity pulse would just read as a
+            // flickering control.
+            .blipperGlow(Blipper.amber, radius: pulseRadius, opacity: pulseOpacity)
+            .animation(
+                .easeInOut(duration: 0.9).repeatForever(autoreverses: true),
+                value: isPulsing
+            )
         }
-        .opacity(canSubmit ? 1 : 0.35)
-        .padding(.vertical, 16)
+        .buttonStyle(.plain)
+        .disabled(!canSubmit)
         .frame(width: 280)
-        .contentShape(Rectangle())
-        .highPriorityGesture(
-            DragGesture(minimumDistance: 10)
-                .onChanged { value in
-                    guard canSubmit else { return }
-                    isDragging = true
-                    let upwardTranslation = min(0, value.translation.height)
-                    dragProgress = min(1, -upwardTranslation / -swipeToSendThreshold)
-                }
-                .onEnded { value in
-                    guard canSubmit else { return }
-                    let shouldSend = value.translation.height < swipeToSendThreshold
-                    withAnimation(.easeOut(duration: 0.15)) {
-                        isDragging = false
-                        dragProgress = 0
-                    }
-                    if shouldSend {
-                        submitEvent()
-                    }
-                }
-        )
+        .padding(.vertical, 16)
+        .onAppear(perform: restartPulse)
+        // The glow's endpoints move when the button goes live, and a
+        // repeatForever animation already in flight won't pick that up — it
+        // has to be started again against the new pair.
+        .onChange(of: canSubmit) { _, _ in restartPulse() }
     }
 
-    private var ambientLines: some View {
-        ForEach(0..<indicatorLineCount, id: \.self) { index in
-            line(for: index)
-                .opacity(isPulsing ? 1 : 0.25)
-                .animation(
-                    .easeInOut(duration: 0.9)
-                        .repeatForever(autoreverses: true)
-                        .delay(Double(index) * 0.1),
-                    value: isPulsing
-                )
-        }
-        .onAppear {
-            isPulsing = false
-            DispatchQueue.main.async { isPulsing = true }
-        }
+    // Nothing to send: dark. Sending: a steady low light, so the button stops
+    // competing with the icon that's flaring above it. Otherwise: breathing.
+    private var pulseRadius: CGFloat {
+        guard isArmed else { return 0 }
+        guard canSubmit else { return 12 }
+        return isPulsing ? 26 : 10
     }
 
-    private var dragTrackingLines: some View {
-        ForEach(0..<indicatorLineCount, id: \.self) { index in
-            line(for: index)
-                .opacity(lineOpacity(for: index))
-        }
+    private var pulseOpacity: Double {
+        guard isArmed else { return 0 }
+        guard canSubmit else { return 0.3 }
+        return isPulsing ? 0.6 : 0.25
     }
 
-    private func line(for index: Int) -> some View {
-        Capsule()
-            // Turns amber the moment there's something to send, so the colour
-            // itself says the signal is ready to go — until then these are
-            // inert chrome and stay moonlight.
-            .fill(canSubmit ? Blipper.amber : Color.accentColor)
-            .frame(width: lineWidth(for: index), height: lineThickness(for: index))
-    }
-
-    private func lineWidth(for index: Int) -> CGFloat {
-        // Index 0 is the topmost line, the last index sits closest to the
-        // label, so the stack tapers up toward the top: the bottom line is
-        // widest, matching the duration wheel's selection highlight bar.
-        let ratio = CGFloat(index + 1)
-        return ratio * (255 / CGFloat(indicatorLineCount))
-    }
-
-    private func lineThickness(for index: Int) -> CGFloat {
-        // A subtle ramp: the bottom line reads slightly bolder than the top
-        // one, without a jarring difference between them.
-        8 + CGFloat(index)
-    }
-
-    private func lineOpacity(for index: Int) -> Double {
-        // Index 0 is the topmost line, the last index sits closest to the
-        // label, so the bottom line lights up first as the finger moves up.
-        let order = Double(indicatorLineCount - 1 - index)
-        let segmentStart = order / Double(indicatorLineCount)
-        let local = (Double(dragProgress) - segmentStart) / (1.0 / Double(indicatorLineCount))
-        return 0.25 + 0.75 * min(max(local, 0), 1)
+    private func restartPulse() {
+        isPulsing = false
+        DispatchQueue.main.async { isPulsing = true }
     }
 
     private func submitEvent() {
+        guard canSubmit else { return }
+        // Lights before the write is even sent, so the flare answers the tap
+        // rather than the network.
+        withAnimation(.easeOut(duration: 0.3)) { flare = 1 }
+
         Task {
+            // Started before the submit rather than awaited after it, so the
+            // dwell and the write overlap: a slow write is never made slower,
+            // and a fast one still gets the full moment on screen.
+            let dwell = Task { try? await Task.sleep(for: flareDwell) }
             await viewModel.submit()
-            if viewModel.didCreate { dismiss() }
+            await dwell.value
+
+            if viewModel.didCreate {
+                dismiss()
+            } else {
+                // Failed. Put the icon out again so the error underneath it is
+                // the thing being looked at.
+                withAnimation(.easeOut(duration: 0.25)) { flare = 0 }
+            }
         }
     }
 
@@ -253,48 +263,5 @@ struct CreateEventView: View {
     }
 }
 
-// A plain SwiftUI `TextField` with `.multilineTextAlignment(.center)` shows
-// its caret at the leading edge of the (centered) placeholder until the
-// first keystroke, when it snaps to the true center. Setting
-// `textAlignment` on the underlying `UITextField` directly avoids that.
-private struct AudienceCard: View {
-    let title: String
-    let emoji: String?
-    let systemImage: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    private let circleSize: CGFloat = 56
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 6) {
-                ZStack {
-                    Circle().fill(Blipper.surface)
-
-                    if let emoji {
-                        Text(emoji).font(.title2)
-                    } else {
-                        Image(systemName: systemImage)
-                            .font(.title3)
-                            .foregroundColor(.accentColor)
-                    }
-                }
-                .frame(width: circleSize, height: circleSize)
-                .overlay(
-                    Circle()
-                        .stroke(isSelected ? Color.accentColor : Blipper.hairline, lineWidth: isSelected ? 2 : 1)
-                )
-                .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
-
-                Text(title)
-                    .font(.blipperUI(.caption1))
-                    .fontWeight(.medium)
-                    .foregroundColor(Blipper.textPrimary)
-                    .lineLimit(1)
-            }
-            .frame(width: 76)
-        }
-        .buttonStyle(.plain)
-    }
-}
+// AudienceCard moved to EventFormControls.swift, which the edit sheets can
+// reach as well — they show the same cards as a record of who a signal went to.

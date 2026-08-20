@@ -9,7 +9,7 @@ enum BlipperAppearance {
     static func apply() {
         let title = UIColor(hex: 0xEAEEEF)      // Moonlight White
         let chrome = UIColor(hex: 0xC7D0D4)     // Muffled Moonlight
-        let accent = UIColor(hex: 0xE0A83F)     // Harbor Light Amber
+        let accent = UIColor(hex: 0xFFD35C)     // Harbor Light Amber
         let base = UIColor(hex: 0x16283A)       // Dusk Navy
 
         let navigation = UINavigationBarAppearance()
