@@ -11,6 +11,9 @@ struct User: Identifiable, Codable {
     var activeEventId: String?   // set when user has an active event
     var fcmToken: String?
     var createdAt: Timestamp
+    // Nil for accounts made before the community rules existed, which is what
+    // sends them through the agreement gate on next launch.
+    var acceptedTermsAt: Timestamp?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -22,12 +25,9 @@ struct User: Identifiable, Codable {
         case activeEventId
         case fcmToken
         case createdAt
+        case acceptedTermsAt
     }
 
     // Up to two letters, for avatars with no photo to show.
-    var initials: String? {
-        guard !displayName.isEmpty else { return nil }
-        let letters = displayName.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
-        return letters.isEmpty ? nil : letters.uppercased()
-    }
+    var initials: String? { PublicProfile.initials(from: displayName) }
 }

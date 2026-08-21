@@ -31,10 +31,10 @@ struct FadingHeadline: View {
     var body: some View {
         ViewThatFits(in: .horizontal) {
             Text(text)
-                .font(.headline)
+                .font(.blipperUI(.headline, weight: 600))
                 .fixedSize(horizontal: true, vertical: false)
             Text(text)
-                .font(.headline)
+                .font(.blipperUI(.headline, weight: 600))
                 .lineLimit(1)
                 .fadingTrailingEdge(background: background)
         }
@@ -92,9 +92,9 @@ struct EventCardView: View {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         Rectangle()
-                            .fill(Color.primary.opacity(0.08))
+                            .fill(Blipper.track)
                         Rectangle()
-                            .fill(remainingColor(remaining))
+                            .fill(Blipper.amber)
                             .frame(width: geometry.size.width * remaining)
                     }
                 }
@@ -104,11 +104,10 @@ struct EventCardView: View {
             VStack(alignment: .leading, spacing: 8) {
                 if let name = creatorName {
                     Text(name)
-                        .font(.caption)
+                        .font(.blipperUI(.caption1, weight: 600))
                         .foregroundColor(.accentColor)
-                        .bold()
                 }
-                FadingHeadline(text: event.activity, background: Color(.secondarySystemBackground))
+                FadingHeadline(text: event.activity, background: Blipper.surface)
 
                 if !event.isActive {
                     HStack(spacing: 4) {
@@ -118,14 +117,14 @@ struct EventCardView: View {
                             Text(Strings.Home.durationSuffix(event.durationLabel))
                         }
                     }
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(.blipperUI(.subheadline))
+                    .foregroundColor(Blipper.textMuted)
                 }
             }
             .padding()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemBackground))
+        .background(Blipper.surface)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -139,14 +138,6 @@ struct EventCardView: View {
         }
     }
 
-    // Takes time remaining, so the thresholds run the opposite way from a
-    // fill-up bar: the less that's left, the more urgent the color.
-    private func remainingColor(_ remaining: Double) -> Color {
-        if remaining < 0.25 { return .red }
-        if remaining < 0.5 { return .orange }
-        return .accentColor
-    }
-
     private var startTimeLabel: String {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
@@ -158,11 +149,27 @@ struct EventCardView: View {
     }
 }
 
+// How loudly an icon should announce itself. The two differ only in color, so
+// the fill and whatever sits on top of it stay in step — an amber fill needs
+// dark content on it, a swell blue fill needs light.
+struct EventIconStyle {
+    let fill: Color
+    let content: Color
+
+    /// A person: list avatars, the joined stack, the profile photo. Amber on
+    /// the ring alone, so it doesn't compete with an actual signal.
+    static let avatar = EventIconStyle(fill: Blipper.swellBlue, content: Blipper.textPrimary)
+    /// A signal: the map pin, and the icon being built in the create/edit
+    /// flow. Filled amber so it carries across a map at a glance.
+    static let signal = EventIconStyle(fill: Blipper.amber, content: Blipper.onAmber)
+}
+
 // Reusable circle icon: profile photo → emoji/initials label → person placeholder
 struct EventIconView: View {
     var photoURL: String? = nil
     var label: String? = nil
     var size: CGFloat = 44
+    var style: EventIconStyle = .avatar
 
     private var isEmoji: Bool {
         label?.unicodeScalars.contains { $0.properties.isEmojiPresentation } ?? false
@@ -184,8 +191,19 @@ struct EventIconView: View {
             }
         }
         .frame(width: size, height: size)
-        .background(Color.accentColor)
+        .background(style.fill)
         .clipShape(Circle())
+        // strokeBorder rather than stroke so the ring sits fully inside the
+        // circle and leaves the boundary free for the separator ring the avatar
+        // stack draws over the top of it. On the signal style it lands amber on
+        // amber and simply reads as a clean edge.
+        .overlay(Circle().strokeBorder(Blipper.amber, lineWidth: ringWidth))
+    }
+
+    // Scaled off the icon so a 26pt avatar isn't ringed like a 140pt one, but
+    // capped at both ends: any thinner disappears, any thicker eats the photo.
+    private var ringWidth: CGFloat {
+        min(max(size * 0.05, 1.5), 3)
     }
 
     @ViewBuilder
@@ -195,11 +213,11 @@ struct EventIconView: View {
                 .font(isEmoji
                     ? .system(size: size * 0.45)
                     : .system(size: size * 0.3, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(style.content)
         } else {
             Image(systemName: "person.fill")
                 .font(.system(size: size * 0.4))
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(style.content.opacity(0.8))
         }
     }
 }

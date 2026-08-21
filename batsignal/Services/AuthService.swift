@@ -125,6 +125,12 @@ class AuthService: ObservableObject {
             createdAt: .init()
         )
         try db.collection("users").document(firebaseUser.uid).setData(from: user)
+
+        // This is a whole-document write, so it clears any fcmToken that landed
+        // before the profile existed — and FCM won't re-issue the token for the
+        // rest of the launch. Without this, a brand-new account gets no push
+        // notifications until the app is next relaunched.
+        NotificationService.shared.saveCurrentToken()
     }
 
     // MARK: - Private

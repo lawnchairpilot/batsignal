@@ -10,7 +10,7 @@ struct MyActiveEventCard: View {
     @State private var showDetail = false
     @State private var showUpcomingDetail = false
     @State private var now = Date()
-    @State private var joinedUsers: [User] = []
+    @State private var joinedUsers: [PublicProfile] = []
     @State private var isBoolersExpanded = false
 
     let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
@@ -38,9 +38,9 @@ struct MyActiveEventCard: View {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         Rectangle()
-                            .fill(Color.primary.opacity(0.08))
+                            .fill(Blipper.track)
                         Rectangle()
-                            .fill(remainingColor(remaining))
+                            .fill(Blipper.amber)
                             .frame(width: geometry.size.width * remaining)
                     }
                 }
@@ -50,20 +50,20 @@ struct MyActiveEventCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 if event.isActive {
                     Text(Strings.Home.yourSignal)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.blipperUI(.caption1))
+                        .foregroundColor(Blipper.textMuted)
                 }
-                FadingHeadline(text: event.activity, background: Color(.secondarySystemBackground))
+                FadingHeadline(text: event.activity, background: Blipper.surface)
 
                 if !event.isActive, let eta = viewModel.etaLabel {
                     Text(eta)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(.blipperUI(.subheadline))
+                        .foregroundColor(Blipper.textMuted)
                 }
             }
             .padding()
         }
-        .background(Color(.secondarySystemBackground))
+        .background(Blipper.surface)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -79,15 +79,15 @@ struct MyActiveEventCard: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(Strings.Home.comingUp)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.blipperUI(.caption1))
+                        .foregroundColor(Blipper.textMuted)
                     Text(event.activity)
-                        .font(.headline)
+                        .font(.blipperUI(.headline, weight: 600))
                 }
                 Spacer()
                 if let eta = viewModel.etaLabel {
                     Text(eta)
-                        .font(.caption.bold())
+                        .font(.blipperUI(.caption1, weight: 600))
                         .foregroundColor(.accentColor)
                 }
                 Button(action: { withAnimation(.easeInOut(duration: 0.2)) { isExpanded = false } }) {
@@ -104,31 +104,31 @@ struct MyActiveEventCard: View {
 
             if event.locationType == .fixed, let locationLabel = event.locationLabel {
                 Label(locationLabel, systemImage: locationIcon(event))
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(.blipperUI(.subheadline))
+                    .foregroundColor(Blipper.textMuted)
                     .lineLimit(1)
             }
 
             HStack {
                 Text(!event.durationLabel.isEmpty ? event.durationLabel : Strings.Home.openEnded)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.blipperUI(.caption1))
+                    .foregroundColor(Blipper.textMuted)
                 Spacer()
                 Button(Strings.Common.cancel, role: .destructive) {
                     Task { await viewModel.cancelUpcoming() }
                 }
-                .font(.subheadline.bold())
+                .font(.blipperUI(.subheadline, weight: 600))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(Color.red.opacity(0.1))
-                .foregroundColor(.red)
+                .background(Blipper.rose.opacity(0.1))
+                .foregroundColor(Blipper.roseBright)
                 .cornerRadius(20)
             }
 
             joinedBoolers(event: event)
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Blipper.surface)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -136,7 +136,7 @@ struct MyActiveEventCard: View {
         )
         .opacity(0.7)
         .task(id: event.joinedUserIds ?? []) {
-            await loadJoinedUsers(ids: event.joinedUserIds ?? [])
+            await loadJoinedUsers(ids: event.joinedUserIds ?? [], eventId: event.id)
         }
         .onReceive(timer) { _ in now = Date() }
         .sheet(isPresented: $showUpcomingDetail) {
@@ -150,7 +150,7 @@ struct MyActiveEventCard: View {
 
             HStack {
                 Text(event.activity)
-                    .font(.headline)
+                    .font(.blipperUI(.headline, weight: 600))
                 Spacer()
                 Button(action: { withAnimation(.easeInOut(duration: 0.2)) { isExpanded = false } }) {
                     Image(systemName: "chevron.down.circle")
@@ -167,23 +167,23 @@ struct MyActiveEventCard: View {
             if let remaining = viewModel.remainingFraction {
                 VStack(alignment: .leading, spacing: 4) {
                     ProgressView(value: remaining)
-                        .tint(remainingColor(remaining))
+                        .tint(Blipper.amber)
                     if let label = viewModel.timeRemainingLabel {
                         Text(label)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(.blipperUI(.caption1))
+                            .foregroundColor(Blipper.textMuted)
                     }
                 }
             } else if let label = event.durationVagueLabel {
                 Label(label, systemImage: "clock")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.blipperUI(.caption1))
+                    .foregroundColor(Blipper.textMuted)
             }
 
             if event.locationType == .fixed, let locationLabel = event.locationLabel {
                 Label(locationLabel, systemImage: locationIcon(event))
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(.blipperUI(.subheadline))
+                    .foregroundColor(Blipper.textMuted)
                     .lineLimit(1)
             }
 
@@ -198,11 +198,11 @@ struct MyActiveEventCard: View {
                     Task { await viewModel.end() }
                 }) {
                     Text(Strings.Event.endSignal)
-                        .font(.subheadline.bold())
+                        .font(.blipperUI(.subheadline, weight: 600))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .background(Color.red.opacity(0.1))
-                        .foregroundColor(.red)
+                        .background(Blipper.rose.opacity(0.1))
+                        .foregroundColor(Blipper.roseBright)
                         .cornerRadius(20)
                 }
 
@@ -216,10 +216,10 @@ struct MyActiveEventCard: View {
                             Image(systemName: "minus")
                             Text(Strings.Home.extend30Min)
                         }
-                        .font(.subheadline.bold())
+                        .font(.blipperUI(.subheadline, weight: 600))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .background(Color(.secondarySystemBackground))
+                        .background(Blipper.surface)
                         .foregroundColor(.accentColor)
                         .cornerRadius(20)
                         .overlay(
@@ -237,11 +237,11 @@ struct MyActiveEventCard: View {
                             Image(systemName: "plus")
                             Text(Strings.Home.extend30Min)
                         }
-                        .font(.subheadline.bold())
+                        .font(.blipperUI(.subheadline, weight: 600))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(Color.accentColor)
-                        .foregroundColor(.white)
+                        .foregroundColor(Blipper.onMoonlight)
                         .cornerRadius(20)
                     }
                 }
@@ -250,14 +250,14 @@ struct MyActiveEventCard: View {
             joinedBoolers(event: event)
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Blipper.surface)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
                 .stroke(Color.accentColor.opacity(0.4), lineWidth: 1)
         )
         .task(id: event.joinedUserIds ?? []) {
-            await loadJoinedUsers(ids: event.joinedUserIds ?? [])
+            await loadJoinedUsers(ids: event.joinedUserIds ?? [], eventId: event.id)
         }
         .onReceive(timer) { _ in now = Date() }
         .sheet(isPresented: $showDetail) {
@@ -292,21 +292,15 @@ struct MyActiveEventCard: View {
 
     // Keyed on the ids so the faces follow the view model's listener as people
     // join and leave, rather than being fetched once when the card opens.
-    private func loadJoinedUsers(ids: [String]) async {
+    private func loadJoinedUsers(ids: [String], eventId: String?) async {
         guard !ids.isEmpty else {
             joinedUsers = []
             return
         }
-        guard let users = try? await FriendService().fetchFriends(ids: ids) else { return }
+        guard let eventId,
+              let users = try? await FriendService().fetchProfiles(ids: ids, eventId: eventId)
+        else { return }
         joinedUsers = users
-    }
-
-    // Takes time remaining, so the thresholds run the opposite way from a
-    // fill-up bar: the less that's left, the more urgent the color.
-    private func remainingColor(_ remaining: Double) -> Color {
-        if remaining < 0.25 { return .red }
-        if remaining < 0.5 { return .orange }
-        return .accentColor
     }
 
     private func locationIcon(_ event: Event) -> String {
@@ -369,7 +363,7 @@ struct UpcomingEventDetailView: View {
                             }
                         }
                         Rectangle()
-                            .fill(Color(.separator))
+                            .fill(Blipper.hairline)
                             .frame(maxWidth: .infinity)
                             .frame(height: 1)
                     }
@@ -394,9 +388,16 @@ struct UpcomingEventDetailView: View {
                     )
                 }
 
+                // Reported, not offered: the recipients were resolved and
+                // written when the signal went out, so this says where it went
+                // rather than pretending the answer is still open.
+                Section(Strings.Event.sentToLabel) {
+                    EventAudienceSummary(event: event)
+                }
+
                 if let error = editViewModel.errorMessage {
                     Section {
-                        Text(error).foregroundColor(.red).font(.caption)
+                        Text(error).foregroundColor(Blipper.roseBright).font(.blipperUI(.caption1))
                     }
                 }
 
@@ -488,7 +489,7 @@ struct ActiveEventDetailView: View {
                             }
                         }
                         Rectangle()
-                            .fill(Color(.separator))
+                            .fill(Blipper.hairline)
                             .frame(maxWidth: .infinity)
                             .frame(height: 1)
                     }
@@ -505,9 +506,14 @@ struct ActiveEventDetailView: View {
                     )
                 }
 
+                // Reported, not offered — see the upcoming sheet's copy of this.
+                Section(Strings.Event.sentToLabel) {
+                    EventAudienceSummary(event: event)
+                }
+
                 if let error = editViewModel.errorMessage {
                     Section {
-                        Text(error).foregroundColor(.red).font(.caption)
+                        Text(error).foregroundColor(Blipper.roseBright).font(.blipperUI(.caption1))
                     }
                 }
             }

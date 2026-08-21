@@ -15,7 +15,7 @@ extension View {
             .contentShape(RoundedRectangle(cornerRadius: 12))
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.secondarySystemGroupedBackground))
+                    .fill(Blipper.surface)
             )
     }
 

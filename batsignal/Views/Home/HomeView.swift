@@ -72,15 +72,20 @@ struct HomeView: View {
         }
     }
 
-    // Sits on the map rather than in a navigation bar, so both pieces carry a
-    // material backing of their own to stay legible over whatever is beneath.
+    // Sits on the map rather than in a navigation bar. The profile button keeps
+    // a material backing to stay legible over whatever is beneath; the wordmark
+    // leans on its own color and haze instead.
     private var header: some View {
         HStack(spacing: 8) {
             Text(Strings.Common.appName)
-                .font(.title2.bold())
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(.thinMaterial, in: Capsule())
+                .font(.blipperDisplay(.title2, weight: 700))
+                // The wordmark sits on the map among the signals it names, so
+                // it takes their color rather than the chrome's.
+                .foregroundStyle(Blipper.amber)
+                // The same haze the map pins wear. With the backdrop gone this
+                // is also what holds the wordmark off busy map content.
+                // .blipperGlow(Blipper.amber)
+                .offset(y: -2)
 
             Spacer()
 
@@ -170,7 +175,7 @@ struct HomeView: View {
         .scrollPosition(id: $selectedCarouselItem)
         // carouselFocusEffect already recedes the off-centre cards; the system
         // edge effect on top of that just smears them into the map.
-        .scrollEdgeEffectHidden()
+        .hidingScrollEdgeEffect()
         .fixedSize(horizontal: false, vertical: true)
         .task { await runCarouselHint() }
         .onChange(of: selectedCarouselItem) { _, newValue in
@@ -320,12 +325,22 @@ struct HomeView: View {
             id: id,
             coordinate: coordinate,
             label: label,
-            creatorPhotoURL: event.imageURL ?? authService.currentUser?.profilePhotoURL,
+            creatorPhotoURL: annotationPhotoURL(for: event, creatorPhotoURL: authService.currentUser?.profilePhotoURL),
             isLive: event.locationType == .live,
             isActive: true,
             event: event,
             creatorName: name
         )
+    }
+
+    // EventIconView draws a photo in preference to a label, so the photo and the
+    // label can't pick their fallbacks independently: a creator's profile photo
+    // left in place here outranks the event's own emoji and silently swallows
+    // it. What the event says about itself comes first — its image, then its
+    // emoji — and the creator's photo is only reached when it says neither.
+    private func annotationPhotoURL(for event: Event, creatorPhotoURL: String?) -> String? {
+        if let imageURL = event.imageURL { return imageURL }
+        return event.emoji == nil ? creatorPhotoURL : nil
     }
 
     private func makeAnnotationItems(from events: [Event], isActive: Bool) -> [EventAnnotationItem] {
@@ -338,7 +353,7 @@ struct HomeView: View {
                 id: id,
                 coordinate: coordinate,
                 label: label,
-                creatorPhotoURL: event.imageURL ?? creator?.profilePhotoURL,
+                creatorPhotoURL: annotationPhotoURL(for: event, creatorPhotoURL: creator?.profilePhotoURL),
                 isLive: event.locationType == .live,
                 isActive: isActive,
                 event: event,
@@ -371,20 +386,144 @@ private extension View {
     }
 }
 
+// Text that writes itself out a character at a time behind a caret, which
+// keeps blinking once it runs out of things to type. The one card in the
+// carousel with no content of its own to look at, so it makes some.
+private struct TypingText: View {
+    let text: String
+
+    // Milliseconds rather than Duration so the jitter below can be plain
+    // arithmetic. An ordinary character lands fast; a full stop is held a good
+    // deal longer, because a trailing "..." typed at letter speed reads as
+    // three more characters when the whole point of it is the pause.
+    private static let characterDelay = 55
+    private static let punctuationDelay = 250
+    // Long enough after the last character that the caret is clearly waiting
+    // rather than still going.
+    private static let settleDelay = 400
+    // About what a terminal caret does.
+    private static let blinkInterval = 530
+    // How many times it blinks before giving up and going out. A caret on a
+    // card nobody is typing into stops reading as a cursor after a few blinks
+    // and starts reading as a flicker — long enough to be noticed, not long
+    // enough to be nagged by.
+    private static let blinkCount = 5
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var typedCount = 0
+    @State private var caretVisible = true
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 3) {
+            Text(String(text.prefix(typedCount)))
+                .font(.blipperUI(.headline, weight: 600))
+                .lineLimit(1)
+
+            caret
+        }
+        .task { await type() }
+        // Half a sentence is nonsense read aloud, and VoiceOver would reach
+        // this while it was still two characters long. It announces the
+        // finished line and skips the caret entirely.
+        .accessibilityElement()
+        .accessibilityLabel(text)
+    }
+
+    private var caret: some View {
+        Rectangle()
+            .frame(width: 2, height: caretHeight)
+            // Hung off the text's baseline rather than the line box, so it
+            // stands where a letter stands: clearing the capitals, dipping a
+            // little below the baseline the way a real caret does.
+            .alignmentGuide(.firstTextBaseline) { $0[.bottom] - caretDescent }
+            .opacity(caretVisible ? 1 : 0)
+    }
+
+    // Height less descent is what shows above the baseline, and that figure is
+    // the one to tune. It has to clear the headline's cap height — about 12.4pt
+    // at 17pt Inter — or the caret reads as both too short and set too low,
+    // which is one fault, not two: an eye reading a line of capitals takes
+    // their top edge as the top of the line. 15 puts it a little above them,
+    // short of the ascender, which is about where a text caret sits.
+    @ScaledMetric(relativeTo: .headline) private var caretHeight: CGFloat = 17
+    @ScaledMetric(relativeTo: .headline) private var caretDescent: CGFloat = 2
+
+    private func type() async {
+        // Text that reflows on its own is the thing Reduce Motion is asked to
+        // stop, so it arrives whole and the caret simply sits there.
+        guard !reduceMotion else {
+            typedCount = text.count
+            return
+        }
+
+        for character in text {
+            typedCount += 1
+            let base = character == "." ? Self.punctuationDelay : Self.characterDelay
+            // Struck by hand, not by a metronome.
+            let jittered = Int(Double(base) * Double.random(in: 0.8...1.3))
+            try? await Task.sleep(for: .milliseconds(jittered))
+            if Task.isCancelled { return }
+        }
+
+        // Only now does it start blinking: a caret holds steady while it's
+        // being typed at, and blinks once it's waiting on you.
+        try? await Task.sleep(for: .milliseconds(Self.settleDelay))
+        for _ in 0..<Self.blinkCount {
+            caretVisible = false
+            try? await Task.sleep(for: .milliseconds(Self.blinkInterval))
+            guard !Task.isCancelled else { return }
+            caretVisible = true
+            try? await Task.sleep(for: .milliseconds(Self.blinkInterval))
+            guard !Task.isCancelled else { return }
+        }
+
+        // Fades out rather than snapping. The hard on/off is what makes the
+        // blink read as a caret, so the last thing it does has to look
+        // different from one — otherwise it's just a sixth blink that never
+        // comes back.
+        withAnimation(.easeOut(duration: 0.4)) { caretVisible = false }
+    }
+}
+
 private struct CreateEventPromptCard: View {
     let action: () -> Void
 
+    // Just short of the two rows this card used to stack — the icon's and the
+    // title's — so the circle spans nearly both and the title comes to sit
+    // beside it on the lower one. Scaled rather than fixed so it keeps pace
+    // with the headline it's measured against when Dynamic Type moves.
+    @ScaledMetric(relativeTo: .headline) private var iconSize: CGFloat = 40
+
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 8) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.headline)
-                    .foregroundColor(.accentColor)
-                FadingHeadline(text: Strings.Home.createSignalTitle, background: Color(.secondarySystemBackground))
+            // Bottom aligned, so the title sits on the circle's last line
+            // rather than centring against its middle.
+            HStack(alignment: .bottom, spacing: 12) {
+                // Amber because this card stands in for the signal you don't
+                // have yet — it's the one card in the carousel with no icon of
+                // its own to carry the colour. Built from the same fill and
+                // content pair a real event icon wears rather than its own
+                // colours, so the placeholder looks like the thing it's
+                // offering to make.
+                Circle()
+                    .fill(EventIconStyle.signal.fill)
+                    .frame(width: iconSize, height: iconSize)
+                    .overlay(
+                        Image(systemName: "plus")
+                            .font(.system(size: iconSize * 0.44, weight: .semibold))
+                            .foregroundStyle(EventIconStyle.signal.content)
+                    )
+
+                // Muted rather than primary: this is a prompt for something that
+                // doesn't exist yet, so it reads like the placeholder text on
+                // the form it opens rather than like an event's actual title.
+                TypingText(text: Strings.Home.createSignalTitle)
+                    .foregroundStyle(Blipper.textMuted)
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemBackground))
+            .background(Blipper.surface)
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)

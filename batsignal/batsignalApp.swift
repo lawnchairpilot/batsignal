@@ -25,6 +25,11 @@ struct batsignalApp: App {
                 } else if authService.needsProfileSetup {
                     ProfileSetupView()
                         .environmentObject(authService)
+                } else if authService.currentUser?.acceptedTermsAt == nil {
+                    // Sits after profile setup so there's a document to record
+                    // the acceptance on, and before Root so nothing can be
+                    // posted or read until the rules have been agreed to.
+                    CommunityRulesView()
                 } else {
                     RootView()
                         .environmentObject(authService)
@@ -38,6 +43,15 @@ struct batsignalApp: App {
             .onOpenURL { url in
                 _ = Auth.auth().canHandle(url)
             }
+            // The palette is a night palette — every surface and text color in
+            // it assumes a dark base — so the app doesn't follow the system
+            // appearance. In light mode the system materials and grays
+            // underneath would fight it.
+            .preferredColorScheme(.dark)
+            // The AccentColor asset covers Color.accentColor, but toolbar and
+            // other system-drawn controls don't all read it and were still
+            // coming out system blue.
+            .tint(Blipper.moonlight)
         }
     }
 }

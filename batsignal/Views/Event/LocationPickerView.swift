@@ -76,7 +76,7 @@ struct LocationPickerView: View {
             Map(position: $position, selection: $selectedFeature) {
                 if let coord = droppedPin {
                     Marker(droppedPinName.isEmpty ? Strings.Event.droppedPin : droppedPinName, coordinate: coord)
-                        .tint(.red)
+                        .tint(Blipper.roseBright)
                 }
                 UserAnnotation()
             }
@@ -113,7 +113,7 @@ struct LocationPickerView: View {
 
     private var searchBar: some View {
         HStack {
-            Image(systemName: "magnifyingglass").foregroundColor(.secondary)
+            Image(systemName: "magnifyingglass").foregroundColor(Blipper.textMuted)
             TextField(Strings.Event.searchPlaceholder, text: $searchModel.searchText)
                 .autocorrectionDisabled()
                 .onSubmit { searchModel.search(near: centerCoordinate) }
@@ -122,7 +122,7 @@ struct LocationPickerView: View {
                     searchModel.searchText = ""
                     searchModel.results = []
                 }) {
-                    Image(systemName: "xmark.circle.fill").foregroundColor(.secondary)
+                    Image(systemName: "xmark.circle.fill").foregroundColor(Blipper.textMuted)
                 }
             }
         }
@@ -137,7 +137,7 @@ struct LocationPickerView: View {
         Button(action: useCurrentLocation) {
             Image(systemName: "location.circle.fill")
                 .font(.system(size: 32))
-                .foregroundColor(.white)
+                .foregroundColor(Blipper.onMoonlight)
                 .padding(10)
                 .background(Color.accentColor)
                 .clipShape(Circle())
@@ -147,7 +147,7 @@ struct LocationPickerView: View {
 
     private var nameField: some View {
         HStack {
-            Image(systemName: "pencil").foregroundColor(.secondary)
+            Image(systemName: "pencil").foregroundColor(Blipper.textMuted)
             TextField(Strings.Event.nameLocationPlaceholder, text: $droppedPinName)
                 .autocorrectionDisabled()
         }
@@ -175,16 +175,16 @@ struct LocationPickerView: View {
 
     private func searchResultRow(item: MKMapItem) -> some View {
         let name = item.name ?? Strings.Event.unknownPlaceName
-        let subtitle = item.addressRepresentations?.fullAddress(includingRegion: false, singleLine: true)
+        let subtitle = item.singleLineAddress
         return Button(action: { selectSearchResult(item) }) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(name)
-                    .font(.subheadline).bold()
-                    .foregroundColor(.primary)
+                    .font(.blipperUI(.subheadline, weight: 600))
+                    .foregroundColor(Blipper.textPrimary)
                 if let subtitle {
                     Text(subtitle)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.blipperUI(.caption1))
+                        .foregroundColor(Blipper.textMuted)
                 }
             }
             .padding(.horizontal, 16)
@@ -196,7 +196,7 @@ struct LocationPickerView: View {
     // MARK: - Actions
 
     private func selectSearchResult(_ item: MKMapItem) {
-        let coord = item.location.coordinate
+        let coord = item.pinCoordinate
         droppedPin = coord
         droppedPinName = item.name ?? Strings.Event.selectedPlace
         position = .camera(MapCamera(centerCoordinate: coord, distance: 1000))
@@ -238,6 +238,30 @@ struct LocationPickerView: View {
 }
 
 // MARK: - Supporting types
+
+// `location` and `addressRepresentations` are iOS 26; `placemark` is what came
+// before and is deprecated there. Both branches are kept so search results read
+// the same on either version, rather than picking one and losing the address
+// line or the coordinate on the other.
+private extension MKMapItem {
+    var pinCoordinate: CLLocationCoordinate2D {
+        if #available(iOS 26.0, *) {
+            return location.coordinate
+        } else {
+            return placemark.coordinate
+        }
+    }
+
+    // MKPlacemark's title is already the formatted address, which is what the
+    // iOS 26 call is asked for too.
+    var singleLineAddress: String? {
+        if #available(iOS 26.0, *) {
+            return addressRepresentations?.fullAddress(includingRegion: false, singleLine: true)
+        } else {
+            return placemark.title
+        }
+    }
+}
 
 class LocationSearchModel: ObservableObject {
     @Published var searchText = ""

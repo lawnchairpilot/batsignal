@@ -49,28 +49,29 @@ struct GroupFormView: View {
                     Button(action: { showEmojiPicker = true }) {
                         HStack {
                             Text(Strings.Groups.iconFieldLabel)
-                                .foregroundColor(.primary)
+                                .foregroundColor(Blipper.textPrimary)
                             Spacer()
                             if let selectedEmoji {
                                 Text(selectedEmoji).font(.title2)
                             } else {
                                 Image(systemName: "person.2.fill")
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(Blipper.textMuted)
                             }
                             Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .font(.blipperUI(.caption1))
+                                .foregroundColor(Blipper.textMuted)
                         }
                     }
                     .sheet(isPresented: $showEmojiPicker) {
                         EmojiPickerView(selectedEmoji: $selectedEmoji)
                     }
                 }
+                .blipperRows()
 
                 Section(Strings.Groups.membersSectionHeader) {
                     if friends.isEmpty {
                         Text(Strings.Groups.noFriendsToAdd)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(Blipper.textMuted)
                     } else {
                         ForEach(friends) { friend in
                             Button {
@@ -79,11 +80,14 @@ struct GroupFormView: View {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(friend.displayName)
-                                            .foregroundColor(.primary)
+                                            // Held near regular, since this row
+                                            // was never the emphasized one.
+                                            .font(.blipperUI(.body, weight: 500))
+                                            .foregroundColor(Blipper.textPrimary)
                                         if !friend.phoneNumber.isEmpty {
                                             Text(friend.phoneNumber)
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
+                                                .font(.blipperUI(.caption1))
+                                                .foregroundColor(Blipper.textMuted)
                                         }
                                     }
                                     Spacer()
@@ -92,14 +96,16 @@ struct GroupFormView: View {
                                             .foregroundColor(.accentColor)
                                     } else {
                                         Image(systemName: "circle")
-                                            .foregroundColor(.secondary)
+                                            .foregroundColor(Blipper.textMuted)
                                     }
                                 }
                             }
                         }
                     }
                 }
+                .blipperRows()
             }
+            .blipperBackground()
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

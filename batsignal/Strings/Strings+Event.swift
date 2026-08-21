@@ -3,12 +3,13 @@ import Foundation
 extension Strings {
     enum Event {
         // Fields
-        static let activityPlaceholder = "what will you tell them?"
+        static let activityPlaceholder = "Answer the call"
         static let durationPickerLabel = "Duration"
         static let locationTypePickerLabel = "Location type"
         static let liveLocation = "Share Location"
         static let fixedPlace = "Drop a Pin"
         static let allFriendsLabel = "All Friends"
+        static let sentToLabel = "Sent to"
         static let pickLocationOnMap = "Pick a location on the map"
         static let addImage = "Add Image"
         static let changeImage = "Change Image"
@@ -19,8 +20,7 @@ extension Strings {
         }
 
         // Titles & actions
-        static let swipeUpToSend = "Swipe up to send"
-        static let releaseToSend = "Release to send"
+        static let sendSignal = "Send Signal"
         static let editSignalTitle = "Edit Signal"
         static let yourSignalTitle = "Your Signal"
         static let cancelEvent = "Cancel Event"

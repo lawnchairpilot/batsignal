@@ -6,15 +6,11 @@ struct AuthFlowView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Branding
-            VStack(spacing: 8) {
-                Image(systemName: "bolt.circle.fill")
-                    .font(.system(size: 64))
-                    .foregroundColor(.accentColor)
-                Text(Strings.Common.appName)
-                    .font(.largeTitle).bold()
-            }
-            .padding(.top, 60)
-            .padding(.bottom, 48)
+            Text(Strings.Common.appName)
+                .font(.blipperDisplay(.largeTitle, weight: 700))
+                .foregroundStyle(Blipper.amber)
+                .padding(.top, 60)
+                .padding(.bottom, 48)
 
             switch viewModel.step {
             case .phoneEntry:
@@ -26,6 +22,7 @@ struct AuthFlowView: View {
             Spacer()
         }
         .padding(.horizontal, 24)
+        .blipperBackground()
         .animation(.easeInOut(duration: 0.2), value: viewModel.step)
     }
 
@@ -35,22 +32,22 @@ struct AuthFlowView: View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(Strings.Auth.phoneEntryHeadline)
-                    .font(.title2).bold()
+                    .font(.blipperUI(.title2, weight: 600))
                 Text(Strings.Auth.phoneEntrySubtitle)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(.blipperUI(.subheadline))
+                    .foregroundColor(Blipper.textMuted)
             }
 
             HStack(spacing: 0) {
                 Text(Strings.Auth.countryCode)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 14)
-                    .background(Color(.tertiarySystemBackground))
-                    .foregroundColor(.primary)
+                    .background(Blipper.surfaceRaised)
+                    .foregroundColor(Blipper.textPrimary)
 
                 Rectangle()
                     .frame(width: 1, height: 24)
-                    .foregroundColor(Color(.separator))
+                    .foregroundColor(Blipper.hairline)
 
                 TextField(Strings.Auth.phoneNumberPlaceholder, text: $viewModel.phoneNumber)
                     .keyboardType(.phonePad)
@@ -61,7 +58,7 @@ struct AuthFlowView: View {
                         viewModel.phoneNumber = formatPhoneInput(newValue)
                     }
             }
-            .background(Color(.secondarySystemBackground))
+            .background(Blipper.surface)
             .cornerRadius(12)
 
             errorText
@@ -79,19 +76,19 @@ struct AuthFlowView: View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(Strings.Auth.codeVerificationHeadline)
-                    .font(.title2).bold()
+                    .font(.blipperUI(.title2, weight: 600))
                 Text(Strings.Auth.sentToCode(viewModel.phoneNumber))
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(.blipperUI(.subheadline))
+                    .foregroundColor(Blipper.textMuted)
             }
 
             TextField(Strings.Auth.codePlaceholder, text: $viewModel.verificationCode)
                 .keyboardType(.numberPad)
                 .textContentType(.oneTimeCode)
-                .font(.title2.monospacedDigit())
+                .font(.blipperUI(.title2, weight: 500, monospacedDigits: true))
                 .multilineTextAlignment(.center)
                 .padding()
-                .background(Color(.secondarySystemBackground))
+                .background(Blipper.surface)
                 .cornerRadius(12)
                 .onChange(of: viewModel.verificationCode) { _, newValue in
                     let digits = newValue.filter(\.isNumber)
@@ -108,7 +105,7 @@ struct AuthFlowView: View {
             Button(Strings.Auth.useDifferentNumber) {
                 viewModel.editPhoneNumber()
             }
-            .font(.subheadline)
+            .font(.blipperUI(.subheadline))
             .foregroundColor(.accentColor)
             .frame(maxWidth: .infinity)
         }
@@ -120,15 +117,15 @@ struct AuthFlowView: View {
     private var errorText: some View {
         if let error = viewModel.errorMessage {
             Text(error)
-                .foregroundColor(.red)
-                .font(.caption)
+                .foregroundColor(Blipper.roseBright)
+                .font(.blipperUI(.caption1))
         }
     }
 
     private func primaryButtonContent(label: String) -> some View {
         Group {
             if viewModel.isLoading {
-                ProgressView().tint(.white)
+                ProgressView().tint(Blipper.onMoonlight)
             } else {
                 Text(label).fontWeight(.semibold)
             }
@@ -136,7 +133,7 @@ struct AuthFlowView: View {
         .frame(maxWidth: .infinity)
         .padding()
         .background(Color.accentColor)
-        .foregroundColor(.white)
+        .foregroundColor(Blipper.onMoonlight)
         .cornerRadius(12)
     }
 

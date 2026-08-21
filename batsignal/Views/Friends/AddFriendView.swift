@@ -28,6 +28,7 @@ struct AddFriendView: View {
                     contactsTab
                 }
             }
+            .blipperBackground()
             .navigationTitle(Strings.Friends.addFriendTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -56,7 +57,7 @@ struct AddFriendView: View {
                 .keyboardType(.phonePad)
                 .textContentType(.telephoneNumber)
                 .padding()
-                .background(Color(.secondarySystemBackground))
+                .background(Blipper.surface)
                 .cornerRadius(12)
 
             Button(action: { Task { await viewModel.searchByPhone(currentUserId: authService.currentUser?.id) } }) {
@@ -64,13 +65,13 @@ struct AddFriendView: View {
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Color.accentColor)
-                    .foregroundColor(.white)
+                    .foregroundColor(Blipper.onMoonlight)
                     .cornerRadius(12)
             }
             .disabled(viewModel.searchPhone.isEmpty || viewModel.isLoading)
 
             if let error = viewModel.errorMessage {
-                Text(error).foregroundColor(.red).font(.caption)
+                Text(error).foregroundColor(Blipper.roseBright).font(.blipperUI(.caption1))
             }
 
             if let user = viewModel.searchResult {
@@ -81,10 +82,7 @@ struct AddFriendView: View {
                     friends: viewModel.friends,
                     outgoingRequests: viewModel.outgoingRequests
                 ) {
-                    Task {
-                        guard let id = user.id else { return }
-                        await viewModel.sendRequest(toUserId: id)
-                    }
+                    Task { await viewModel.sendRequest(toUserId: user.id, toUserName: user.displayName) }
                 }
             }
 
@@ -122,11 +120,17 @@ struct AddFriendView: View {
                     outgoingRequests: viewModel.outgoingRequests
                 ) {
                     Task {
-                        guard let id = match.user.id else { return }
-                        await viewModel.sendRequest(toUserId: id)
+                        // The profile's own name, not the contact-book name —
+                        // the row shows what's in your contacts, but the
+                        // request should carry what they call themselves.
+                        await viewModel.sendRequest(
+                            toUserId: match.user.id,
+                            toUserName: match.user.displayName
+                        )
                     }
                 }
             }
+            .blipperRows()
             .listStyle(.plain)
         }
     }
@@ -136,8 +140,9 @@ struct AddFriendView: View {
 
 private struct ContactResultRow: View {
     let name: String
-    let phone: String
-    let userId: String?
+    // Absent for a contact match the server didn't echo a number back for.
+    let phone: String?
+    let userId: String
     let friends: [User]
     let outgoingRequests: [FriendRequest]
     let onAdd: () -> Void
@@ -147,25 +152,26 @@ private struct ContactResultRow: View {
     }
 
     private var pendingRequest: Bool {
-        guard let id = userId else { return false }
-        return outgoingRequests.contains { $0.toUserId == id }
+        outgoingRequests.contains { $0.toUserId == userId }
     }
 
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(name).font(.headline)
-                Text(phone).font(.caption).foregroundColor(.secondary)
+                Text(name).font(.blipperUI(.headline, weight: 600))
+                if let phone {
+                    Text(phone).font(.blipperUI(.caption1)).foregroundColor(Blipper.textMuted)
+                }
             }
             Spacer()
             if alreadyFriend {
                 Text(Strings.Friends.alreadyFriends)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(.blipperUI(.subheadline))
+                    .foregroundColor(Blipper.textMuted)
             } else if pendingRequest {
                 Text(Strings.Friends.requested)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(.blipperUI(.subheadline))
+                    .foregroundColor(Blipper.textMuted)
             } else {
                 Button(Strings.Friends.add, action: onAdd)
                     .buttonStyle(.borderedProminent)

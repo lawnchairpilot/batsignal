@@ -1,14 +1,15 @@
 import SwiftUI
+import FirebaseAuth
 
 // Who's in, in the two forms every expanded card shows them: a tight stack of
 // faces that costs almost no room, and the opened-up row with names. Shared so
 // a friend's card and your own count the same heads the same way.
 
 struct JoinedAvatarStack: View {
-    let users: [User]
+    let users: [PublicProfile]
     // Matches whatever card the faces sit on, since the ring between them is
     // the card showing through rather than a color of its own.
-    var background: Color = Color(.secondarySystemBackground)
+    var background: Color = Blipper.surface
 
     private let maxVisible = 5
     private let size: CGFloat = 26
@@ -21,10 +22,10 @@ struct JoinedAvatarStack: View {
             }
             if users.count > maxVisible {
                 Text("+\(users.count - maxVisible)")
-                    .font(.caption2.bold())
-                    .foregroundStyle(.white)
+                    .font(.blipperUI(.caption2, weight: 600))
+                    .foregroundStyle(Blipper.textPrimary)
                     .frame(width: size, height: size)
-                    .background(Color(.systemGray3))
+                    .background(Blipper.surfaceRaised)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(background, lineWidth: 2))
             }
@@ -33,8 +34,12 @@ struct JoinedAvatarStack: View {
 }
 
 struct JoinedBoolersRow: View {
-    let users: [User]
+    let users: [PublicProfile]
     let onTap: () -> Void
+
+    private func isSelf(_ user: PublicProfile) -> Bool {
+        user.id == Auth.auth().currentUser?.uid
+    }
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -43,11 +48,18 @@ struct JoinedBoolersRow: View {
                     VStack(spacing: 4) {
                         EventIconView(photoURL: user.profilePhotoURL, label: user.initials, size: 44)
                         Text(user.displayName)
-                            .font(.caption2)
-                            .foregroundColor(.primary)
+                            .font(.blipperUI(.caption2))
+                            .foregroundColor(Blipper.textPrimary)
                             .lineLimit(1)
                             .frame(width: 52)
                     }
+                    // The people on someone else's signal aren't necessarily
+                    // this user's friends, so the friends list isn't a route to
+                    // reporting them — this is.
+                    .moderationMenu(
+                        report: isSelf(user) ? nil : ReportTarget.user(user.id),
+                        block: isSelf(user) ? nil : BlockTarget(userId: user.id, displayName: user.displayName)
+                    )
                 }
             }
             .padding(.vertical, 2)
@@ -56,6 +68,6 @@ struct JoinedBoolersRow: View {
             .contentShape(Rectangle())
             .onTapGesture(perform: onTap)
         }
-        .scrollEdgeEffectHidden()
+        .hidingScrollEdgeEffect()
     }
 }

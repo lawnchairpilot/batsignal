@@ -94,7 +94,12 @@ class CreateEventViewModel: ObservableObject {
             recipientIds: recipientIds,
             commentsEnabled: commentsEnabled,
             imageURL: imageURL,
-            audienceIsAllFriends: selectedGroupIds.isEmpty
+            audienceIsAllFriends: selectedGroupIds.isEmpty,
+            // Kept in the order the picker lists them rather than the set's own,
+            // so the edit sheet reads them back in the order they were shown.
+            audienceGroupIds: selectedGroupIds.isEmpty
+                ? nil
+                : groups.compactMap(\.id).filter(selectedGroupIds.contains)
         )
 
         do {

@@ -8,18 +8,22 @@ class FriendService: ObservableObject {
 
     // MARK: - Friend lookup
 
-    func findUser(byPhoneNumber phoneNumber: String) async throws -> User? {
+    func findUser(byPhoneNumber phoneNumber: String) async throws -> PublicProfile? {
         guard let normalized = PhoneNumber.normalize(phoneNumber) else { return nil }
-        let snapshot = try await db.collection("users")
-            .whereField("phoneNumber", isEqualTo: normalized)
-            .limit(to: 1)
-            .getDocuments()
-        return try snapshot.documents.first?.data(as: User.self)
+        return try await ProfileLookup.profiles(phoneNumbers: [normalized]).first
+    }
+
+    // People this user has no direct read access to: the other party to a friend
+    // request, before there's a friendship to grant it, or the people on a
+    // signal. Naming the event lets the server check this user was actually
+    // sent it before saying who else is there.
+    func fetchProfiles(ids: [String], eventId: String? = nil) async throws -> [PublicProfile] {
+        try await ProfileLookup.profiles(userIds: ids, eventId: eventId)
     }
 
     // MARK: - Friend requests
 
-    func sendFriendRequest(toUserId: String) async throws {
+    func sendFriendRequest(toUserId: String, toUserName: String?) async throws {
         guard let fromUserId = Auth.auth().currentUser?.uid else { return }
 
         // Check for an existing pending request in either direction
@@ -33,29 +37,32 @@ class FriendService: ObservableObject {
         let request = FriendRequest(
             fromUserId: fromUserId,
             toUserId: toUserId,
+            fromUserName: AuthService.shared.currentUser?.displayName,
+            toUserName: toUserName,
             status: .pending,
             createdAt: .init()
         )
         _ = try db.collection("friendRequests").addDocument(from: request)
     }
 
+    // The whole user document, which only its owner and their friends can read.
+    // For anyone else — a pending request, someone on a signal — use
+    // fetchProfiles, or this comes back empty.
     func fetchUser(id: String) async throws -> User? {
         let doc = try await db.collection("users").document(id).getDocument()
         return try? doc.data(as: User.self)
     }
 
+    // Flipping the status is the whole job. The friendship itself is written by
+    // linkFriendsOnRequestAccept (functions/src/index.ts), which is the only
+    // writer either friends list has — a client can't be trusted to edit
+    // someone else's. The new friend appears when the user document listener
+    // sees it land, a beat after this returns.
     func respondToRequest(requestId: String, accept: Bool) async throws {
         let status = accept ? FriendRequestStatus.accepted : .declined
         try await db.collection("friendRequests").document(requestId).updateData([
             "status": status.rawValue
         ])
-
-        if accept {
-            guard let currentUserId = Auth.auth().currentUser?.uid else { return }
-            let snapshot = try await db.collection("friendRequests").document(requestId).getDocument()
-            let request = try snapshot.data(as: FriendRequest.self)
-            try await addMutualFriendship(userId1: currentUserId, userId2: request.fromUserId)
-        }
     }
 
     func listenToIncomingRequests(onChange: @escaping ([FriendRequest]) -> Void) -> ListenerRegistration? {
@@ -100,14 +107,4 @@ class FriendService: ObservableObject {
         return snapshot.documents.compactMap { try? $0.data(as: User.self) }
     }
 
-    // MARK: - Private
-
-    private func addMutualFriendship(userId1: String, userId2: String) async throws {
-        let batch = db.batch()
-        let user1Ref = db.collection("users").document(userId1)
-        let user2Ref = db.collection("users").document(userId2)
-        batch.updateData(["friends": FieldValue.arrayUnion([userId2])], forDocument: user1Ref)
-        batch.updateData(["friends": FieldValue.arrayUnion([userId1])], forDocument: user2Ref)
-        try await batch.commit()
-    }
 }

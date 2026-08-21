@@ -108,7 +108,11 @@ struct HomeMapView: View {
                         EventAnnotationView(
                             label: item.label,
                             photoURL: item.creatorPhotoURL,
-                            size: item.id == enlargedEventId ? heroIconSize : EventAnnotationView.defaultSize
+                            size: iconSize(for: item),
+                            // Read off the event itself rather than carried on
+                            // the annotation item, so the count the pin glows
+                            // by is the same one the card counts faces from.
+                            joinCount: item.event.joinedCount
                         )
                     }
                     .buttonStyle(.plain)
@@ -117,6 +121,15 @@ struct HomeMapView: View {
             }
             UserAnnotation()
         }
+        // Fills the system's own "you are here" dot, which takes the map's
+        // tint. Swell blue rather than the app's moonlight so the dot reads as
+        // part of the water rather than as another piece of chrome — and it
+        // keeps the white ring, accuracy circle and heading wedge that come
+        // with the built-in dot.
+        .tint(Blipper.swellBlue)
+        // Over the map, under everything HomeView lays on top of it — the
+        // header and the carousel both want to stay out of the fog.
+        .overlay(MapFogVignette())
         .onAppear {
             refreshPosition()
             selectedAnnotationId = focusedEventId
@@ -143,11 +156,41 @@ struct HomeMapView: View {
         }
     }
 
+    // MARK: - Pin sizing
+
+    // An ordinary pin grows with the people who've joined it. The focused one
+    // doesn't stack that on top: its size is a framing decision — as much of
+    // the uncovered strip as it can fill — and it's the only pin at that size,
+    // so there's nothing beside it for a bigger circle to mean anything
+    // against. Its glow still answers to the headcount.
+    private func iconSize(for item: EventAnnotationItem) -> CGFloat {
+        guard item.id != enlargedEventId else { return heroIconSize }
+        return EventAnnotationView.joinedSize(
+            base: EventAnnotationView.defaultSize,
+            joinCount: item.event.joinedCount
+        )
+    }
+
     // MARK: - Hero framing
 
     private var heroCoordinate: CLLocationCoordinate2D? {
         guard let enlargedEventId else { return nil }
         return annotations.first { $0.id == enlargedEventId }?.coordinate
+    }
+
+    // What the focused pin would be drawn at if it weren't focused — the floor
+    // its hero size can't fall below. Without it, opening the card on a busy
+    // signal could make its pin *smaller* than the one you just tapped, on a
+    // map short enough that the strip left uncovered is tighter than the pin's
+    // own grown size.
+    private var enlargedEventUnfocusedSize: CGFloat {
+        guard let enlarged = annotations.first(where: { $0.id == enlargedEventId }) else {
+            return EventAnnotationView.defaultSize
+        }
+        return EventAnnotationView.joinedSize(
+            base: EventAnnotationView.defaultSize,
+            joinCount: enlarged.event.joinedCount
+        )
     }
 
     // The band of map the expanded card leaves uncovered.
@@ -161,7 +204,7 @@ struct HomeMapView: View {
     private var heroIconSize: CGFloat {
         let available = visibleStripHeight - heroTopMargin - heroCardGap
         let fits = available / 1.2  // the tail takes the other 0.2
-        return min(heroIconMaxSize, max(EventAnnotationView.defaultSize, fits))
+        return min(heroIconMaxSize, max(enlargedEventUnfocusedSize, fits))
     }
 
     // Centres the whole pin in the uncovered band. The pin is anchored at its
