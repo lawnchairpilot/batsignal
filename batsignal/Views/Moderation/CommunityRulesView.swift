@@ -24,8 +24,8 @@ struct CommunityRulesView: View {
                         .foregroundColor(Blipper.textMuted)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    // TODO: point these at the hosted documents once they're
-                    // live — App Store Connect needs the same two URLs.
+                    // Firebase Hosting serves these out of public/. App Store
+                    // Connect needs the same two URLs on the listing.
                     HStack(spacing: 4) {
                         Text(Strings.Moderation.termsFooter)
                         Link(Strings.Moderation.termsLinkTerms, destination: Self.termsURL)
@@ -61,8 +61,8 @@ struct CommunityRulesView: View {
         .blipperBackground()
     }
 
-    static let termsURL = URL(string: "https://boolsignal.app/terms")!
-    static let privacyURL = URL(string: "https://boolsignal.app/privacy")!
+    static let termsURL = URL(string: "https://boolsignal.web.app/terms")!
+    static let privacyURL = URL(string: "https://boolsignal.web.app/privacy")!
 
     private func accept() {
         guard let uid = Auth.auth().currentUser?.uid else { return }
