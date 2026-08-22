@@ -14,6 +14,10 @@ struct ProfileView: View {
     @State private var showAddFriend = false
     @State private var showCreateGroup = false
     @State private var editingGroup: FriendGroup?
+    // Held rather than acted on immediately: unfriending is mutual and only
+    // undone by a fresh request, so the swipe asks first.
+    @State private var friendPendingRemoval: User?
+    @State private var removeFailed = false
 
     var body: some View {
         List {
@@ -108,6 +112,22 @@ struct ProfileView: View {
         .sheet(item: $editingGroup) { group in
             GroupFormView(mode: .edit(group), friends: friendsViewModel.friends, groupsViewModel: groupsViewModel)
         }
+        .alert(
+            friendPendingRemoval.map { Strings.Friends.removeTitle($0.displayName) } ?? "",
+            isPresented: Binding(
+                get: { friendPendingRemoval != nil },
+                set: { if !$0 { friendPendingRemoval = nil } }
+            ),
+            presenting: friendPendingRemoval
+        ) { friend in
+            Button(Strings.Common.cancel, role: .cancel) { friendPendingRemoval = nil }
+            Button(Strings.Friends.remove, role: .destructive) { removeFriend(friend) }
+        } message: { _ in
+            Text(Strings.Friends.removeMessage)
+        }
+        .alert(Strings.Friends.removeFailed, isPresented: $removeFailed) {
+            Button(Strings.Common.ok, role: .cancel) {}
+        }
         .onAppear {
             groupsViewModel.startListening(ownerId: authService.currentUser?.id ?? "")
         }
@@ -128,19 +148,39 @@ struct ProfileView: View {
     private var peopleSelector: some View {
         Section {
             HStack(spacing: 12) {
-                Picker("", selection: $selectedTab) {
-                    Text(Strings.Friends.title).tag(FriendsTab.friends)
-                    Text(Strings.Groups.title).tag(FriendsTab.groups)
-                }
-                .pickerStyle(.segmented)
+                BlipperSegmentedControl(
+                    selection: $selectedTab,
+                    segments: [
+                        BlipperSegment(.friends, Strings.Friends.title),
+                        BlipperSegment(.groups, Strings.Groups.title),
+                    ]
+                )
 
+                // One glyph for both tabs. Swapping it for `person.badge.plus`
+                // on the friends side changed the icon's height as well as its
+                // width, so switching tabs read as the button jumping rather
+                // than the list beneath it changing.
                 Button(action: { addTapped() }) {
-                    Image(systemName: selectedTab == .friends ? "person.badge.plus" : "plus")
+                    Image(systemName: "plus")
                         .font(.blipperUI(.body))
                 }
                 .buttonStyle(.borderless)
+                .accessibilityLabel(selectedTab == .friends
+                    ? Strings.Friends.addFriendTitle
+                    : Strings.Groups.newGroupTitle)
             }
             .profileCard()
+        }
+    }
+
+    // The row doesn't disappear here — it goes when the user document listener
+    // sees the friendship gone, the same way an accepted request makes one
+    // appear.
+    private func removeFriend(_ friend: User) {
+        friendPendingRemoval = nil
+        guard let id = friend.id else { return }
+        Task {
+            removeFailed = await !friendsViewModel.removeFriend(userId: id)
         }
     }
 
@@ -185,6 +225,15 @@ struct ProfileView: View {
                         report: friend.id.map { ReportTarget.user($0) },
                         block: friend.id.map { BlockTarget(userId: $0, displayName: friend.displayName) }
                     )
+                    // Not onDelete, which the groups list can use because a
+                    // group is yours to throw away. This one needs the row
+                    // itself to name who's being removed, and it shouldn't
+                    // bring edit mode along with it.
+                    .swipeActions(edge: .trailing) {
+                        Button(Strings.Friends.remove, role: .destructive) {
+                            friendPendingRemoval = friend
+                        }
+                    }
                 }
             }
         }

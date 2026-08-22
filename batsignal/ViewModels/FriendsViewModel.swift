@@ -101,6 +101,19 @@ class FriendsViewModel: ObservableObject {
         }
     }
 
+    // Reports the outcome rather than parking it in errorMessage: the profile
+    // screen puts its own copy on the failure, and the shared field can't tell
+    // it whether this call was the one that set it.
+    @discardableResult
+    func removeFriend(userId: String) async -> Bool {
+        do {
+            try await friendService.removeFriend(userId: userId)
+            return true
+        } catch {
+            return false
+        }
+    }
+
     func hasPendingOutgoingRequest(toUserId: String) -> Bool {
         outgoingRequests.contains { $0.toUserId == toUserId }
     }

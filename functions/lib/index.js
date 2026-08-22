@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cleanupOnUserDelete = exports.notifyAdminsOnReport = exports.unblockUser = exports.blockUser = exports.findUsersByPhoneNumbers = exports.getProfiles = exports.notifyOnFriendRequestAccept = exports.backfillEventVisibilityOnFriendAccept = exports.linkFriendsOnRequestAccept = exports.notifyOnFriendRequestCreate = exports.notifyHostOnCommentCreate = exports.notifyHostOnEventJoin = exports.notifyJoinersOnEventUpdate = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
+exports.cleanupOnUserDelete = exports.notifyAdminsOnReport = exports.unblockUser = exports.blockUser = exports.findUsersByPhoneNumbers = exports.getProfiles = exports.removeFriend = exports.notifyOnFriendRequestAccept = exports.backfillEventVisibilityOnFriendAccept = exports.linkFriendsOnRequestAccept = exports.notifyOnFriendRequestCreate = exports.notifyHostOnCommentCreate = exports.notifyHostOnEventJoin = exports.notifyJoinersOnEventUpdate = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
 const admin = require("firebase-admin");
 const functions = require("firebase-functions/v2");
 const firestore_1 = require("firebase-functions/v2/firestore");
@@ -358,6 +358,63 @@ exports.notifyOnFriendRequestAccept = (0, firestore_1.onDocumentUpdated)("friend
         apns: { payload: { aps: { sound: "default" } } },
         data: { requestId: event.params.requestId, type: "friend_request_accepted" },
     }, "friend_request_accepted");
+});
+/**
+ * Removes a friendship, from the profile screen's swipe-to-remove.
+ *
+ * Same shape as blockUser, and for the same reason: unfriending writes two
+ * users' documents and no client may write another's. It stops short of
+ * writing a block — this is "we're not friends any more", not "never contact
+ * me" — but it does everything else a block does to the pair, because leaving
+ * any of it behind leaves access behind with it.
+ *
+ * Every step is idempotent, so removing someone who is already gone settles on
+ * the same state rather than failing.
+ */
+exports.removeFriend = (0, https_1.onCall)(async (request) => {
+    var _a, _b;
+    const uid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
+    if (!uid)
+        throw new https_1.HttpsError("unauthenticated", "Sign in first.");
+    const friendId = (_b = request.data) === null || _b === void 0 ? void 0 : _b.userId;
+    if (typeof friendId !== "string" || friendId.length === 0) {
+        throw new https_1.HttpsError("invalid-argument", "userId is required.");
+    }
+    if (friendId === uid) {
+        throw new https_1.HttpsError("invalid-argument", "You can't remove yourself.");
+    }
+    // Both sides, or the other person keeps a friend who no longer has them —
+    // and with it the read access on the user document that the friends list
+    // grants.
+    const batch = db.batch();
+    batch.update(db.collection("users").doc(uid), {
+        friends: admin.firestore.FieldValue.arrayRemove(friendId),
+    });
+    batch.update(db.collection("users").doc(friendId), {
+        friends: admin.firestore.FieldValue.arrayRemove(uid),
+    });
+    await batch.commit();
+    // The accepted request that made them friends is what's usually sitting here.
+    // Left in place it's a stale record of a friendship that no longer exists, so
+    // it goes along with anything else pending in either direction.
+    const [sent, received] = await Promise.all([
+        db.collection("friendRequests")
+            .where("fromUserId", "==", uid).where("toUserId", "==", friendId).get(),
+        db.collection("friendRequests")
+            .where("fromUserId", "==", friendId).where("toUserId", "==", uid).get(),
+    ]);
+    const requestBatch = db.batch();
+    [...sent.docs, ...received.docs].forEach((doc) => requestBatch.delete(doc.ref));
+    if (sent.size + received.size > 0)
+        await requestBatch.commit();
+    // Events are gated on recipientIds rather than on friendship, so a signal
+    // that's already out keeps arriving until each is taken off the other's.
+    await Promise.all([
+        removeFromEventsOf(uid, friendId),
+        removeFromEventsOf(friendId, uid),
+    ]);
+    console.log(`[friends] ${uid} removed ${friendId}.`);
+    return { removed: true };
 });
 /**
  * The fields anyone is allowed to see. Notably absent: fcmToken, which is a

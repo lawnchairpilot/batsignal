@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import FirebaseFirestore
 import FirebaseAuth
+import FirebaseFunctions
 
 class FriendService: ObservableObject {
     private let db = Firestore.firestore()
@@ -105,6 +106,14 @@ class FriendService: ObservableObject {
             .whereField(FieldPath.documentID(), in: ids)
             .getDocuments()
         return snapshot.documents.compactMap { try? $0.data(as: User.self) }
+    }
+
+    // Server-side for the same reason accepting a request is: unfriending takes
+    // both people off each other's list, and no client may write someone else's
+    // user document. The row goes when the user document listener sees the
+    // change land, a beat after this returns.
+    func removeFriend(userId: String) async throws {
+        _ = try await Functions.functions().httpsCallable("removeFriend").call(["userId": userId])
     }
 
 }

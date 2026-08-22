@@ -24,6 +24,13 @@ extension Strings {
         static let wantsToBeFriends = "wants to be friends"
         static let accept = "Accept"
         static let decline = "Decline"
+        static let remove = "Remove"
+        static func removeTitle(_ name: String) -> String { "Remove \(name)?" }
+        static let removeMessage = """
+        You'll stop seeing each other's signals, and you'll no longer be \
+        friends. Either of you can send a new friend request afterwards.
+        """
+        static let removeFailed = "Couldn't remove them. Try again."
         static let thatsYou = "That's you!"
         static let noUserFound = "No user found with that number."
     }
