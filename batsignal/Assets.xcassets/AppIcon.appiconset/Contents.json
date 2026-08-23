@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "boolsignalburgundy.png",
+      "filename" : "bool-signal-spotlight-1024.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,7 +13,6 @@
           "value" : "dark"
         }
       ],
-      "filename" : "boolsignalburgundy 1.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -25,7 +24,6 @@
           "value" : "tinted"
         }
       ],
-      "filename" : "boolsignalburgundy 2.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
