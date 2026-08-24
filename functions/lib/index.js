@@ -1,14 +1,39 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cleanupOnUserDelete = exports.notifyAdminsOnReport = exports.unblockUser = exports.blockUser = exports.findUsersByPhoneNumbers = exports.getProfiles = exports.removeFriend = exports.notifyOnFriendRequestAccept = exports.backfillEventVisibilityOnFriendAccept = exports.linkFriendsOnRequestAccept = exports.notifyOnFriendRequestCreate = exports.notifyHostOnCommentCreate = exports.notifyHostOnEventJoin = exports.notifyJoinersOnEventUpdate = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
+exports.cleanupOnUserDelete = exports.enforceUploadQuota = exports.purgeEndedEvents = exports.cleanupReplacedEventPhoto = exports.cleanupOnEventDelete = exports.notifyAdminsOnReport = exports.unblockUser = exports.blockUser = exports.findUsersByPhoneNumbers = exports.getProfiles = exports.removeFriend = exports.notifyOnFriendRequestAccept = exports.backfillEventVisibilityOnFriendAccept = exports.linkFriendsOnRequestAccept = exports.notifyOnFriendRequestCreate = exports.notifyHostOnCommentCreate = exports.notifyHostOnEventJoin = exports.notifyJoinersOnEventUpdate = exports.notifyFriendsOnEventCreate = exports.activateScheduledEvents = void 0;
 const admin = require("firebase-admin");
 const functions = require("firebase-functions/v2");
 const firestore_1 = require("firebase-functions/v2/firestore");
 const https_1 = require("firebase-functions/v2/https");
 const params_1 = require("firebase-functions/params");
+const storage_1 = require("firebase-functions/v2/storage");
 const strings_1 = require("./strings");
 admin.initializeApp();
 const db = admin.firestore();
+// MARK: - App Check
+//
+// App Check attests that a call came from a genuine build of the iOS app.
+// Enforcement for callables is a code flag rather than a console toggle, so
+// flipping this deploys a hard gate: every build in the wild has to be carrying
+// a token first, or real users start getting permission-denied.
+//
+// The rollout that avoids that: ship the client with App Check configured,
+// leave this false, watch the console's App Check metrics (and the warnings
+// logUnverified writes below) until unverified traffic reaches zero, then flip
+// it and redeploy.
+const ENFORCE_APP_CHECK = false;
+const CALLABLE_OPTS = { enforceAppCheck: ENFORCE_APP_CHECK };
+/**
+ * Notes a call that arrived without a verified App Check token. `request.app`
+ * is populated only when a valid token was presented, so while enforcement is
+ * off this measures exactly what turning it on would have rejected — the same
+ * signal, without the outage.
+ */
+function logUnverified(request, label) {
+    if (!ENFORCE_APP_CHECK && !request.app) {
+        console.warn(`[appcheck] ${label} ran without a verified App Check token.`);
+    }
+}
 // MARK: - Shared helpers
 /**
  * Fetches FCM targets for a list of user IDs.
@@ -85,17 +110,26 @@ exports.activateScheduledEvents = functions.scheduler.onSchedule({ schedule: "ev
 });
 // Notifies friends when a new event is created
 exports.notifyFriendsOnEventCreate = (0, firestore_1.onDocumentCreated)("events/{eventId}", async (event) => {
-    var _a;
+    var _a, _b;
     const snap = event.data;
     if (!snap)
         return;
     const data = snap.data();
-    const recipientIds = data.recipientIds || [];
+    // The creator document gets fetched here for the display name anyway, so
+    // re-deriving the audience from the live friends list is free. firestore.rules
+    // already requires recipients to be friends at write time; this is the same
+    // guarantee applied on the way out, and it additionally covers the window
+    // between a block landing and removeFromEventsOf finishing its sweep — the
+    // push is the part of a signal that can't be taken back once it's sent.
+    const creatorDoc = await db.collection("users").doc(data.creatorId).get();
+    const creatorFriends = new Set(((_a = creatorDoc.data()) === null || _a === void 0 ? void 0 : _a.friends) || []);
+    const recipientIds = (data.recipientIds || []).filter((id) => creatorFriends.has(id));
+    if (recipientIds.length === 0)
+        return;
     const targets = await getTokenTargets(recipientIds);
     if (targets.length === 0)
         return;
-    const creatorDoc = await db.collection("users").doc(data.creatorId).get();
-    const creatorName = ((_a = creatorDoc.data()) === null || _a === void 0 ? void 0 : _a.displayName) || strings_1.Strings.common.someone;
+    const creatorName = ((_b = creatorDoc.data()) === null || _b === void 0 ? void 0 : _b.displayName) || strings_1.Strings.common.someone;
     const activity = data.activity;
     const emoji = data.emoji;
     const body = strings_1.Strings.event.body(activity, emoji);
@@ -371,8 +405,9 @@ exports.notifyOnFriendRequestAccept = (0, firestore_1.onDocumentUpdated)("friend
  * Every step is idempotent, so removing someone who is already gone settles on
  * the same state rather than failing.
  */
-exports.removeFriend = (0, https_1.onCall)(async (request) => {
+exports.removeFriend = (0, https_1.onCall)(CALLABLE_OPTS, async (request) => {
     var _a, _b;
+    logUnverified(request, "removeFriend");
     const uid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
     if (!uid)
         throw new https_1.HttpsError("unauthenticated", "Sign in first.");
@@ -477,8 +512,9 @@ async function visibleUserIds(uid, eventId) {
  * allowed to see. Ids that don't survive that filter are dropped silently
  * rather than reported, so this can't be used to probe who exists.
  */
-exports.getProfiles = (0, https_1.onCall)(async (request) => {
+exports.getProfiles = (0, https_1.onCall)(CALLABLE_OPTS, async (request) => {
     var _a, _b, _c;
+    logUnverified(request, "getProfiles");
     const uid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
     if (!uid)
         throw new https_1.HttpsError("unauthenticated", "Sign in first.");
@@ -515,8 +551,9 @@ exports.getProfiles = (0, https_1.onCall)(async (request) => {
  * fcmToken or a friends list. Turning on App Check is what would stop the
  * lookup being called from anything but the real app.
  */
-exports.findUsersByPhoneNumbers = (0, https_1.onCall)(async (request) => {
+exports.findUsersByPhoneNumbers = (0, https_1.onCall)(CALLABLE_OPTS, async (request) => {
     var _a, _b;
+    logUnverified(request, "findUsersByPhoneNumbers");
     const uid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
     if (!uid)
         throw new https_1.HttpsError("unauthenticated", "Sign in first.");
@@ -552,8 +589,9 @@ exports.findUsersByPhoneNumbers = (0, https_1.onCall)(async (request) => {
  * Every step is idempotent — blocking someone already blocked settles on the
  * same state rather than failing.
  */
-exports.blockUser = (0, https_1.onCall)(async (request) => {
+exports.blockUser = (0, https_1.onCall)(CALLABLE_OPTS, async (request) => {
     var _a, _b;
+    logUnverified(request, "blockUser");
     const uid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
     if (!uid)
         throw new https_1.HttpsError("unauthenticated", "Sign in first.");
@@ -631,8 +669,9 @@ async function removeFromEventsOf(ownerId, removedId) {
  * Lifts a block. Deliberately does not restore the friendship — someone has to
  * send a fresh request, which is what the confirmation copy promises.
  */
-exports.unblockUser = (0, https_1.onCall)(async (request) => {
+exports.unblockUser = (0, https_1.onCall)(CALLABLE_OPTS, async (request) => {
     var _a, _b;
+    logUnverified(request, "unblockUser");
     const uid = (_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid;
     if (!uid)
         throw new https_1.HttpsError("unauthenticated", "Sign in first.");
@@ -735,6 +774,167 @@ async function deleteStorageObject(path) {
         console.warn(`[deleteAccount] Could not delete ${path}: ${error.message}`);
     }
 }
+// MARK: - Event teardown
+// How long an ended signal sticks around before it's deleted outright.
+const EVENT_RETENTION_DAYS = 30;
+const PURGE_BATCH = 300;
+const PURGE_MAX_BATCHES = 20;
+/**
+ * A signal's photo and its comment thread exist only for that signal, so they
+ * go when it does.
+ *
+ * Cancelling used to delete the event document and leave both behind: the photo
+ * with nothing left pointing at it — storage.rules refuses client deletes, so
+ * the app couldn't have tidied up even if it had tried — and the comments as a
+ * subcollection, which Firestore keeps whether or not the document it hangs
+ * from still exists. Hanging the teardown off the delete rather than off each
+ * caller means anything that removes an event gets it for free, purgeEndedEvents
+ * below included.
+ */
+exports.cleanupOnEventDelete = (0, firestore_1.onDocumentDeleted)({ document: "events/{eventId}", retry: true }, async (event) => {
+    var _a, _b;
+    const eventId = event.params.eventId;
+    await deleteQueryResults(db.collection("events").doc(eventId).collection("comments"), `events/${eventId}/comments`);
+    const photoPath = storagePathFromDownloadURL((_b = (_a = event.data) === null || _a === void 0 ? void 0 : _a.data()) === null || _b === void 0 ? void 0 : _b.imageURL);
+    if (photoPath)
+        await deleteStorageObject(photoPath);
+});
+/**
+ * Deletes the photo a signal used to carry when its photo is changed or cleared.
+ *
+ * Every upload gets a fresh UUID, so swapping a signal's photo doesn't overwrite
+ * the old object — it strands it, with nothing left pointing at it and no way
+ * for the app to tidy up, since storage.rules refuses client deletes.
+ * cleanupOnEventDelete only ever sees the photo an event is carrying when it
+ * dies, which means without this the ones replaced along the way outlive both
+ * the delete and the 30-day purge.
+ *
+ * Profile photos need no equivalent: they're written to a fixed filename, so a
+ * new one overwrites the old in place and there's only ever one per account.
+ */
+exports.cleanupReplacedEventPhoto = (0, firestore_1.onDocumentUpdated)({ document: "events/{eventId}", retry: true }, async (event) => {
+    var _a, _b, _c, _d;
+    const before = (_b = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before.data()) === null || _b === void 0 ? void 0 : _b.imageURL;
+    const after = (_d = (_c = event.data) === null || _c === void 0 ? void 0 : _c.after.data()) === null || _d === void 0 ? void 0 : _d.imageURL;
+    // Covers both directions: swapped for a different photo, and cleared
+    // entirely. Every other edit to a signal lands here too and stops on this
+    // line.
+    if (!before || before === after)
+        return;
+    const path = storagePathFromDownloadURL(before);
+    if (path)
+        await deleteStorageObject(path);
+});
+/**
+ * Deletes signals once they're EVENT_RETENTION_DAYS past their end. The app
+ * never shows an ended signal again, so past that point the document is just a
+ * record nobody asked us to keep.
+ *
+ * Only the documents are deleted here — each one fires cleanupOnEventDelete,
+ * which is what takes the photo and the comments with it.
+ */
+exports.purgeEndedEvents = functions.scheduler.onSchedule({ schedule: "every day 04:00", timeZone: "America/Los_Angeles", timeoutSeconds: 540 }, async (_event) => {
+    const cutoff = admin.firestore.Timestamp.fromMillis(Date.now() - EVENT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    let deleted = 0;
+    for (let pass = 0; pass < PURGE_MAX_BATCHES; pass++) {
+        const snapshot = await db
+            .collection("events")
+            .where("endTime", "<", cutoff)
+            .limit(PURGE_BATCH)
+            .get();
+        if (snapshot.empty)
+            break;
+        // A write batch still fires the delete trigger on every document in it,
+        // so this stays one round trip per batch rather than one per event.
+        const batch = db.batch();
+        snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+        deleted += snapshot.size;
+        if (snapshot.size < PURGE_BATCH)
+            break;
+    }
+    // A signal written without an endTime never matches the query above —
+    // Firestore skips documents that are missing the field being compared — so
+    // it would otherwise sit there forever. Caught by age instead, and only
+    // where endTime really is absent rather than merely later than the cutoff.
+    const byAge = await db
+        .collection("events")
+        .where("createdAt", "<", cutoff)
+        .orderBy("createdAt")
+        .limit(PURGE_BATCH)
+        .get();
+    const undated = byAge.docs.filter((doc) => doc.data().endTime === undefined);
+    if (undated.length > 0) {
+        const batch = db.batch();
+        undated.forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+        deleted += undated.length;
+    }
+    if (deleted > 0) {
+        console.log(`[purge] Deleted ${deleted} signal(s) ended over ${EVENT_RETENTION_DAYS} days ago.`);
+    }
+});
+// MARK: - Upload quota
+// A signal carries at most one photo and a profile has exactly one, so a real
+// account produces a handful of uploads a day. The ceiling is set well above
+// that: it's here to stop a script filling the bucket, not to ration ordinary
+// use, and tripping it should be a thing that essentially only abuse does.
+const UPLOAD_WINDOW_MS = 24 * 60 * 60 * 1000;
+const UPLOAD_LIMIT_PER_WINDOW = 60;
+const UPLOAD_BLOCK_MS = 24 * 60 * 60 * 1000;
+/**
+ * Counts uploads per account and shuts off the ones that run away with it.
+ *
+ * Storage rules can cap the size of a single object but can't count objects, so
+ * the counting happens here and storage.rules reads only the verdict — the
+ * uploadBlocks document this writes. That leaves a gap of one object between
+ * hitting the limit and the block taking effect, which is why the offending
+ * upload is deleted here rather than just noted.
+ */
+exports.enforceUploadQuota = (0, storage_1.onObjectFinalized)(async (event) => {
+    const name = event.data.name;
+    if (!name)
+        return;
+    // Both upload paths carry the uploader's uid as their first segment. Anything
+    // else in the bucket isn't user-uploaded and isn't counted.
+    const owner = /^(?:event-photos|profile-photos)\/([^/]+)\//.exec(name);
+    if (!owner)
+        return;
+    const uid = owner[1];
+    const quotaRef = db.collection("uploadQuotas").doc(uid);
+    const now = Date.now();
+    // Transactional so two uploads landing together can't both read the same
+    // count and each write back one more than it.
+    const count = await db.runTransaction(async (tx) => {
+        var _a, _b, _c, _d;
+        const snap = await tx.get(quotaRef);
+        const data = snap.data();
+        const windowStart = (_c = (_b = (_a = data === null || data === void 0 ? void 0 : data.windowStart) === null || _a === void 0 ? void 0 : _a.toMillis) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : 0;
+        const windowIsOpen = now - windowStart < UPLOAD_WINDOW_MS;
+        const next = (windowIsOpen ? ((_d = data === null || data === void 0 ? void 0 : data.count) !== null && _d !== void 0 ? _d : 0) : 0) + 1;
+        tx.set(quotaRef, {
+            count: next,
+            windowStart: windowIsOpen
+                ? admin.firestore.Timestamp.fromMillis(windowStart)
+                : admin.firestore.Timestamp.fromMillis(now),
+        });
+        return next;
+    });
+    if (count <= UPLOAD_LIMIT_PER_WINDOW)
+        return;
+    await Promise.all([
+        admin.storage().bucket(event.data.bucket).file(name).delete().catch((error) => {
+            console.warn(`[upload] Could not delete ${name}: ${error.message}`);
+        }),
+        db.collection("uploadBlocks").doc(uid).set({
+            until: admin.firestore.Timestamp.fromMillis(now + UPLOAD_BLOCK_MS),
+            reason: "upload-quota",
+            trippedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }),
+    ]);
+    console.warn(`[upload] ${uid} passed ${UPLOAD_LIMIT_PER_WINDOW} uploads in the window ` +
+        `(${count}). Object deleted and uploads blocked for 24h.`);
+});
 /**
  * Deleting the user document is how the client asks for its account to go away
  * — see AuthService.deleteAccount. Everything the account leaves behind is torn
@@ -769,7 +969,12 @@ exports.cleanupOnUserDelete = (0, firestore_1.onDocumentDeleted)({ document: "us
         removeFromArrayField("users", "friends", uid),
         removeFromArrayField("events", "recipientIds", uid),
         removeFromArrayField("events", "joinedUserIds", uid),
-        // Profile photos live under a folder of their own.
+        // Photos of both kinds live under a folder named for the uploader.
+        admin.storage().bucket().deleteFiles({ prefix: `event-photos/${uid}/` }).catch((error) => {
+            console.warn(`[deleteAccount] Could not clear event photos: ${error.message}`);
+        }),
+        db.collection("uploadQuotas").doc(uid).delete(),
+        db.collection("uploadBlocks").doc(uid).delete(),
         admin.storage().bucket().deleteFiles({ prefix: `profile-photos/${uid}/` }).catch((error) => {
             console.warn(`[deleteAccount] Could not delete profile photos: ${error.message}`);
         }),

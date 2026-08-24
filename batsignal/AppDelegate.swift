@@ -1,4 +1,5 @@
 import UIKit
+import FirebaseAppCheck
 import FirebaseAuth
 import FirebaseCore
 import FirebaseMessaging
@@ -10,6 +11,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        // Must be installed before configure(): the factory is read during
+        // Firebase initialization, so one set afterwards is ignored for the
+        // tokens minted at startup.
+        AppCheck.setAppCheckProviderFactory(BlipperAppCheckProviderFactory())
         FirebaseApp.configure()
         BlipperAppearance.apply()
         UNUserNotificationCenter.current().delegate = self

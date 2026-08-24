@@ -11,27 +11,57 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    // Uploads are JPEGs re-encoded at 0.8 quality by the client; the ceiling is
-    // here to stop the bucket being used as free storage for something else.
+    // Uploads are JPEGs the client downscales to 2048px on the long edge and
+    // re-encodes at 0.8 quality, which lands a phone photo well under a
+    // megabyte. The ceiling is here to stop the bucket being used as free
+    // storage for something else, so it only has to sit above anything the app
+    // itself produces — not above whatever a phone camera can emit.
     function isImageUnder(megabytes) {
       return request.resource.contentType.matches('image/.*')
         && request.resource.size < megabytes * 1024 * 1024;
+    }
+
+    // A size cap alone still lets one account upload forever. enforceUploadQuota
+    // in functions/src/index.ts counts uploads per user against a rolling
+    // 24-hour window and, past the limit, deletes the object and writes an
+    // uploadBlocks document — which is what this reads. Rules can't count, so
+    // the counting lives server-side and only its verdict is checked here.
+    //
+    // The common case is one read that finds nothing. Only an account that has
+    // actually tripped the limit costs the second read.
+    function notRateLimited() {
+      return !firestore.exists(/databases/(default)/documents/uploadBlocks/$(request.auth.uid))
+        || firestore.get(/databases/(default)/documents/uploadBlocks/$(request.auth.uid))
+             .data.get('until', request.time) <= request.time;
     }
 
     match /profile-photos/{userId}/{fileName} {
       allow read: if isSignedIn();
       allow write: if isSignedIn()
         && request.auth.uid == userId
-        && isImageUnder(10);
+        && isImageUnder(6)
+        && notRateLimited();
     }
 
-    // The filename is a UUID with no owner in it, so ownership can't be checked
-    // on write-over or delete — both are refused instead. Cleanup after account
-    // deletion runs as admin.
+    // The uid in the path is what makes an upload attributable: it's what lets
+    // the quota above count per account, lets cleanupOnUserDelete sweep by
+    // prefix, and makes an abusive uploader identifiable at all. The filename
+    // is still a UUID, so ownership of a *specific* photo can't be re-checked
+    // on overwrite or delete — both stay refused, and cleanup runs as admin.
+    match /event-photos/{userId}/{fileName} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && isImageUnder(6)
+        && notRateLimited();
+      allow update, delete: if false;
+    }
+
+    // Event photos written before uploads were filed under a uid. Readable so
+    // existing signals keep their image; nothing new can be written here.
     match /event-photos/{fileName} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && isImageUnder(10);
-      allow update, delete: if false;
+      allow write: if false;
     }
 
     match /{allPaths=**} {

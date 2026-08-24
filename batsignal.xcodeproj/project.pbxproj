@@ -15,6 +15,7 @@
 		EB9BF0F82FA1C6A20062C3B0 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = EB9BF0F72FA1C6A20062C3B0 /* FirebaseAuth */; };
 		EB9BF0FA2FA1C6A20062C3B0 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = EB9BF0F92FA1C6A20062C3B0 /* FirebaseFirestore */; };
 		EB9BF0FC2FA1C6A20062C3B0 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = EB9BF0FB2FA1C6A20062C3B0 /* FirebaseStorage */; };
+		EBA1C4312FF900A100C3A1F0 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = EBA1C4302FF900A100C3A1F0 /* FirebaseAppCheck */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -85,6 +86,7 @@
 			files = (
 				EB6548302FF638C500A7ECBA /* FirebaseMessaging in Frameworks */,
 				EB77A1022FE1D40100C3A1F0 /* FirebaseFunctions in Frameworks */,
+				EBA1C4312FF900A100C3A1F0 /* FirebaseAppCheck in Frameworks */,
 				EB9BF0F82FA1C6A20062C3B0 /* FirebaseAuth in Frameworks */,
 				EB9BF0FA2FA1C6A20062C3B0 /* FirebaseFirestore in Frameworks */,
 				EB9BF0FC2FA1C6A20062C3B0 /* FirebaseStorage in Frameworks */,
@@ -182,6 +184,7 @@
 				EB9BF0FB2FA1C6A20062C3B0 /* FirebaseStorage */,
 				EB65482F2FF638C500A7ECBA /* FirebaseMessaging */,
 				EB77A1012FE1D40100C3A1F0 /* FirebaseFunctions */,
+				EBA1C4302FF900A100C3A1F0 /* FirebaseAppCheck */,
 			);
 			productName = batsignal;
 			productReference = EB9BF0E82F8CBC4C0062C3B0 /* batsignal.app */;
@@ -578,6 +581,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = EB9BF0F62FA1C6A20062C3B0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		EBA1C4302FF900A100C3A1F0 /* FirebaseAppCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EB9BF0F62FA1C6A20062C3B0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

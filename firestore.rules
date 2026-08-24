@@ -115,24 +115,53 @@ service cloud.firestore {
         return isSignedIn() && request.auth.uid in resource.data.get('recipientIds', []);
       }
 
+      // The creator's live friends list, as a set. One document read, and the
+      // conditions below are ordered so it's only reached once the free checks
+      // have passed.
+      //
+      // Requiring recipients to be friends is what makes blocking actually
+      // hold. blockUser tears down the friendship before it strips anyone out
+      // of existing events, so a blocked user's *next* signal can no longer
+      // name the person who blocked them — previously nothing did that, and a
+      // new event was enough to put a push notification back on their phone.
+      // It also closes the wider version of the same hole: findUsersByPhoneNumbers
+      // hands back a uid, so without this a stranger could turn a phone number
+      // straight into a notification without ever being a friend.
+      function friendsOfCreator() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid))
+          .data.get('friends', []).toSet();
+      }
+
       // Matches all three client queries: recipientIds array-contains uid,
       // creatorId == uid, and direct document gets.
       allow read: if isCreator() || isRecipient();
 
+      // CreateEventViewModel already intersects the chosen audience with the
+      // live friends list, so the subset check below is a no-op for the app and
+      // only bites a hand-rolled request.
       allow create: if isSignedIn()
         && request.resource.data.creatorId == request.auth.uid
         && request.resource.data.activity is string
         && request.resource.data.activity.size() > 0
         && request.resource.data.activity.size() <= 140
         && request.resource.data.recipientIds is list
-        && request.resource.data.recipientIds.size() <= 1000;
+        && request.resource.data.recipientIds.size() <= 1000
+        && request.resource.data.recipientIds.toSet()
+             .difference(friendsOfCreator()).size() == 0;
 
       // The creator owns the event and edits it freely, but can't hand it off
       // or grow the activity past what the form allows.
+      // Only *newly added* recipients have to be friends, rather than the whole
+      // list. Nothing in the app edits recipientIds at all, and grandfathering
+      // the existing ones keeps an unrelated edit from failing on an event that
+      // predates an unfriend — removeFriend and blockUser strip those lists
+      // themselves, and backfillEventVisibilityOnFriendAccept adds to them as
+      // admin, past these rules either way.
       allow update: if isCreator()
         && request.resource.data.creatorId == resource.data.creatorId
         && request.resource.data.activity is string
-        && request.resource.data.activity.size() <= 140;
+        && request.resource.data.activity.size() <= 140
+        && added('recipientIds').difference(friendsOfCreator()).size() == 0;
 
       // Everyone else on the invite list can only put themselves on or take
       // themselves off the joined list.
@@ -285,6 +314,18 @@ service cloud.firestore {
     // Server-side bookkeeping for the event-update notification debounce.
     // Written only by functions, which bypass rules.
     match /eventNotifyDebounce/{eventId} {
+      allow read, write: if false;
+    }
+
+    // Upload accounting for enforceUploadQuota. Both are written only by
+    // functions, and storage.rules reads uploadBlocks to decide whether an
+    // upload is allowed — a client that could write either could lift its own
+    // rate limit, so neither is reachable from one.
+    match /uploadQuotas/{userId} {
+      allow read, write: if false;
+    }
+
+    match /uploadBlocks/{userId} {
       allow read, write: if false;
     }
 

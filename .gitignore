@@ -53,8 +53,17 @@ Icon
 .vscode/
 
 # Environment / secrets
+# `.env*` is the one that matters: `*.env` alone matches foo.env but NOT
+# `.env`, `.env.local` or `.env.boolsignal`, which is how the last one ended
+# up committed.
+.env*
 *.env
 secrets.plist
 
-functions.node_modules
-node_modules
+# Firebase CLI debug output — noisy, and it transcribes whatever the CLI was
+# doing at the time.
+firebase-debug*.log
+firebase-debug*.json
+.firebase/
+
+node_modules/
