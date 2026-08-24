@@ -76,6 +76,17 @@ struct EventSymbolHeader: View {
                         image.resizable().scaledToFill()
                     }
                 }
+            } else {
+                // Nothing chosen yet, so the circle wears the app icon's mark:
+                // the same italic display "B", dusk navy on amber, which is the
+                // icon inverted — the amber fill here is the icon's letter.
+                // Sized so the cap height lands at ~45% of the circle, the
+                // proportion the letter takes up in the icon itself. The line
+                // box centers the glyph without a nudge: Instrument Sans' ascent
+                // and descent put the cap's midpoint on the box's own midpoint.
+                Text(verbatim: "B")
+                    .font(.blipperDisplay(fixedSize: size * 0.62, weight: 700))
+                    .foregroundStyle(Blipper.duskNavy)
             }
         }
         .frame(width: size, height: size)
