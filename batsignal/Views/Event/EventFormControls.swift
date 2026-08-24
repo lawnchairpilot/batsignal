@@ -124,12 +124,6 @@ struct EventSymbolHeader: View {
         .blipperGlow(Blipper.amber, radius: size * 0.12 * flare, opacity: 0.75 * flare)
     }
 
-    private func fallbackIcon(size: CGFloat) -> some View {
-        Image(systemName: "antenna.radiowaves.left.and.right")
-            .font(.system(size: size * 0.3))
-            .foregroundColor(EventIconStyle.signal.content.opacity(0.8))
-    }
-
     private var imageThumbnail: some View {
         Image(systemName: "camera.fill")
             .font(.title3)
