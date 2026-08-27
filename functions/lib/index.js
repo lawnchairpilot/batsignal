@@ -73,14 +73,6 @@ async function sendMulticast(targets, message, label) {
         console.log(`[${label}] Cleaned up ${staleCleanups.length} stale token(s).`);
     }
 }
-/**
- * Data-payload field the NotificationServiceExtension reads to attach the
- * event's photo to the notification instead of just showing the app icon.
- * Omitted (empty string) when the event has no photo.
- */
-function eventIconData(imageURL) {
-    return { iconImageURL: imageURL || "" };
-}
 // MARK: - Cloud Functions
 // Runs every minute — activates any events whose startTime has passed
 exports.activateScheduledEvents = functions.scheduler.onSchedule({ schedule: "every 1 minutes", timeZone: "America/Los_Angeles" }, async (_event) => {
@@ -135,8 +127,11 @@ exports.notifyFriendsOnEventCreate = (0, firestore_1.onDocumentCreated)("events/
     const body = strings_1.Strings.event.body(activity, emoji);
     await sendMulticast(targets, {
         notification: { title: strings_1.Strings.event.createdTitle(creatorName), body },
-        apns: { payload: { aps: { sound: "default", mutableContent: true } } },
-        data: Object.assign({ eventId: event.params.eventId, type: "event_created" }, eventIconData(data.imageURL)),
+        apns: { payload: { aps: { sound: "default" } } },
+        data: {
+            eventId: event.params.eventId,
+            type: "event_created",
+        },
     }, "event_created");
 });
 const DEBOUNCE_COLLECTION = "eventNotifyDebounce";
@@ -198,8 +193,11 @@ exports.notifyJoinersOnEventUpdate = (0, firestore_1.onDocumentUpdated)({ docume
             title: strings_1.Strings.event.updatedTitle(creatorName),
             body: strings_1.Strings.event.body(settled.activity, settled.emoji),
         },
-        apns: { payload: { aps: { sound: "default", mutableContent: true } } },
-        data: Object.assign({ eventId, type: "event_updated" }, eventIconData(settled.imageURL)),
+        apns: { payload: { aps: { sound: "default" } } },
+        data: {
+            eventId,
+            type: "event_updated",
+        },
     }, "event_updated");
 });
 // Notifies the host when a friend joins their event
@@ -226,8 +224,11 @@ exports.notifyHostOnEventJoin = (0, firestore_1.onDocumentUpdated)("events/{even
                 title: strings_1.Strings.event.joinedTitle(joinerName),
                 body: strings_1.Strings.event.joinedBody(joinerName, after.activity),
             },
-            apns: { payload: { aps: { sound: "default", mutableContent: true } } },
-            data: Object.assign({ eventId: event.params.eventId, type: "event_joined" }, eventIconData(after.imageURL)),
+            apns: { payload: { aps: { sound: "default" } } },
+            data: {
+                eventId: event.params.eventId,
+                type: "event_joined",
+            },
         }, "event_joined");
     }
 });
@@ -255,8 +256,12 @@ exports.notifyHostOnCommentCreate = (0, firestore_1.onDocumentCreated)("events/{
             title: strings_1.Strings.event.commentTitle(commenterName),
             body: strings_1.Strings.event.commentBody(comment.text),
         },
-        apns: { payload: { aps: { sound: "default", mutableContent: true } } },
-        data: Object.assign({ eventId: event.params.eventId, commentId: event.params.commentId, type: "event_comment" }, eventIconData(eventData.imageURL)),
+        apns: { payload: { aps: { sound: "default" } } },
+        data: {
+            eventId: event.params.eventId,
+            commentId: event.params.commentId,
+            type: "event_comment",
+        },
     }, "event_comment");
 });
 // Notifies a user when they receive a new friend request

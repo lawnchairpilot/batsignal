@@ -60,6 +60,14 @@ Icon
 *.env
 secrets.plist
 
+# Service account private keys. The Firebase console names its downloads
+# `<project>-firebase-adminsdk-<hash>.json`, which is a real private key with
+# full admin access to the project — it bypasses both firestore.rules and
+# storage.rules. Match the shape rather than the one filename, since every
+# fresh download from the console arrives with a different hash.
+*-firebase-adminsdk-*.json
+serviceAccountKey.json
+
 # Firebase CLI debug output — noisy, and it transcribes whatever the CLI was
 # doing at the time.
 firebase-debug*.log

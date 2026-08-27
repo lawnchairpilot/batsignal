@@ -11,7 +11,7 @@ enum LocationType: String, Codable {
 // Defaults to [] when the key is missing, so events written before recipientIds
 // existed still decode instead of silently vanishing (and leaving activeEventId stuck).
 @propertyWrapper
-struct DefaultEmptyStringArray: Codable {
+struct DefaultEmptyStringArray: Codable, Equatable {
     var wrappedValue: [String]
 
     init(wrappedValue: [String] = []) {
@@ -33,7 +33,7 @@ extension KeyedDecodingContainer {
     }
 }
 
-struct Event: Identifiable, Codable {
+struct Event: Identifiable, Codable, Equatable {
     @DocumentID var id: String?
     var creatorId: String
     var activity: String

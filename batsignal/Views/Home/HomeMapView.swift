@@ -14,6 +14,18 @@ struct EventAnnotationItem: Identifiable {
     let isActive: Bool
     let event: Event
     let creatorName: String?
+
+    // Everything the pin actually draws, folded into one value. MapKit hangs on
+    // to the annotation view it already built for a given identity and doesn't
+    // reliably re-render the SwiftUI content inside it when only the data
+    // behind it changes — which is why an emoji added to a live signal kept
+    // showing the old pin until the app was relaunched. Keying the ForEach on
+    // this rather than on `id` alone makes a changed pin a *new* annotation,
+    // and a new annotation does get drawn. Selection (`.tag`) and hero sizing
+    // still key off `id`, so neither notices the swap.
+    var renderIdentity: String {
+        "\(id)|\(label ?? "")|\(creatorPhotoURL ?? "")|\(event.joinedCount)"
+    }
 }
 
 // MARK: - Camera position helpers
@@ -96,7 +108,7 @@ struct HomeMapView: View {
 
     var body: some View {
         Map(position: $position, interactionModes: [.pan, .zoom], selection: $selectedAnnotationId) {
-            ForEach(annotations) { item in
+            ForEach(annotations, id: \.renderIdentity) { item in
                 // Anchored at the bottom so the tail tip marks the actual
                 // coordinate. With .center the pin only pointed at its
                 // location by accident of its size, which stops being true

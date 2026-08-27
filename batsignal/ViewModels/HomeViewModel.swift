@@ -83,11 +83,17 @@ class HomeViewModel: ObservableObject {
 
         // Assigning only on a real change keeps the timer from republishing an
         // identical list every 20 seconds and redrawing the map for nothing.
+        // Compared by content rather than by id, though: editing a signal —
+        // adding an emoji, swapping the photo, one more person joining — leaves
+        // the id list identical, so diffing on ids alone swallowed every such
+        // update. The map and the carousel went on drawing the version they had
+        // until a relaunch rebuilt these lists from empty, which made saving an
+        // edit look like it hadn't saved.
         let filtered = withinRadius(active)
-        if filtered.map(\.id) != events.map(\.id) {
+        if filtered != events {
             events = filtered
         }
-        if upcoming.map(\.id) != upcomingEvents.map(\.id) {
+        if upcoming != upcomingEvents {
             upcomingEvents = upcoming
         }
     }
