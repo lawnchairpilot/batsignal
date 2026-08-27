@@ -35,13 +35,28 @@ private let defaultMapSpan = MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelt
 // hero framing zooms in past the overview span.
 private let heroMapSpan = MKCoordinateSpan(latitudeDelta: 0.008, longitudeDelta: 0.008)
 
+// How much room the opening view leaves around the outermost pin, as a multiple
+// of the spread it's fitting. Not decoration: a pin is drawn *above* the
+// coordinate it marks and stands up to 57pt tall, so a fit measured on the
+// coordinates alone clips the topmost one in half.
+private let overviewPadding: Double = 1.35
+
+// A ceiling on how far the opening view will pull back. Nothing guarantees an
+// event is anywhere near the user — the radius setting is optional, and a bad
+// write could leave a pin at (0, 0) — and without a cap a single outlier zooms
+// the map out to where nothing local is legible. Past the cap a pin stays off
+// the opening frame and is reached through its carousel card instead. Set well
+// clear of the widest radius setting (100 miles) so a normal spread always fits.
+private let overviewMaxDelta: Double = 4.0
+
+// A ceiling on the carousel clearance below. The clearance grows without bound
+// as the uncovered band closes on half the map, and past this the zoom-out
+// costs more legibility than the southernmost pin is worth — it drops behind
+// the cards instead, still one swipe away on its own card.
+private let overviewMaxPadding: Double = 2.5
+
 func cameraPosition(centeredOn coordinate: CLLocationCoordinate2D) -> MapCameraPosition {
     .region(MKCoordinateRegion(center: coordinate, span: defaultMapSpan))
-}
-
-private func defaultCameraPosition(userCoordinate: CLLocationCoordinate2D?) -> MapCameraPosition {
-    guard let userCoordinate else { return .automatic }
-    return cameraPosition(centeredOn: userCoordinate)
 }
 
 // MARK: - One-shot location (only fires if permission already granted)
@@ -89,6 +104,11 @@ struct HomeMapView: View {
     // map: blown up to roughly the size of the creation screen's preview
     // circle, with the camera reframed around it.
     var enlargedEventId: String?
+    // Set when the carousel is sitting on your own card with no signal pinned
+    // to point at. It's what separates "you swiped back to the create prompt",
+    // which re-centres on you the way it always did, from the opening state,
+    // where nothing has been picked yet and the map fits what's happening.
+    var focusUserLocation: Bool = false
     // How much of the map's bottom edge the carousel covers, so the hero pin
     // can be centred in the strip that's actually visible rather than in the
     // map's own middle — which an expanded card sits right on top of.
@@ -147,8 +167,13 @@ struct HomeMapView: View {
             selectedAnnotationId = focusedEventId
         }
         .onChange(of: locationProvider.coordinate) { _, _ in refreshPosition() }
+        // Events arrive from Firestore a beat after the map is on screen, so
+        // the opening frame has to be redone once they land or it fits nothing
+        // but the user's own dot.
+        .onChange(of: fittedAnnotationIdentity) { _, _ in refreshPosition() }
         .onChange(of: focusedCoordinate) { _, _ in refreshPosition() }
         .onChange(of: enlargedEventId) { _, _ in refreshPosition() }
+        .onChange(of: focusUserLocation) { _, _ in refreshPosition() }
         // The card's height settles a beat after it opens, so the framing has
         // to follow it rather than being computed once on expansion.
         .onChange(of: occludedBottomHeight) { _, _ in
@@ -163,9 +188,98 @@ struct HomeMapView: View {
             position = heroCameraPosition(for: heroCoordinate)
         } else if let focusedCoordinate {
             position = cameraPosition(centeredOn: focusedCoordinate)
+        } else if focusUserLocation, let userCoordinate = locationProvider.coordinate {
+            position = cameraPosition(centeredOn: userCoordinate)
         } else {
-            position = defaultCameraPosition(userCoordinate: locationProvider.coordinate)
+            position = overviewCameraPosition
         }
+    }
+
+    // MARK: - Opening framing
+
+    // What the map opens on, and what it returns to whenever no one event is
+    // focused: the user's own dot and every signal happening right now, rather
+    // than a fixed span around the user, which left anything more than a few
+    // blocks away off-screen at launch. Zooming in on one event is what
+    // swiping the carousel is for; this is the view that starts broad enough
+    // to show there's something to swipe to.
+    private var overviewCameraPosition: MapCameraPosition {
+        // Upcoming signals keep their pins but stay out of the fit. Pulling the
+        // camera back is for showing what's going on now — a signal set for
+        // tomorrow across town isn't that, and letting one widen the opening
+        // view would shrink everything that is.
+        let eventCoordinates = fittedAnnotations.map(\.coordinate)
+
+        // Nothing happening: open exactly the way the map always has, the
+        // user's location at the standard span.
+        guard !eventCoordinates.isEmpty else {
+            guard let userCoordinate = locationProvider.coordinate else { return .automatic }
+            return cameraPosition(centeredOn: userCoordinate)
+        }
+
+        let latitudes = eventCoordinates.map(\.latitude)
+        let longitudes = eventCoordinates.map(\.longitude)
+
+        // The user's dot holds the centre. Framing the bounding box of the dot
+        // and the pins instead only guaranteed the dot was somewhere on screen,
+        // which with one distant signal meant the far corner, under the
+        // wordmark. With no fix yet there's nothing to hold the centre, so the
+        // signals' own midpoint stands in.
+        let centre = locationProvider.coordinate ?? CLLocationCoordinate2D(
+            latitude: ((latitudes.min() ?? 0) + (latitudes.max() ?? 0)) / 2,
+            longitude: ((longitudes.min() ?? 0) + (longitudes.max() ?? 0)) / 2
+        )
+
+        // A pinned centre means the frame has to reach as far the opposite way
+        // as it does towards its farthest signal: the span is twice the reach
+        // from the centre, not the spread between the outermost pins.
+        let latitudeReach = latitudes.map { abs($0 - centre.latitude) }.max() ?? 0
+        let longitudeReach = longitudes.map { abs($0 - centre.longitude) }.max() ?? 0
+        let padding = carouselClearingPadding
+
+        // Floored at the span the map used to open on, so one signal across the
+        // street doesn't slam the camera all the way in, and capped so one
+        // across the county doesn't strand everything else in a dot.
+        let latitudeDelta = min(
+            max(2 * latitudeReach * padding, defaultMapSpan.latitudeDelta),
+            overviewMaxDelta
+        )
+        let longitudeDelta = min(
+            max(2 * longitudeReach * padding, defaultMapSpan.longitudeDelta),
+            overviewMaxDelta
+        )
+
+        return .region(MKCoordinateRegion(
+            center: centre,
+            span: MKCoordinateSpan(latitudeDelta: latitudeDelta, longitudeDelta: longitudeDelta)
+        ))
+    }
+
+    // How much wider than the bare reach the frame opens. The hero framing can
+    // lift its subject into the band the carousel leaves uncovered; a frame
+    // locked to the user's dot can't move, so the only way its farthest signal
+    // clears the cards is for the whole thing to open wider. Never below the
+    // flat margin a pin needs regardless — a pin is drawn *above* the
+    // coordinate it marks and stands up to 57pt tall, so a frame measured on
+    // coordinates alone clips the top one in half.
+    private var carouselClearingPadding: Double {
+        let uncoveredBelowCentre = visibleStripHeight - height / 2
+        guard uncoveredBelowCentre > 0 else { return overviewPadding }
+        return min(max(overviewPadding, Double(height / 2 / uncoveredBelowCentre)), overviewMaxPadding)
+    }
+
+    // The pins the opening view has to fit: the active ones, matching what
+    // overviewCameraPosition frames.
+    private var fittedAnnotations: [EventAnnotationItem] {
+        annotations.filter(\.isActive)
+    }
+
+    // Reframing keys off this set changing — signals landing after launch, one
+    // ending, one crossing from upcoming into active — and not off the
+    // annotations array, so a photo finishing its download or a headcount
+    // ticking up can't yank a map the user is in the middle of panning.
+    private var fittedAnnotationIdentity: String {
+        fittedAnnotations.map(\.id).sorted().joined(separator: ",")
     }
 
     // MARK: - Pin sizing

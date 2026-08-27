@@ -10,6 +10,12 @@ struct HomeView: View {
     @State private var showCreateEvent = false
     @State private var focusedCoordinate: CLLocationCoordinate2D?
     @State private var focusedEventId: String?
+    // Raised once the carousel lands on your own card without a signal to point
+    // at, and lowered again by focusMap(on:). The map's opening view fits
+    // everything happening, but that's an opening state only — once you're
+    // swiping the carousel the map follows the carousel, and your own card
+    // means you.
+    @State private var focusUserLocation = false
     // Which card is showing its details. Held here rather than inside
     // EventCardView so only one can be open at a time, and so it survives the
     // carousel's LazyHStack recycling cards as they scroll off-screen.
@@ -38,6 +44,7 @@ struct HomeView: View {
                         focusedCoordinate: focusedCoordinate,
                         focusedEventId: focusedEventId,
                         enlargedEventId: enlargedAnnotationId,
+                        focusUserLocation: focusUserLocation,
                         occludedBottomHeight: carouselHeight + proxy.safeAreaInsets.bottom,
                         height: mapHeight,
                         onSelectEvent: { event in revealCard(for: event) }
@@ -243,6 +250,7 @@ struct HomeView: View {
             } else {
                 focusedCoordinate = nil
                 focusedEventId = nil
+                focusUserLocation = true
             }
         }
     }
@@ -283,6 +291,7 @@ struct HomeView: View {
         guard let geoPoint = event.locationCoordinate else { return }
         focusedCoordinate = CLLocationCoordinate2D(latitude: geoPoint.latitude, longitude: geoPoint.longitude)
         focusedEventId = event.id
+        focusUserLocation = false
     }
 
     // Tapping a pin brings you to that event's card rather than a sheet: scroll
