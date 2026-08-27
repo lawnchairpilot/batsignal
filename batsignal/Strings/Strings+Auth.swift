@@ -12,7 +12,7 @@ extension Strings {
         static let verify = "Verify"
         static let useDifferentNumber = "Use a different number"
         static let setUpProfileHeadline = "Set up your profile"
-        static let setUpProfileSubtitle = "Choose a name so your friends can find you."
+        static let setUpProfileSubtitle = "Choose a username - you can change this later"
         static let displayNamePlaceholder = "Display name"
         static let continueLabel = "Continue"
         static let invalidPhoneNumber = "Please enter a valid 10-digit US phone number."

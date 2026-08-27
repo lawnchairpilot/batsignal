@@ -8,7 +8,7 @@ export const Strings = {
 
   event: {
     createdTitle: (creatorName: string) => `${creatorName} sent a signal`,
-    updatedTitle: (creatorName: string) => `${creatorName} updated their signal`,
+    updatedTitle: (creatorName: string) => `${creatorName} changed their message`,
     body: (activity: string, emoji?: string) => (emoji ? `${emoji} ${activity}` : activity),
     joinedTitle: (joinerName: string) => `${joinerName} is in`,
     joinedBody: (joinerName: string, activity: string) => `${joinerName} joined ${activity}`,
@@ -25,6 +25,6 @@ export const Strings = {
     requestTitle: "New friend request",
     requestBody: (fromName: string) => `${fromName} wants to bool`,
     acceptedTitle: "Friend request accepted",
-    acceptedBody: (toName: string) => `${toName} accepted your friend request`,
+    acceptedBody: (toName: string) => `${toName} is down to bool`,
   },
 };

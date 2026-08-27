@@ -5,11 +5,9 @@ struct EmojiPickerView: View {
     @Environment(\.dismiss) private var dismiss
 
     private let categories: [(name: String, emojis: [String])] = [
-        ("Food & Drink", ["🍕", "🍔", "🌮", "🍜", "🍣", "🌯", "🍦", "🧁", "🍩", "🍺", "🍻", "🥂", "🍷", "☕", "🧋", "🥤", "🍸", "🍹"]),
-        ("Activities",   ["🎮", "🎬", "🎵", "🎸", "🎤", "🎨", "📚", "🎲", "🎯", "🧩", "🎭", "🎪", "🎻", "🎹", "🎧"]),
-        ("Sports",       ["🏀", "⚽", "🎾", "🏈", "⚾", "🏐", "🏋️", "🏃", "🚴", "🏊", "🏄", "🧘", "🥊", "🎿", "⛷️", "🧗"]),
-        ("Outdoors",     ["🏖️", "🌄", "🌲", "🏔️", "🌅", "🌊", "🏕️", "🚵", "⛺", "🌻"]),
-        ("Social",       ["🎉", "🎊", "🥳", "💪", "🤝", "✈️", "🚗", "🛍️", "🛒"]),
+        ("Cheers", ["🍺", "🍻", "🥂", "☕", "🍸", "🎉", "🎊", "🍽️"]),
+        ("Posted Up", ["🎯", "🎱", "🧩", "🎮", "🍿", "🎵", "🎤", "🎨"]),
+        ("Getting Active", ["🛹", "🏄", "🚵", "🚴", "🏀", "🏐", "⚽", "🏃", "⛷️", "🧘", "🧗", "💪", "🏖️", "🏔️", "🌅", "🌊"]),
     ]
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 6)

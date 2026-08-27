@@ -3,7 +3,7 @@ import Foundation
 extension Strings {
     enum Profile {
         static let title = "Profile"
-        static let eventRadiusFilter = "Bool radius"
+        static let eventRadiusFilter = "Bool Radius"
         static let signOut = "Sign Out"
         static let settingsTitle = "Settings"
         static let cropTitle = "Move and Scale"
@@ -17,7 +17,7 @@ extension Strings {
         static let locationSharingExplainer = """
             Bool Signal shares your location only while one of your signals is \
             live, and stops the moment it ends. Allowing "Always" lets your pin \
-            keep up while the app is closed, so you can put your phone away.
+            keep up to date while the app is closed.
             """
 
         static let deleteAccount = "Delete Account"

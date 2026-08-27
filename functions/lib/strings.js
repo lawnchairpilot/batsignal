@@ -9,7 +9,7 @@ exports.Strings = {
     },
     event: {
         createdTitle: (creatorName) => `${creatorName} sent a signal`,
-        updatedTitle: (creatorName) => `${creatorName} updated their signal`,
+        updatedTitle: (creatorName) => `${creatorName} changed their message`,
         body: (activity, emoji) => (emoji ? `${emoji} ${activity}` : activity),
         joinedTitle: (joinerName) => `${joinerName} is in`,
         joinedBody: (joinerName, activity) => `${joinerName} joined ${activity}`,
@@ -24,7 +24,7 @@ exports.Strings = {
         requestTitle: "New friend request",
         requestBody: (fromName) => `${fromName} wants to bool`,
         acceptedTitle: "Friend request accepted",
-        acceptedBody: (toName) => `${toName} accepted your friend request`,
+        acceptedBody: (toName) => `${toName} is down to bool`,
     },
 };
 //# sourceMappingURL=strings.js.map
