@@ -69,7 +69,16 @@ struct CreateEventView: View {
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
 
-                    whoPicker
+                    // With no groups to choose between, the picker is a single
+                    // card that's already selected and can't be deselected —
+                    // it reads as a control, so people try to open "All
+                    // Friends" expecting to strike individuals off it. There's
+                    // nothing to pick until there's a group to pick instead,
+                    // and the audience is all friends either way, so the row
+                    // only earns its place once one exists.
+                    if !viewModel.groups.isEmpty {
+                        whoPicker
+                    }
 
                     EventDurationWheel(
                         durationMinutes: $viewModel.selectedDurationMinutes,

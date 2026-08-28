@@ -76,17 +76,23 @@ struct EventSymbolHeader: View {
                         image.resizable().scaledToFill()
                     }
                 }
+            } else if let photoURL = AuthService.shared.currentUser?.profilePhotoURL,
+                      let url = URL(string: photoURL) {
+                // Nothing picked, so the preview shows what the pin is actually
+                // going to fall back to rather than a mark of its own. The map
+                // hands EventIconView the creator's photo whenever a signal
+                // carries neither image nor emoji (see HomeView's
+                // annotationPhotoURL), and EventIconView draws a photo in
+                // preference to a label — so a photo outranks initials here too.
+                AsyncImage(url: url) { phase in
+                    if case .success(let image) = phase {
+                        image.resizable().scaledToFill()
+                    } else {
+                        creatorFallback(size: size)
+                    }
+                }
             } else {
-                // Nothing chosen yet, so the circle wears the app icon's mark:
-                // the same italic display "B", dusk navy on amber, which is the
-                // icon inverted — the amber fill here is the icon's letter.
-                // Sized so the cap height lands at ~45% of the circle, the
-                // proportion the letter takes up in the icon itself. The line
-                // box centers the glyph without a nudge: Instrument Sans' ascent
-                // and descent put the cap's midpoint on the box's own midpoint.
-                Text(verbatim: "B")
-                    .font(.blipperDisplay(fixedSize: size * 0.62, weight: 700))
-                    .foregroundStyle(Blipper.duskNavy)
+                creatorFallback(size: size)
             }
         }
         .frame(width: size, height: size)
@@ -131,6 +137,22 @@ struct EventSymbolHeader: View {
             .frame(width: buttonSize, height: buttonSize)
             .background(Blipper.surface)
             .clipShape(Circle())
+    }
+
+    // The last two rungs of the map pin's ladder, in the same order and at the
+    // same proportions EventIconView uses, so what you compose against is what
+    // gets drawn once the signal is out.
+    @ViewBuilder
+    private func creatorFallback(size: CGFloat) -> some View {
+        if let initials = AuthService.shared.currentUser?.initials {
+            Text(initials)
+                .font(.system(size: size * 0.3, weight: .bold))
+                .foregroundStyle(EventIconStyle.signal.content)
+        } else {
+            Image(systemName: "person.fill")
+                .font(.system(size: size * 0.4))
+                .foregroundStyle(EventIconStyle.signal.content.opacity(0.8))
+        }
     }
 
     private var imageButton: some View {
